@@ -7,6 +7,7 @@ import { ImageWithFallback } from './ImageWithFallback';
 import { ClipboardList } from 'lucide-react';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { formatCLP } from '@/lib/utils';
+import flags from '@/config/feature-flags.json';
 
 interface ProductCardProps {
   producto: Producto;
@@ -74,6 +75,9 @@ export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocu
             <div className="text-xl font-semibold text-[var(--heading)] leading-none">
               {ocultarPrecios ? '••••' : mostrarPrecioVenta && producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
             </div>
+            {(flags as any)['precio-mayorista-ui'] === true && !ocultarPrecios && producto.precio_mayor != null && (
+              <div className="text-xs text-[var(--body)] mt-1">Caja: {formatCLP(producto.precio_mayor)}</div>
+            )}
           </div>
 
           <div className="w-px bg-border flex-shrink-0 mx-3" />

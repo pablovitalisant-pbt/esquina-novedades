@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
 import { useShareImage } from '@/hooks/useShareImage';
 import { Badge } from '@/components/ui/badge';
+import flags from '@/config/feature-flags.json';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -33,6 +34,8 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
   const [isEditing, setIsEditing] = useState(false);
   const [prcVenta, setPrcVenta] = useState('');
   const [prcMinimo, setPrcMinimo] = useState('');
+  const [editPrecioMayor, setEditPrecioMayor] = useState('');
+  const PRECIO_MAYOR_UI = (flags as any)['precio-mayorista-ui'] === true;
   const [categoria, setCategoria] = useState(producto?.categoria ?? '');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -97,6 +100,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       setEditCubiCaja(producto.cubicaja.toString());
       setEditEsNuevo(producto.es_nuevo);
       setPrcVenta(producto.prcventa.toString());
+      setEditPrecioMayor(producto.precio_mayor?.toString() ?? '');
       setPrcMinimo(producto.prcminimo?.toString() ?? '');
       setCodigoNuevo(producto.codigo);
       setIsEditingCodigo(false);
@@ -115,6 +119,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
   const handleOpenStatus = (isOpen: boolean) => {
     if (isOpen && producto) {
       setPrcVenta(producto.prcventa.toString());
+      setEditPrecioMayor(producto.precio_mayor?.toString() ?? '');
       setPrcMinimo(producto.prcminimo?.toString() ?? '');
       setCategoria(producto.categoria ?? '');
       setEditCosto(producto.costo?.toString() ?? '');
@@ -205,6 +210,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
     if (editMargenPct) body.margen_pct = Number(editMargenPct);
     if (prcVenta) body.prcventa = Number(prcVenta);
     if (prcMinimo) body.prcminimo = Number(prcMinimo) || null;
+    if (PRECIO_MAYOR_UI) body.precio_mayor = editPrecioMayor === '' ? null : Number(editPrecioMayor);
     if (editDetalle) body.detalle = editDetalle;
     if (editUmed) body.umed = editUmed;
     body.cantcaja = Number(editCantCaja);
@@ -504,6 +510,12 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                     </div>
                   </>
                 )}
+                {PRECIO_MAYOR_UI && (
+                  <div>
+                    <Label className="text-xs">Precio por caja</Label>
+                    <Input data-testid="precio-mayor-input" type="number" step="1" min="1" value={editPrecioMayor} onChange={e => setEditPrecioMayor(e.target.value)} placeholder="Sin precio por caja" />
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">Stock minimo</Label>
                   <Input type="number" step="1" min="0" value={editStockMinimo} onChange={e => setEditStockMinimo(e.target.value)} placeholder="0" />
@@ -524,6 +536,12 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                     <TableCell className="font-medium">Precio venta</TableCell>
                     <TableCell className="text-right font-bold">{formatCLP(producto.prcventa)}</TableCell>
                   </TableRow>
+                  {PRECIO_MAYOR_UI && producto.precio_mayor != null && (
+                    <TableRow>
+                      <TableCell className="font-medium">Precio por caja</TableCell>
+                      <TableCell className="text-right font-bold">{formatCLP(producto.precio_mayor)}</TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             )}

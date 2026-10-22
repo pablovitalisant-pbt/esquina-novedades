@@ -11,5 +11,6 @@
   "pedidos-publicos": true,
   "carrito-pedidos-ui": true,
   "pedidos-staff-ui": true,
-  "inversion-mercaderia": true
+  "inversion-mercaderia": true,
+  "precio-mayorista-ui": false
 }

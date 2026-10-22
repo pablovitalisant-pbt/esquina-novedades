@@ -19,6 +19,8 @@ interface PreciosClientProps {
 
 export function PreciosClient({ session }: PreciosClientProps) {
   const PRECIO_VENTA = (flags as any)['precios-precio-venta-card'] === true;
+  const PRECIO_MAYOR_UI = (flags as any)['precio-mayorista-ui'] === true;
+  const [crearPrecioMayor, setCrearPrecioMayor] = useState('');
   const COMPARTIR_PRECIO = (flags as any)['drawer-compartir-precio'] === true;
 
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -126,6 +128,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
           saldo: crearSaldo ? Number(crearSaldo) : undefined,
           stock_minimo: crearStockMinimo ? Number(crearStockMinimo) : undefined,
           cantcaja: crearCantCaja ? Number(crearCantCaja) : undefined,
+          precio_mayor: PRECIO_MAYOR_UI && crearPrecioMayor ? Number(crearPrecioMayor) : undefined,
         }),
       });
       if (!res.ok) {
@@ -156,6 +159,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
       setCrearMargen('');
       setCrearSaldo('');
       setCrearCantCaja('');
+      setCrearPrecioMayor('');
       setCrearFile(null);
       setCrearPreview(null);
       setSearch('');
@@ -229,6 +233,12 @@ export function PreciosClient({ session }: PreciosClientProps) {
                     <label className="text-sm font-medium">¿Cuántas unidades hay en cada caja?</label>
                     <Input type="number" step="1" min="1" value={crearCantCaja} onChange={e => setCrearCantCaja(e.target.value)} placeholder="12" />
                   </div>
+                  {PRECIO_MAYOR_UI && (
+                    <div>
+                      <label className="text-sm font-medium">Precio por caja (opcional)</label>
+                      <Input type="number" step="1" min="1" value={crearPrecioMayor} onChange={e => setCrearPrecioMayor(e.target.value)} placeholder="Sin precio por caja" />
+                    </div>
+                  )}
                   <div>
                     <label className="text-sm font-medium">% de ganancia *</label>
                     <Input type="number" step="0.01" min="0" value={crearMargen} onChange={e => setCrearMargen(e.target.value)} placeholder="30" />

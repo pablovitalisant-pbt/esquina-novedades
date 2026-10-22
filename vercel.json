@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/inversion-mercaderia/snapshot",
+      "schedule": "55 2 * * *"
+    }
+  ]
+}

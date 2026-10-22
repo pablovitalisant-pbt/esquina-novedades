@@ -1,0 +1,1980 @@
+"use client";
+
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { usePowerSync } from "@powersync/react";
+import { PowerSyncProvider } from "@/lib/powersync/PowerSyncProvider";
+import flags from "@/config/feature-flags.json";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2, Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { roundUpToHalf, formatMonto } from "@/docs/specs/caja-mayor.spec";
+import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
+
+import type { Cuenta } from '@/types';
+
+interface ClienteOption {
+  cliente_id: string; // UUID desde 13a
+  nombre: string;
+  total_compras: number;
+  ultima_compra: string;
+}
+
+// CajaMayorClient decide si montar PowerSync según el flag. Con el flag en
+// false (default) NO se monta el provider → no se abre la conexión de sync y
+// el comportamiento actual (fetch a /api/caja/movimientos y resumen-cuentas)
+// no cambia. El guard de rol lo hace el middleware (bodeguero no tiene acceso
+// a /caja-mayor).
+export function CajaMayorClient({
+  dolarDia,
+  cuentas,
+  userName,
+  userRol,
+  userId,
+}: {
+  dolarDia: number;
+  cuentas: Cuenta[];
+  userName: string;
+  userRol: string;
+  userId: number;
+}) {
+  const OFFLINE_READ = (flags as any)["caja-mayor-offline-lectura"];
+  if (OFFLINE_READ) {
+    return (
+      <PowerSyncProvider>
+        <CajaMayorContent dolarDia={dolarDia} cuentas={cuentas} userName={userName} userRol={userRol} userId={userId} />
+      </PowerSyncProvider>
+    );
+  }
+  return <CajaMayorContent dolarDia={dolarDia} cuentas={cuentas} userName={userName} userRol={userRol} userId={userId} />;
+}
+
+function CajaMayorContent({
+  dolarDia,
+  cuentas,
+  userName,
+  userRol,
+  userId,
+}: {
+  dolarDia: number;
+  cuentas: Cuenta[];
+  userName: string;
+  userRol: string;
+  userId: number;
+}) {
+  const OFFLINE_READ = (flags as any)["caja-mayor-offline-lectura"];
+  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
+  const db = usePowerSync();
+  // BUG-054 (Parte 3): estado de conexión en vivo. "Cierre de caja" requiere
+  // red (escribe a Postgres), así que se bloquea offline. Se actualiza con
+  // listeners online/offline, sin recargar.
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // ─── Form state ──────────────────────────────────────
+  const [tipo, setTipo] = useState<"cobro" | "gasto">("cobro");
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [cliente, setCliente] = useState<ClienteOption | null>(null);
+  const [empresa, setEmpresa] = useState<string>("");
+  const [moneda, setMoneda] = useState<"USD" | "ARS">("USD");
+  const [monto, setMonto] = useState("");
+  const [cuentaId, setCuentaId] = useState("");
+  const [formaPago, setFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
+  const [observaciones, setObservaciones] = useState("");
+  const [esCredito, setEsCredito] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+
+  // Dólar del día vigente (inicia con prop del server, se refresca de la API)
+  const [dolarVigente, setDolarVigente] = useState(dolarDia);
+
+  useEffect(() => {
+    async function refrescarDolar() {
+      if (OFFLINE_READ && db) {
+        // Lectura local (flag on): el valor queda "capturado" en el estado —
+        // es lo que el usuario ve en el formulario al registrar (Slice 11b).
+        const row = await db.get<{ valor: string }>(
+          `SELECT valor FROM caja_config WHERE clave = 'dolar_dia'`
+        );
+        const valor = parseFloat(row?.valor ?? '0');
+        if (valor > 0) setDolarVigente(valor);
+        return;
+      }
+      try {
+        const res = await fetch("/api/caja/config");
+        if (res.ok) {
+          const json = await res.json();
+          const valor = parseFloat(json.data.valor);
+          if (valor > 0) setDolarVigente(valor);
+        }
+      } catch {
+        // mantener dolarVigente actual
+      }
+    }
+    refrescarDolar();
+  }, [moneda]);
+
+  // ─── Imputación manual ─────────────────────────────────
+  const [imputacionManual, setImputacionManual] = useState(false);
+  const [notaSeleccionada, setNotaSeleccionada] = useState<NotaVentaConSaldo | null>(null);
+  const [notasPendientes, setNotasPendientes] = useState<NotaVentaConSaldo[]>([]);
+  const [notasPendientesLoading, setNotasPendientesLoading] = useState(false);
+
+  // ─── Búsqueda unificada ───────────────────────────────
+  type ResultadoBusqueda =
+    | { tipo: "cliente"; cliente: ClienteOption }
+    | { tipo: "nota"; nota: NotaBusquedaResult };
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ResultadoBusqueda[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // ─── Resumen de notas del cliente ───────────────────
+  const [resumen, setResumen] = useState<ResumenClienteResponse | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState<"todas" | "pendiente" | "pagada">("todas");
+  const [notaExpandida, setNotaExpandida] = useState<string | null>(null);
+
+  // ─── Movimientos table state ──────────────────────────
+  const [movimientos, setMovimientos] = useState<MovimientoOCierre[]>([]);
+  const [movsLoading, setMovsLoading] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
+  const [filtros, setFiltros] = useState({ moneda: "", cuenta_id: "", tipo: "", empresa: "", desde: "", hasta: "" });
+  const [saldos, setSaldos] = useState<SaldoCuenta[]>([]);
+
+  // ─── Cierre de período ────────────────────────────────
+  const [cierreModalOpen, setCierreModalOpen] = useState(false);
+  const [cierreLoading, setCierreLoading] = useState(false);
+
+  // ─── Edit modal state ─────────────────────────────────
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editMov, setEditMov] = useState<MovimientoConCuenta | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  // Edit form fields (reuse same structure as create form)
+  const [editTipo, setEditTipo] = useState<"cobro" | "gasto">("cobro");
+  const [editFecha, setEditFecha] = useState("");
+  const [editClienteQuery, setEditClienteQuery] = useState("");
+  const [editCliente, setEditCliente] = useState<ClienteOption | null>(null);
+  const [editEmpresa, setEditEmpresa] = useState<"bazar-naty" | "">("");
+  const [editMoneda, setEditMoneda] = useState<"USD" | "ARS">("USD");
+  const [editMonto, setEditMonto] = useState("");
+  const [editCuentaId, setEditCuentaId] = useState("");
+  const [editFormaPago, setEditFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
+  const [editObs, setEditObs] = useState("");
+  const [editEsCredito, setEditEsCredito] = useState(false);
+  const [editDeleteConfirm, setEditDeleteConfirm] = useState(false);
+
+  // ─── Edición inline de cierre ─────────────────────────
+  const [cierreEditId, setCierreEditId] = useState<number | null>(null);
+  const [cierreEditDesde, setCierreEditDesde] = useState("");
+  const [cierreEditHasta, setCierreEditHasta] = useState("");
+  const [cierreEditSaving, setCierreEditSaving] = useState(false);
+
+  // ─── Fetch movimientos ────────────────────────────────
+  const fetchMovimientos = useCallback((page = 1) => {
+    setMovsLoading(true);
+
+    if (OFFLINE_READ && db) {
+      // Lectura local (flag on): replica GET /api/caja/movimientos tal cual —
+      // filtros NULL-safe, ORDER BY fecha/id DESC, LIMIT/OFFSET, GROUP_CONCAT
+      // para notas_imputadas (SQLite no tiene ARRAY_AGG) y merge de cierres en
+      // rango. Sin filtro de empresa_id (single-tenant).
+      (async () => {
+        try {
+          const limit = 50;
+          const offset = (page - 1) * limit;
+          const f = filtros;
+          const cuentaId = f.cuenta_id ? parseInt(f.cuenta_id, 10) : null;
+          const monedaF = f.moneda || null;
+          const tipoF = f.tipo || null;
+          const empresaF = f.empresa || null;
+          const desde = f.desde || null;
+          const hasta = f.hasta || null;
+
+          const whereSql = `(? IS NULL OR m.cuenta_id = ?)
+            AND (? IS NULL OR m.moneda = ?)
+            AND (? IS NULL OR m.tipo = ?)
+            AND (? IS NULL OR m.empresa = ?)
+            AND (? IS NULL OR m.fecha >= ?)
+            AND (? IS NULL OR m.fecha <= ?)`;
+          const whereParams = [
+            cuentaId, cuentaId, monedaF, monedaF, tipoF, tipoF, empresaF, empresaF,
+            desde, desde, hasta, hasta,
+          ];
+
+          const rows = (await db.getAll(
+            `SELECT m.id, m.fecha, m.tipo, m.kcodcli2 AS cliente_id, m.nombre_cliente,
+               m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.monto_usd,
+               m.tipo_cambio, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
+               COALESCE((SELECT GROUP_CONCAT(cmn.prenota_id) FROM caja_movimiento_notas cmn WHERE cmn.movimiento_id = m.id), '') AS notas_imputadas,
+               m.usuario_id, m.usuario_nombre, m.created_at, m.updated_at
+             FROM caja_movimientos m
+             JOIN caja_cuentas cc ON cc.id = m.cuenta_id
+             WHERE ${whereSql}
+             ORDER BY m.fecha DESC, m.id DESC
+             LIMIT ? OFFSET ?`,
+            [...whereParams, limit, offset]
+          )) as any[];
+
+          const countRow = (await db.get(
+            `SELECT COUNT(*) AS total FROM caja_movimientos m WHERE ${whereSql}`,
+            whereParams
+          )) as any;
+          const total = Number(countRow?.total ?? 0);
+
+          const dataRows: MovimientoConCuenta[] = (rows || []).map((r) => ({
+            ...r,
+            es_credito: !!r.es_credito,
+            notas_imputadas: r.notas_imputadas ? String(r.notas_imputadas).split(",").filter(Boolean) : [],
+          }));
+
+          // cierres en rango de fechas (minFecha/maxFecha, mismo default que la API)
+          const minFecha = desde || "2000-01-01";
+          const maxFecha = hasta || new Date().toISOString().slice(0, 10);
+          let cierresEnRango: CierrePeriodo[] = [];
+          try {
+            const cierresRows = (await db.getAll(
+              `SELECT id, fecha_desde, fecha_hasta, resumen, usuario_id, usuario_nombre, created_at
+               FROM caja_cierres
+               WHERE fecha_hasta >= ? AND fecha_desde <= ?
+               ORDER BY fecha_hasta ASC`,
+              [minFecha, maxFecha]
+            )) as any[];
+            cierresEnRango = (cierresRows || []).map((r: any) => ({
+              id: r.id,
+              fecha_desde: r.fecha_desde,
+              fecha_hasta: r.fecha_hasta,
+              resumen: typeof r.resumen === "string" ? JSON.parse(r.resumen) : r.resumen,
+              usuario_id: r.usuario_id,
+              usuario_nombre: r.usuario_nombre,
+              created_at: r.created_at,
+            }));
+          } catch {
+            cierresEnRango = [];
+          }
+
+          // merge (mismo algoritmo de intercalación que la API)
+          const data: MovimientoOCierre[] = dataRows.map((row) => ({ tipo_fila: "movimiento", data: row }));
+          const fechas = dataRows.map((r) => r.fecha);
+          const fechaMinPagina = fechas.length ? fechas[fechas.length - 1] : null;
+          const fechaMaxPagina = fechas.length ? fechas[0] : null;
+          const cierresDePagina = fechaMinPagina && fechaMaxPagina
+            ? cierresEnRango.filter((c) => c.fecha_hasta >= fechaMinPagina && (c.fecha_hasta <= fechaMaxPagina || page === 1))
+            : (page === 1 ? cierresEnRango : []);
+
+          let merged: MovimientoOCierre[] = data;
+          if (cierresDePagina.length > 0) {
+            let cierreIdx = cierresDePagina.length - 1;
+            const out: MovimientoOCierre[] = [];
+            for (const item of data) {
+              const mov = item.data as MovimientoConCuenta;
+              while (cierreIdx >= 0 && cierresDePagina[cierreIdx].fecha_hasta >= mov.fecha) {
+                out.push({ tipo_fila: "cierre", data: cierresDePagina[cierreIdx] });
+                cierreIdx--;
+              }
+              out.push(item);
+            }
+            while (cierreIdx >= 0) { out.push({ tipo_fila: "cierre", data: cierresDePagina[cierreIdx] }); cierreIdx--; }
+            merged = out;
+          }
+
+          setMovimientos(merged);
+          setPagination({ page, limit, total, totalPages: Math.ceil(total / limit) });
+        } catch {
+          // mantener estado
+        } finally {
+          setMovsLoading(false);
+        }
+      })();
+      return;
+    }
+
+    const params = new URLSearchParams({ page: String(page), limit: "50" });
+    if (filtros.moneda) params.set("moneda", filtros.moneda);
+    if (filtros.cuenta_id) params.set("cuenta_id", filtros.cuenta_id);
+    if (filtros.tipo) params.set("tipo", filtros.tipo);
+    if (filtros.empresa) params.set("empresa", filtros.empresa);
+    if (filtros.desde) params.set("desde", filtros.desde);
+    if (filtros.hasta) params.set("hasta", filtros.hasta);
+    fetch(`/api/caja/movimientos?${params}`)
+      .then((r) => r.json())
+      .then((json) => {
+        setMovimientos((json.data || []) as MovimientoOCierre[]);
+        setPagination(json.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 });
+      })
+      .catch(() => {})
+      .finally(() => setMovsLoading(false));
+  }, [filtros, db, OFFLINE_READ]);
+
+  // ─── Fetch saldos ─────────────────────────────────────
+  const fetchSaldos = useCallback(() => {
+    if (OFFLINE_READ && db) {
+      // Lectura local (flag on): replica GET /api/caja/resumen-cuentas —
+      // GROUP BY cuenta con SUM(CASE WHEN tipo=...) + saldos iniciales.
+      (async () => {
+        try {
+          const rows = (await db.getAll(
+            `SELECT
+               m.cuenta_id,
+               cc.nombre AS cuenta_nombre,
+               cc.moneda,
+               COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE 0 END), 0) AS total_cobros,
+               COALESCE(SUM(CASE WHEN m.tipo = 'gasto' THEN m.monto ELSE 0 END), 0) AS total_gastos,
+               COALESCE(SUM(CASE WHEN m.tipo = 'reembolso' THEN m.monto ELSE 0 END), 0) AS total_reembolsos,
+               COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE -m.monto END), 0) AS movimientos_neto
+             FROM caja_movimientos m
+             JOIN caja_cuentas cc ON cc.id = m.cuenta_id
+             GROUP BY m.cuenta_id, cc.nombre, cc.moneda, cc.orden, cc.id
+             ORDER BY cc.orden ASC, cc.id ASC`
+          )) as any[];
+
+          const saldosInit = (await db.getAll(
+            `SELECT cuenta_id, saldo FROM caja_saldos_iniciales`
+          )) as any[];
+          const saldoMap = new Map<number, number>();
+          for (const s of saldosInit || []) saldoMap.set(Number(s.cuenta_id), Number(s.saldo));
+
+          const result: SaldoCuenta[] = (rows || []).map((r: any) => ({
+            cuenta_id: r.cuenta_id,
+            cuenta_nombre: r.cuenta_nombre,
+            moneda: r.moneda,
+            total_cobros: Number(r.total_cobros),
+            total_gastos: Number(r.total_gastos),
+            total_reembolsos: Number(r.total_reembolsos),
+            saldo_neto: (saldoMap.get(Number(r.cuenta_id)) || 0) + Number(r.movimientos_neto),
+          }));
+          setSaldos(result);
+        } catch {
+          // mantener estado
+        }
+      })();
+      return;
+    }
+
+    fetch("/api/caja/resumen-cuentas")
+      .then((r) => r.json())
+      .then((json) => setSaldos(json.data || []))
+      .catch(() => {});
+  }, [db, OFFLINE_READ]);
+
+  useEffect(() => { fetchMovimientos(1); fetchSaldos(); }, [fetchMovimientos, fetchSaldos]);
+
+  // Refresco reactivo: ante cualquier cambio real en las tablas locales
+  // relevantes (escritura offline o sync que termina en background), re-leer
+  // movimientos y saldos. Sin esto, un UPDATE local persiste fresco en SQLite
+  // pero la tabla no lo muestra hasta otra invocación manual. Las llamadas
+  // manuales post-submit quedan como red de seguridad; el watcher cubre todo
+  // lo demás.
+  useEffect(() => {
+    if (!(OFFLINE_READ && db)) return;
+    const dispose = db.onChangeWithCallback(
+      {
+        onChange: () => {
+          fetchMovimientos(pagination.page);
+          fetchSaldos();
+        },
+      },
+      { tables: ["caja_movimientos", "caja_movimiento_notas", "caja_saldos_iniciales", "caja_cierres"] }
+    );
+    return () => dispose();
+  }, [OFFLINE_READ, db, pagination.page, fetchMovimientos, fetchSaldos]);
+  useEffect(() => { if (!cliente) fetchMovimientos(1); }, [cliente, fetchMovimientos]);
+
+  useEffect(() => {
+    if (!cliente) {
+      setResumen(null);
+      return;
+    }
+    setResumenLoading(true);
+    fetch(`/api/caja/resumen/${cliente.cliente_id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data) setResumen(json.data);
+        else setResumen(null);
+      })
+      .catch(() => setResumen(null))
+      .finally(() => setResumenLoading(false));
+  }, [cliente]);
+
+  const notasFiltradas = useMemo(() => {
+    if (!resumen) return [];
+    if (filtroEstado === "todas") return resumen.notas;
+    if (filtroEstado === "pendiente") return resumen.notas.filter((n) => n.saldo_pendiente > 0.005);
+    return resumen.notas.filter((n) => n.saldo_pendiente <= 0.005);
+  }, [resumen, filtroEstado]);
+
+  // ─── Derived ─────────────────────────────────────────
+  const cuentasFiltradas = useMemo(
+    () => cuentas.filter((c) => c.moneda === moneda),
+    [cuentas, moneda]
+  );
+
+  const montoUSD = useMemo(() => {
+    const n = parseFloat(monto);
+    if (isNaN(n) || n <= 0) return null;
+    if (moneda === "USD") return n;
+    if (dolarVigente <= 0) return null;
+    return roundUpToHalf(n / dolarVigente);
+  }, [monto, moneda, dolarVigente]);
+
+  const canSubmit =
+    !saving &&
+    fecha &&
+    cuentaId &&
+    parseFloat(monto) > 0;
+
+  // ─── Búsqueda unificada (cliente o nota) ──────────────
+  useEffect(() => {
+    const isDigits = /^\d+$/.test(searchQuery);
+
+    if ((isDigits && searchQuery.length < 3) || (!isDigits && searchQuery.length < 2)) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (OFFLINE_READ && db) {
+      // Lectura local: replica GET /api/caja/nota-busqueda (isDigits) y
+      // GET /api/caja/clientes (si no). total_pagado se arma con un merge en
+      // JS contra caja_movimiento_notas (mismo patrón que notasPendientes,
+      // evita el JOIN SQL directo contra un id que localmente es texto).
+      setSearchLoading(true);
+      const q = searchQuery.trim().toLowerCase();
+      (async () => {
+        try {
+          if (isDigits) {
+            const rows = (await db.getAll(
+              `SELECT p.id, p.created_at AS fecha, p.cliente_id, p.nombre_cliente,
+                 COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
+               FROM prenotas p
+               LEFT JOIN prenota_items pi ON pi.prenota_id = p.id
+               WHERE CAST(p.id AS TEXT) LIKE ? OR LOWER(p.titulo) LIKE ? OR LOWER(p.nombre_cliente) LIKE ?
+               GROUP BY p.id
+               LIMIT 10`,
+              [`%${q}%`, `%${q}%`, `%${q}%`]
+            )) as any[];
+            const pagos = (await db.getAll(
+              `SELECT prenota_id, SUM(monto_aplicado) AS total FROM caja_movimiento_notas GROUP BY prenota_id`
+            )) as any[];
+            const pagoMap = new Map<number, number>();
+            for (const p of pagos || []) pagoMap.set(Number(p.prenota_id), Number(p.total));
+            const results: ResultadoBusqueda[] = (rows || [])
+              .map((r: any) => {
+                const total = Number(r.total);
+                const total_pagado = pagoMap.get(Number(r.id)) ?? 0;
+                return {
+                  tipo: "nota" as const,
+                  nota: {
+                    id: Number(r.id),
+                    fecha: r.fecha,
+                    total,
+                    total_pagado,
+                    saldo_pendiente: total - total_pagado,
+                    cliente_id: r.cliente_id,
+                    nombre_cliente: r.nombre_cliente,
+                    origen: "bazar-naty" as const,
+                  },
+                };
+              })
+              .sort((a, b) => {
+                const aPending = a.nota.saldo_pendiente > 0.005 ? 0 : 1;
+                const bPending = b.nota.saldo_pendiente > 0.005 ? 0 : 1;
+                if (aPending !== bPending) return aPending - bPending;
+                return a.nota.fecha.localeCompare(b.nota.fecha);
+              });
+            setSearchResults(results);
+            setSearchOpen(results.length > 0);
+          } else {
+            const rows = (await db.getAll(
+              `SELECT p.cliente_id, c.nombre, COUNT(*) AS total_compras, MAX(p.created_at) AS ultima_compra
+               FROM prenotas p
+               JOIN clientes c ON c.id = p.cliente_id
+               WHERE LOWER(c.nombre) LIKE ? OR LOWER(p.titulo) LIKE ?
+               GROUP BY p.cliente_id, c.nombre
+               ORDER BY ultima_compra DESC
+               LIMIT 15`,
+              [`%${q}%`, `%${q}%`]
+            )) as any[];
+            const results: ResultadoBusqueda[] = (rows || []).map((r: any) => ({
+              tipo: "cliente" as const,
+              cliente: {
+                cliente_id: r.cliente_id,
+                nombre: r.nombre,
+                total_compras: Number(r.total_compras),
+                ultima_compra: r.ultima_compra,
+              },
+            }));
+            setSearchResults(results);
+            setSearchOpen(results.length > 0);
+          }
+        } catch (e) { console.error('[caja-mayor] búsqueda local:', e); setSearchResults([]); } finally {
+          setSearchLoading(false);
+        }
+      })();
+      return;
+    }
+
+    const endpoint = isDigits
+      ? `/api/caja/nota-busqueda?q=${encodeURIComponent(searchQuery)}`
+      : `/api/caja/clientes?q=${encodeURIComponent(searchQuery)}`;
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const json = await res.json();
+        const data: any[] = json.data || [];
+        const results: ResultadoBusqueda[] = isDigits
+          ? data.map((n) => ({ tipo: "nota" as const, nota: n as NotaBusquedaResult }))
+          : data.map((c) => ({ tipo: "cliente" as const, cliente: c as ClienteOption }));
+        setSearchResults(results);
+        setSearchOpen(results.length > 0);
+      }
+      setSearchLoading(false);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, OFFLINE_READ, db]);
+
+  // Auto-select first available cuenta when moneda changes
+  useEffect(() => {
+    if (cuentasFiltradas.length > 0) {
+      setCuentaId(String(cuentasFiltradas[0].id));
+    } else {
+      setCuentaId("");
+    }
+  }, [moneda, cuentasFiltradas]);
+
+  const selectCliente = (c: ClienteOption) => {
+    setCliente(c);
+    setSearchQuery(c.nombre);
+    setSearchOpen(false);
+  };
+
+  const selectNota = (n: NotaBusquedaResult) => {
+    const clienteOpt: ClienteOption = {
+      cliente_id: n.cliente_id,
+      nombre: n.nombre_cliente,
+      total_compras: 0,
+      ultima_compra: "",
+    };
+    setCliente(clienteOpt);
+    setSearchQuery("");
+    setEmpresa(n.origen);
+    setNotaSeleccionada({
+      id: n.id,
+      fecha: n.fecha,
+      total: n.total,
+      total_pagado: n.total - n.saldo_pendiente,
+      saldo_pendiente: n.saldo_pendiente,
+      origen: n.origen,
+      empresa: n.origen,
+    });
+    setImputacionManual(true);
+    setSearchResults([]);
+    setSearchOpen(false);
+  };
+
+  // ─── Fetch notas pendientes para imputación manual ───
+  useEffect(() => {
+    if (!imputacionManual || !cliente) {
+      setNotasPendientes([]);
+      setNotaSeleccionada(null);
+      return;
+    }
+    setNotasPendientesLoading(true);
+
+    if (OFFLINE_READ && db) {
+      // Lectura local (flag on): replica GET /api/caja/notas/[kcodcli2] —
+      // prenotas + prenota_items agrupado + caja_movimiento_notas para
+      // total_pagado, merge en JS. Single-tenant → origen = empresa actual.
+      (async () => {
+        try {
+          const notas = (await db.getAll(
+            `SELECT p.id, p.created_at AS fecha, p.cliente_id, p.nombre_cliente,
+               COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
+             FROM prenotas p
+             LEFT JOIN prenota_items pi ON pi.prenota_id = p.id
+             WHERE p.cliente_id = ?
+             GROUP BY p.id`,
+            [cliente.cliente_id]
+          )) as any[];
+          const pagos = (await db.getAll(
+            `SELECT prenota_id, SUM(monto_aplicado) AS total
+             FROM caja_movimiento_notas GROUP BY prenota_id`
+          )) as any[];
+          const pagoMap = new Map<number, number>();
+          for (const p of pagos || []) pagoMap.set(Number(p.prenota_id), Number(p.total));
+
+          const todas: NotaVentaConSaldo[] = (notas || []).map((n) => {
+            const total = Number(n.total);
+            const total_pagado = pagoMap.get(Number(n.id)) ?? 0;
+            return {
+              id: Number(n.id),
+              fecha: n.fecha,
+              total,
+              total_pagado,
+              saldo_pendiente: total - total_pagado,
+              cliente_id: n.cliente_id,
+              nombre_cliente: n.nombre_cliente,
+              origen: empresa,
+              empresa,
+            };
+          });
+          const pendientes = todas.filter((n) => {
+            if (n.saldo_pendiente <= 0.005) return false;
+            if (empresa && n.origen !== empresa) return false;
+            return true;
+          });
+          setNotasPendientes(pendientes);
+          setNotaSeleccionada((actual) =>
+            actual && pendientes.some(n => n.origen === actual.origen && n.id === actual.id)
+              ? actual
+              : null
+          );
+        } catch {
+          setNotasPendientes([]);
+        } finally {
+          setNotasPendientesLoading(false);
+        }
+      })();
+      return;
+    }
+
+    fetch(`/api/caja/notas/${cliente.cliente_id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const todas: NotaVentaConSaldo[] = json.data || [];
+        const pendientes = todas.filter((n) => {
+          if (n.saldo_pendiente <= 0.005) return false;
+          if (empresa && n.origen !== empresa) return false;
+          return true;
+        });
+        setNotasPendientes(pendientes);
+        setNotaSeleccionada((actual) =>
+          actual && pendientes.some(n => n.origen === actual.origen && n.id === actual.id)
+            ? actual
+            : null
+        );
+      })
+      .catch(() => setNotasPendientes([]))
+      .finally(() => setNotasPendientesLoading(false));
+  }, [imputacionManual, cliente, empresa]);
+
+  const clearCliente = () => {
+    setCliente(null);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setEmpresa("");
+    setImputacionManual(false);
+    setNotaSeleccionada(null);
+    setNotasPendientes([]);
+  };
+
+  // ─── Edit modal ──────────────────────────────────────
+  const openEditModal = (mov: MovimientoConCuenta) => {
+    setEditMov(mov);
+    setEditTipo(mov.tipo as "cobro" | "gasto");
+    setEditFecha(mov.fecha);
+    setEditMonto(String(mov.monto));
+    setEditMoneda(mov.moneda as "USD" | "ARS");
+    setEditCuentaId(String(mov.cuenta_id));
+    setEditFormaPago(mov.forma_pago as "efectivo" | "cheque" | "transferencia");
+    setEditObs(mov.observaciones || "");
+    setEditEsCredito(mov.es_credito ?? false);
+    setEditEmpresa((mov.empresa as "bazar-naty" | "") || "");
+    if (mov.cliente_id) {
+      setEditCliente({ cliente_id: mov.cliente_id, nombre: mov.nombre_cliente || "", total_compras: 0, ultima_compra: "" });
+      setEditClienteQuery(mov.nombre_cliente || "");
+    } else {
+      setEditCliente(null);
+      setEditClienteQuery("");
+    }
+    setEditDeleteConfirm(false);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editMov || !editFecha || !editCuentaId || !parseFloat(editMonto)) return;
+    setEditSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        fecha: editFecha,
+        tipo: editTipo,
+        cliente_id: editCliente?.cliente_id ? Number(editCliente.cliente_id) : null,
+        nombre_cliente: editCliente?.nombre ?? null,
+        cuenta_id: parseInt(editCuentaId, 10),
+        moneda: editMoneda,
+        monto: parseFloat(editMonto),
+        forma_pago: editFormaPago,
+        observaciones: editObs.trim() || null,
+        empresa: editEmpresa || null,
+        es_credito: editTipo === "cobro" ? editEsCredito : false,
+      };
+
+      if (OFFLINE_READ && db) {
+        // BUG-054 + bugfix (monto_usd stale): editar offline → mutar la DB local.
+        // Replica la lógica de la ruta online para recalcular monto_usd/tipo_cambio
+        // con el dolarVigente local, e incluye ambos en el UPDATE. Sin esto, el
+        // render prioriza monto_usd (nunca null) sobre monto y muestra el monto
+        // viejo hasta que la sincronización baja la fila corregida.
+        let montoUsdEdit: number;
+        let tipoCambioEdit: number | null;
+        if (editMoneda === "USD") {
+          montoUsdEdit = parseFloat(editMonto);
+          tipoCambioEdit = null;
+        } else {
+          if (dolarVigente <= 0) {
+            toast.error("Dólar del día no disponible offline");
+            setEditSaving(false);
+            return;
+          }
+          montoUsdEdit = roundUpToHalf(parseFloat(editMonto) / dolarVigente);
+          tipoCambioEdit = dolarVigente;
+        }
+
+        const updateParams = [
+          body.fecha, body.tipo, body.cliente_id, body.nombre_cliente, body.cuenta_id,
+          body.moneda, body.monto, montoUsdEdit, tipoCambioEdit, body.forma_pago,
+          body.observaciones, body.empresa, body.es_credito ? 1 : 0,
+          new Date().toISOString(), editMov.id,
+        ];
+        await db.execute(
+          `UPDATE caja_movimientos SET
+             fecha = ?, tipo = ?, kcodcli2 = ?, nombre_cliente = ?, cuenta_id = ?,
+             moneda = ?, monto = ?, monto_usd = ?, tipo_cambio = ?, forma_pago = ?,
+             observaciones = ?, empresa = ?, es_credito = ?, updated_at = ?
+           WHERE id = ?`,
+          updateParams
+        );
+        toast.success("Movimiento actualizado offline — se sincronizará cuando haya conexión");
+        setEditModalOpen(false);
+        fetchMovimientos(pagination.page);
+        fetchSaldos();
+        return;
+      }
+
+      const res = await fetch(`/api/caja/movimientos/${editMov.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.ajuste_requerido) {
+          toast(json.ajuste_requerido.mensaje, {
+            style: { background: "#FEF3C7", color: "#92400E", border: "1px solid #FCD34D" },
+          });
+        } else {
+          toast.success("Movimiento actualizado");
+        }
+        setEditModalOpen(false);
+        fetchMovimientos(pagination.page);
+        fetchSaldos();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Error al actualizar");
+      }
+    } catch (e) {
+      // BUG-054: catch que faltaba — una excepción (red o db local) no debe
+      // fallar en silencio.
+      console.error("handleEditSave error:", e);
+      toast.error("No se pudo actualizar el movimiento");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleEditDelete = async () => {
+    if (!editMov) return;
+    try {
+      if (OFFLINE_READ && db) {
+        // BUG-054: eliminar offline → mutar la DB local; el sync a Postgres lo
+        // hace uploadData() (rama DELETE). La cascada de imputaciones
+        // (caja_movimiento_notas) la hace el server al sync (ON DELETE CASCADE).
+        await db.execute(`DELETE FROM caja_movimientos WHERE id = ?`, [editMov.id]);
+        toast.success("Movimiento eliminado offline — se sincronizará cuando haya conexión");
+      } else {
+        const res = await fetch(`/api/caja/movimientos/${editMov.id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const err = await res.json().catch(() => null);
+          toast.error(err?.error || "Error al eliminar");
+          return;
+        }
+        toast.success("Movimiento eliminado");
+      }
+      setEditModalOpen(false);
+      fetchMovimientos(1);
+      fetchSaldos();
+    } catch (e) {
+      // BUG-054: catch que faltaba — no fallar en silencio.
+      console.error("handleEditDelete error:", e);
+      toast.error("No se pudo eliminar el movimiento");
+    }
+  };
+
+  // ─── Submit ──────────────────────────────────────────
+  const handleSubmit = async () => {
+    setSaving(true);
+
+    if (OFFLINE_READ && db) {
+      // Escritura local (flag on): INSERT directo a SQLite. El sync a Postgres
+      // lo hace uploadData() (Slice 11b). Tipo de cambio: Opción B — se captura
+      // el valor que el usuario vio al registrar (dolarVigente), no se re-deriva
+      // al sincronizar.
+      try {
+        if (moneda === "ARS" && dolarVigente <= 0) {
+          toast.error("Dólar del día no disponible offline");
+          return;
+        }
+        const tipoCambio = moneda === "ARS" ? dolarVigente : null;
+        const montoUsd = moneda === "ARS"
+          ? roundUpToHalf(parseFloat(monto) / dolarVigente)
+          : parseFloat(monto);
+        const movimientoId = crypto.randomUUID();
+        const now = new Date().toISOString();
+
+        await db.execute(
+          `INSERT INTO caja_movimientos (id, fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda, monto, monto_usd, tipo_cambio, forma_pago, observaciones, empresa, es_credito, usuario_id, usuario_nombre, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            movimientoId, fecha, tipo,
+            cliente?.cliente_id ?? null, // UUID (string) desde 13a
+            cliente?.nombre ?? null,
+            parseInt(cuentaId, 10),
+            moneda, parseFloat(monto), montoUsd, tipoCambio, formaPago,
+            observaciones.trim() || null, empresa || null,
+            (tipo === "cobro" ? esCredito : false) ? 1 : 0,
+            userId, userName, now, now,
+          ]
+        );
+
+        // Imputación manual a nota (misma lógica JS que la rama online)
+        if (imputacionManual && notaSeleccionada && tipo === "cobro" && montoUSD) {
+          let remaining = montoUSD;
+          const notasParaImputar: { empresa: string; prenota_id: number; monto_aplicado: number }[] = [];
+          const aplicado = Math.min(remaining, notaSeleccionada.saldo_pendiente);
+          if (aplicado > 0.005) {
+            notasParaImputar.push({ empresa: notaSeleccionada.empresa ?? "", prenota_id: notaSeleccionada.id, monto_aplicado: aplicado });
+            remaining -= aplicado;
+          }
+          if (remaining > 0.005) {
+            const sorted = [...notasPendientes].sort((a, b) => a.fecha.localeCompare(b.fecha));
+            for (const nota of sorted) {
+              if (nota.id === notaSeleccionada.id && nota.empresa === notaSeleccionada.empresa) continue;
+              if (remaining <= 0.005) break;
+              const aplicar = Math.min(remaining, nota.saldo_pendiente);
+              if (aplicar > 0.005) {
+                notasParaImputar.push({ empresa: nota.empresa ?? "", prenota_id: nota.id, monto_aplicado: aplicar });
+                remaining -= aplicar;
+              }
+            }
+          }
+          for (const n of notasParaImputar) {
+            await db.execute(
+              `INSERT INTO caja_movimiento_notas (id, movimiento_id, prenota_id, monto_aplicado) VALUES (?, ?, ?, ?)`,
+              [crypto.randomUUID(), movimientoId, n.prenota_id, n.monto_aplicado]
+            );
+          }
+        }
+
+        toast.success(
+          `${tipo === "cobro" ? "Cobro" : "Gasto"} guardado offline — se sincronizará cuando haya conexión ($${formatMonto(parseFloat(monto), moneda)} ${moneda})`,
+          { duration: 6000 }
+        );
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2500);
+        clearCliente();
+        setMonto("");
+        setObservaciones("");
+        if (moneda === "ARS") setMoneda("USD");
+        setFormaPago("transferencia");
+        fetchMovimientos(1);
+        fetchSaldos();
+        return;
+      } catch (e) {
+        console.error('[caja-mayor] error al guardar offline:', e);
+        toast.error('No se pudo guardar el cobro offline. Revisá la consola y reintentá.');
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    const body: Record<string, unknown> = {
+      fecha,
+      tipo,
+      cliente_id: cliente?.cliente_id ?? null, // UUID (string) desde 13a
+      nombre_cliente: cliente?.nombre ?? null,
+      cuenta_id: parseInt(cuentaId, 10),
+      moneda,
+      monto: parseFloat(monto),
+      forma_pago: formaPago,
+      observaciones: observaciones.trim() || null,
+      empresa: empresa || null,
+      es_credito: tipo === "cobro" ? esCredito : false,
+    };
+
+    const res = await fetch("/api/caja/movimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const created = await res.json();
+      const movimientoId = created.data?.id;
+
+      // Imputación manual a nota específica
+      if (movimientoId && imputacionManual && notaSeleccionada && tipo === "cobro" && montoUSD) {
+        let remaining = montoUSD;
+        const notasParaImputar: { empresa: string; prenota_id: number; monto_aplicado: number }[] = [];
+
+        // Aplicar a la nota seleccionada
+        const aplicado = Math.min(remaining, notaSeleccionada.saldo_pendiente);
+        if (aplicado > 0.005) {
+          notasParaImputar.push({
+            empresa: notaSeleccionada.empresa ?? "",
+            prenota_id: notaSeleccionada.id,
+            monto_aplicado: aplicado,
+          });
+          remaining -= aplicado;
+        }
+
+        // Excedente → siguientes notas más antiguas
+        if (remaining > 0.005) {
+          const sorted = [...notasPendientes].sort((a, b) => a.fecha.localeCompare(b.fecha));
+          for (const nota of sorted) {
+            if (nota.id === notaSeleccionada.id && nota.empresa === notaSeleccionada.empresa) continue;
+            if (remaining <= 0.005) break;
+            const aplicar = Math.min(remaining, nota.saldo_pendiente);
+            if (aplicar > 0.005) {
+              notasParaImputar.push({ empresa: nota.empresa ?? "", prenota_id: nota.id, monto_aplicado: aplicar });
+              remaining -= aplicar;
+            }
+          }
+        }
+
+        if (notasParaImputar.length > 0) {
+          await fetch(`/api/caja/movimientos/${movimientoId}/notas`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notas: notasParaImputar }),
+          });
+        }
+      }
+
+      toast.success(`Movimiento registrado — ${tipo === "cobro" ? "Cobro" : "Gasto"} por $${formatMonto(parseFloat(monto), moneda)} ${moneda}`);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2500);
+      // Reset form (fecha persiste entre registros; solo se resetea al cerrar período)
+      clearCliente();
+      setMonto("");
+      setObservaciones("");
+      if (moneda === "ARS") setMoneda("USD");
+      setFormaPago("transferencia");
+      fetchMovimientos(1);
+      fetchSaldos();
+    } else {
+      const err = await res.json();
+      const msg = err.error?.fieldErrors
+        ? Object.values(err.error.fieldErrors).flat().join(", ")
+        : err.error || "Error al registrar";
+      toast.error(msg);
+    }
+    setSaving(false);
+  };
+
+  // ─── Cierre de período ────────────────────────────────
+  const handleCierre = async () => {
+    setCierreLoading(true);
+    const res = await fetch("/api/caja/cierres", { method: "POST" });
+    if (res.ok) {
+      const json = await res.json();
+      toast.success(`Cierre creado — ${json.data.fecha_desde} al ${json.data.fecha_hasta}`);
+      setCierreModalOpen(false);
+      setFecha(new Date().toISOString().slice(0, 10));
+      fetchMovimientos(1);
+      fetchSaldos();
+    } else {
+      const err = await res.json();
+      toast.error(err.error || "Error al crear cierre");
+    }
+    setCierreLoading(false);
+  };
+
+  const handleDeleteCierre = async (id: number) => {
+    if (!confirm("¿Eliminar este cierre? Los movimientos no se borrarán, solo el snapshot del cierre.")) return;
+    const res = await fetch(`/api/caja/cierres/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Cierre eliminado");
+      fetchMovimientos(pagination.page);
+      fetchSaldos();
+    } else {
+      const err = await res.json();
+      toast.error(err.error || "Error al eliminar cierre");
+    }
+  };
+
+  const handleOpenCierreEdit = (cierre: CierrePeriodo) => {
+    setCierreEditId(cierre.id);
+    setCierreEditDesde(cierre.fecha_desde);
+    setCierreEditHasta(cierre.fecha_hasta);
+  };
+
+  const handleCierreEditSave = async () => {
+    if (!cierreEditId || !cierreEditDesde || !cierreEditHasta) return;
+    setCierreEditSaving(true);
+    const res = await fetch(`/api/caja/cierres/${cierreEditId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha_desde: cierreEditDesde, fecha_hasta: cierreEditHasta }),
+    });
+    if (res.ok) {
+      toast.success("Cierre actualizado");
+      setCierreEditId(null);
+      fetchMovimientos(pagination.page);
+      fetchSaldos();
+    } else {
+      const err = await res.json();
+      toast.error(err.error || "Error al actualizar cierre");
+    }
+    setCierreEditSaving(false);
+  };
+
+  // ─── Exportar a Excel ────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filtros.moneda) params.set("moneda", filtros.moneda);
+      if (filtros.cuenta_id) params.set("cuenta_id", filtros.cuenta_id);
+      if (filtros.tipo) params.set("tipo", filtros.tipo);
+      if (filtros.empresa) params.set("empresa", filtros.empresa);
+      if (filtros.desde) params.set("desde", filtros.desde);
+      if (filtros.hasta) params.set("hasta", filtros.hasta);
+
+      const res = await fetch(`/api/caja/export?${params}`);
+      if (!res.ok) { toast.error("Error al exportar"); return; }
+      const json = await res.json();
+      const items: MovimientoOCierre[] = json.data || [];
+
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Caja Mayor");
+
+      // Column definitions with widths
+      ws.columns = [
+        { header: "Fecha", key: "Fecha", width: 14 },
+        { header: "Tipo", key: "Tipo", width: 9 },
+        { header: "Cliente", key: "Cliente", width: 30 },
+        { header: "Org.", key: "Org.", width: 10 },
+        { header: "Nota(s)", key: "Nota(s)", width: 13 },
+        { header: "ARS", key: "ARS", width: 16 },
+        { header: "Cuenta", key: "Cuenta", width: 12 },
+        { header: "USD", key: "USD", width: 9 },
+        { header: "Observación", key: "Observación", width: 32 },
+        { header: "Crédito", key: "Crédito", width: 8 },
+      ];
+
+      // Style: header row — orange bg, black bold text
+      const headerRow = ws.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF9900" } };
+        cell.font = { color: { argb: "FF000000" }, bold: true };
+      });
+
+      // Build data rows
+      for (const item of items) {
+        if (item.tipo_fila === "cierre") {
+          const c = item.data as CierrePeriodo;
+          // Title row — blue bg, gray bold text
+          const titleRow = ws.addRow({
+            Fecha: `CIERRE DE PERÍODO — ${c.fecha_desde} al ${c.fecha_hasta}`,
+            Tipo: "", Cliente: "", "Org.": "", "Nota(s)": "", ARS: "", Cuenta: "", USD: "", Observación: "", Crédito: "",
+          });
+          titleRow.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9DAF8" } };
+            cell.font = { color: { argb: "FF666666" }, bold: true };
+          });
+          // Resumen rows — blue bg, normal text
+          const activas = c.resumen.filter((r) => r.saldo_final !== 0 || r.total_cobros !== 0 || r.total_gastos !== 0);
+          for (const r of activas) {
+            const resumenRow = ws.addRow({
+              Fecha: "", Tipo: "", Cliente: "", "Org.": "", "Nota(s)": r.cuenta_nombre,
+              ARS: r.moneda === "ARS" ? r.total_cobros : r.total_cobros,
+              Cuenta: r.moneda,
+              USD: r.total_gastos,
+              Observación: r.saldo_final,
+              Crédito: "",
+            });
+            resumenRow.eachCell((cell) => {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9DAF8" } };
+            });
+          }
+        } else {
+          const m = item.data as MovimientoConCuenta;
+          const movRow = ws.addRow({
+            Fecha: m.fecha,
+            Tipo: m.tipo === "cobro" ? "Cobro" : m.tipo === "reembolso" ? "Reembolso" : "Gasto",
+            Cliente: m.nombre_cliente || "",
+            "Org.": m.empresa ? "Bazar Naty" : "",
+            "Nota(s)": m.notas_imputadas?.join(", ") || "",
+            ARS: m.moneda === "ARS" ? m.monto : "",
+            Cuenta: m.cuenta_nombre,
+            USD: m.moneda === "USD" ? (m.monto_usd ?? m.monto) : "",
+            Observación: m.observaciones || "",
+            Crédito: m.es_credito ? "Sí" : "No",
+          });
+          // Color the Tipo cell (column B, index 2)
+          const tipoCell = movRow.getCell(2);
+          tipoCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: m.tipo === "cobro" ? "FFE2EFDA" : "FFFCE4D6" }, // cobro=verde, gasto/reembolso=rojo
+          };
+        }
+      }
+
+      // Freeze first row (header always visible on scroll)
+      ws.views = [{ state: "frozen", ySplit: 1 }];
+
+      // Download as .xlsx
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "caja-mayor-export.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("Excel descargado");
+    } catch (e) {
+      toast.error("Error al generar Excel");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // ─── Render ──────────────────────────────────────────
+  return (
+    <div className="flex flex-col gap-6 w-full fade-in p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Caja Mayor</h1>
+          <p className="text-sm text-[var(--body)] mt-1">
+            Registrar cobro o gasto {userName ? `— ${userName}` : ""}
+          </p>
+        </div>
+        {userRol === "admin" && (
+          <Button
+            onClick={() => setCierreModalOpen(true)}
+            variant="default"
+            disabled={!online}
+            title={!online ? "Necesitás conexión para cerrar caja" : undefined}
+          >
+            🔒 Cierre de Período
+          </Button>
+        )}
+      </div>
+
+      {/* Dollar banner */}
+      {dolarVigente > 0 && (
+        <div className="bg-[var(--primary)] dark:bg-[var(--primary)] border border-[var(--primary)]/30 dark:border-[var(--primary)]/30 rounded-lg px-4 py-2 text-sm text-primary-foreground">
+          💱 Dólar del día: <strong>${formatMonto(dolarVigente, "ARS")}</strong>
+        </div>
+      )}
+
+      <div className="border rounded-card p-5 space-y-5">
+        {/* ─── Tipo toggle ──────────────────────────── */}
+        <div className="flex rounded-lg border p-1 bg-muted/50">
+          {(["cobro", "gasto"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => {
+                setTipo(t);
+                if (t === "gasto") {
+                  clearCliente();
+                  setImputacionManual(false);
+                  setNotaSeleccionada(null);
+                }
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                tipo === t
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-[var(--body)] hover:text-foreground"
+              }`}
+            >
+              {t === "cobro" ? "💰 Cobro" : "📤 Gasto"}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── Fecha ────────────────────────────────── */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Fecha</label>
+          <Input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+          />
+        </div>
+
+        {/* ─── Búsqueda unificada (solo cobro) ────── */}
+        {tipo === "cobro" ? (
+          <div className="space-y-1 relative">
+            <label className="text-sm font-medium">
+              {cliente ? (notaSeleccionada ? "Nota de venta" : "Cliente") : "Buscar"}{" "}
+              <span className="text-[var(--destructive)]">*</span>
+            </label>
+            {cliente ? (
+              notaSeleccionada ? (
+                /* Nota seleccionada — info card verde */
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-[var(--success)] dark:bg-[var(--success)] border-[var(--success)]/30 dark:border-[var(--success)]/30">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      📄 Nota #{notaSeleccionada.id} — {cliente.nombre}
+                    </div>
+                    <div className="text-xs text-[var(--body)]">
+                      {notaSeleccionada.fecha} · {"Bazar Naty"} · Total: ${formatMonto(notaSeleccionada.total, "ARS")} · Pend: ${formatMonto(notaSeleccionada.saldo_pendiente, "USD")}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon-sm" onClick={clearCliente}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                /* Cliente seleccionado — card gris */
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-muted/30">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{cliente.nombre}</div>
+                    <div className="text-xs text-[var(--body)]">
+                      Bazar Naty · {cliente.total_compras} compras · última {cliente.ultima_compra}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon-sm" onClick={clearCliente}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )
+            ) : (
+              /* Input unificado + dropdown */
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--body-subtle)]" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar por nombre de cliente o número de nota..."
+                    className="pl-9"
+                    autoComplete="off"
+                  />
+                  {searchLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--body-subtle)]" />
+                  )}
+                </div>
+                {searchOpen && searchResults.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full border rounded-lg bg-background shadow-lg max-h-72 overflow-y-auto">
+                    {searchResults.map((r) =>
+                      r.tipo === "cliente" ? (
+                        <button
+                          key={`cliente-${r.cliente.cliente_id}`}
+                          onClick={() => selectCliente(r.cliente)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted transition-colors border-b last:border-0"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base shrink-0">👤</span>
+                            <span className="text-sm font-medium truncate">{r.cliente.nombre}</span>
+                          </div>
+                          <div className="text-xs text-[var(--body)] flex items-center gap-1 ml-7">
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                              Bazar Naty
+                            </Badge>
+                            <span>· {r.cliente.total_compras} compras · {r.cliente.ultima_compra}</span>
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          key={`nota-${r.nota.origen}:${r.nota.id}`}
+                          onClick={() => selectNota(r.nota)}
+                          className={`w-full text-left px-3 py-2 hover:bg-muted transition-colors border-b last:border-0 ${
+                            r.nota.saldo_pendiente <= 0.005 ? "opacity-60" : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base shrink-0">📄</span>
+                              <span className="text-sm font-medium">#{r.nota.id}</span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                              {"Bazar Naty"}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-[var(--body)] mt-0.5 ml-7">
+                            {r.nota.fecha} · {r.nota.nombre_cliente} · Total: ${formatMonto(r.nota.total, "ARS")}
+                            {" · "}
+                            <span className={r.nota.saldo_pendiente <= 0.005 ? "text-[var(--success)]600" : "text-[var(--destructive)] font-medium"}>
+                              Pend: ${formatMonto(r.nota.saldo_pendiente, "USD")}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* ─── Imputación manual ────────────────────── */}
+        {tipo === "cobro" && cliente && (
+          <div className="space-y-3 border rounded-lg p-4 bg-muted/20">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={imputacionManual}
+                onChange={(e) => setImputacionManual(e.target.checked)}
+                className="w-4 h-4 rounded border-[var(--border)]"
+              />
+              <span className="text-sm font-medium">¿Imputar a nota específica?</span>
+            </label>
+
+            {imputacionManual && (
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Seleccionar nota de venta</label>
+                {notasPendientesLoading ? (
+                  <div className="text-sm text-[var(--body-subtle)] py-2">
+                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                    Cargando notas pendientes...
+                  </div>
+                ) : notasPendientes.length === 0 ? (
+                  <p className="text-sm text-[var(--body-subtle)] italic">No hay notas pendientes para este cliente.</p>
+                ) : (
+                  <select
+                    value={notaSeleccionada ? `${notaSeleccionada.empresa}:${notaSeleccionada.id}` : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) { setNotaSeleccionada(null); return; }
+                      const idx = val.lastIndexOf(":");
+                      const emp = val.slice(0, idx);
+                      const knum = val.slice(idx + 1);
+                      setNotaSeleccionada(notasPendientes.find((n) => n.origen === emp && n.id === Number(knum)) || null);
+                    }}
+                    className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+                  >
+                    <option value="">— Seleccionar nota —</option>
+                    {notasPendientes.map((n) => (
+                      <option key={`${n.origen}:${n.id}`} value={`${n.origen}:${n.id}`}>
+                        #{n.id} · {n.fecha} · ${formatMonto(n.total, "ARS")} · Pend: ${formatMonto(n.saldo_pendiente, "USD")}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Preview de imputación */}
+                {notaSeleccionada && montoUSD !== null && (
+                  <div className="bg-[var(--success)]50 dark:bg-[var(--success)] border border-[var(--success)]/30 dark:border-[var(--success)]/30 rounded-lg px-3 py-2 text-sm text-[var(--success)] dark:text-[var(--success)] mt-2">
+                    {montoUSD <= notaSeleccionada.saldo_pendiente ? (
+                      <>Se imputarán <strong>${formatMonto(montoUSD, "USD")} USD</strong> a la nota #{notaSeleccionada.id} (Bazar Naty).</>
+                    ) : (
+                      <div>
+                        <p>Se imputarán <strong>${formatMonto(notaSeleccionada.saldo_pendiente, "USD")} USD</strong> a la nota #{notaSeleccionada.id}.</p>
+                        <p className="mt-0.5">Excedente de <strong>${formatMonto(montoUSD - notaSeleccionada.saldo_pendiente, "USD")} USD</strong> → siguiente nota más antigua.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Monto + Moneda ───────────────────────── */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium">Monto</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              placeholder={moneda === "USD" ? "0.00" : "0"}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Moneda</label>
+            <select
+              value={moneda}
+              onChange={(e) => setMoneda(e.target.value as "USD" | "ARS")}
+              className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+            >
+              <option value="USD">USD</option>
+              <option value="ARS">ARS</option>
+            </select>
+          </div>
+        </div>
+
+        {/* ─── ARS → USD preview ────────────────────── */}
+        {moneda === "ARS" && montoUSD !== null && (
+          <div className="bg-[var(--warning)]/1050 dark:bg-[var(--warning)]/10 border border-[var(--warning)]/30 dark:border-[var(--warning)]/30 rounded-lg px-3 py-2 text-sm text-[var(--warning)] dark:text-[var(--warning)]">
+            ≈ <strong>{formatMonto(montoUSD, "USD")} USD</strong> (tasa: ${formatMonto(dolarVigente, "ARS")})
+            <span className="text-xs block mt-0.5">Redondeado al múltiplo de 0.5 más cercano hacia arriba</span>
+          </div>
+        )}
+
+        {/* ─── Cuenta bancaria ──────────────────────── */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Cuenta bancaria</label>
+          <select
+            value={cuentaId}
+            onChange={(e) => setCuentaId(e.target.value)}
+            className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+          >
+            {cuentasFiltradas.length === 0 ? (
+              <option value="">No hay cuentas en {moneda}</option>
+            ) : (
+              cuentasFiltradas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre} ({c.moneda})
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        {/* ─── Forma de pago ────────────────────────── */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Forma de pago</label>
+          <div className="flex rounded-lg border p-1 bg-muted/50">
+            {(["efectivo", "cheque", "transferencia"] as const).map((fp) => (
+              <button
+                key={fp}
+                onClick={() => setFormaPago(fp)}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  formaPago === fp
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-[var(--body)] hover:text-foreground"
+                }`}
+              >
+                {fp === "efectivo" ? "💵 Efectivo" : fp === "cheque" ? "📝 Cheque" : "🏦 Transferencia"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ─── Venta a crédito (solo cobro) ─────────── */}
+        {tipo === "cobro" && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={esCredito}
+              onChange={(e) => setEsCredito(e.target.checked)}
+              className="w-4 h-4 rounded border-[var(--border)]"
+            />
+            <span className="text-sm font-medium">Venta a crédito</span>
+          </label>
+        )}
+
+        {/* ─── Observaciones ────────────────────────── */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Observaciones (opcional)</label>
+          <Input
+            value={observaciones}
+            onChange={(e) => setObservaciones(e.target.value)}
+            placeholder="Ej: Abono factura 2648"
+          />
+        </div>
+
+        {/* ─── Submit ────────────────────────────────── */}
+        <Button
+          onClick={handleSubmit}
+          disabled={!canSubmit || saving || justSaved}
+          className={`w-full ${justSaved ? "bg-[var(--success)] hover:bg-[var(--success)] text-white" : ""}`}
+          size="lg"
+        >
+          {saving ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : null}
+          {justSaved
+            ? "✅ Pago registrado"
+            : tipo === "cobro" ? "💰 Registrar cobro" : "📤 Registrar gasto"}
+        </Button>
+      </div>
+
+      {/* ─── Saldos por cuenta ─────────────────────────── */}
+      {!cliente && saldos.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {saldos.map((s) => (
+            <div key={`${s.cuenta_id}`} className="border rounded-lg p-3 text-center">
+              <div className="text-xs text-[var(--body)] truncate">{s.cuenta_nombre}</div>
+              <div className="text-[10px] text-[var(--body-subtle)]">{s.moneda}</div>
+              <div className={`text-sm font-bold mt-1 ${s.saldo_neto >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                {s.moneda === "ARS" ? "$" : ""}{formatMonto(s.saldo_neto, s.moneda)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ─── Filtros + Tabla de movimientos ────────────── */}
+      {!cliente && (
+        <div className="border rounded-card p-5 space-y-4">
+          <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--body)]">Movimientos</h2>
+
+          {/* Exportar + filtros */}
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-2">
+              <select value={filtros.moneda} onChange={(e) => setFiltros((f) => ({ ...f, moneda: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
+                <option value="">Todas monedas</option><option value="USD">USD</option><option value="ARS">ARS</option>
+              </select>
+              <select value={filtros.tipo} onChange={(e) => setFiltros((f) => ({ ...f, tipo: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
+                <option value="">Todos tipos</option><option value="cobro">Cobro</option><option value="gasto">Gasto</option><option value="reembolso">Reembolso</option>
+              </select>
+              <Input type="date" value={filtros.desde} onChange={(e) => setFiltros((f) => ({ ...f, desde: e.target.value }))} className="h-8 w-[140px] text-xs" />
+              <Input type="date" value={filtros.hasta} onChange={(e) => setFiltros((f) => ({ ...f, hasta: e.target.value }))} className="h-8 w-[140px] text-xs" />
+              <select value={filtros.cuenta_id} onChange={(e) => setFiltros((f) => ({ ...f, cuenta_id: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
+                <option value="">Todas cuentas</option>
+                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}
+              </select>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={exporting}
+              className="shrink-0"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+              Exportar Excel
+            </Button>
+          </div>
+
+          {/* Tabla */}
+          {movsLoading ? (
+            <div className="text-sm text-[var(--body-subtle)] text-center py-8"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Cargando...</div>
+          ) : movimientos.length === 0 ? (
+            <p className="text-sm text-[var(--body-subtle)] italic text-center py-4">Sin movimientos.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-[var(--body)] uppercase">
+                    <th className="py-2 pr-2 font-medium w-[90px]">Fecha</th>
+                    <th className="py-2 pr-2 font-medium w-[32px]">Tipo</th>
+                    <th className="py-2 pr-2 font-medium">Cliente</th>
+                    <th className="py-2 pr-2 font-medium w-[36px]">Emp.</th>
+                    <th className="py-2 pr-2 font-medium">Nota(s)</th>
+                    <th className="py-2 pr-2 font-medium text-right w-[110px]">ARS</th>
+                    <th className="py-2 pr-2 font-medium">Cuenta</th>
+                    <th className="py-2 pr-2 font-medium text-right w-[90px]">USD</th>
+                    <th className="py-2 pr-2 font-medium">Observación</th>
+                    <th className="py-2 pr-2 font-medium w-[70px]">Forma pago</th>
+                    <th className="py-2 pr-2 font-medium w-[50px]">Crédito</th>
+                    <th className="py-2 w-[60px]"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientos.map((item) =>
+                    item.tipo_fila === "cierre" ? (
+                      <tr key={`cierre-${item.data.id}`} className="bg-[var(--primary)] dark:bg-[var(--primary)]/40 border-b">
+                        <td colSpan={12} className="py-3 px-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-[var(--primary)] dark:text-[var(--primary)] text-sm">
+                                🔒 CIERRE DE PERÍODO
+                              </span>
+                              {cierreEditId === item.data.id ? (
+                                <>
+                                  <Input
+                                    type="date"
+                                    value={cierreEditDesde}
+                                    onChange={(e) => setCierreEditDesde(e.target.value)}
+                                    className="h-7 w-[140px] text-xs"
+                                  />
+                                  <span className="text-xs text-[var(--body)]">al</span>
+                                  <Input
+                                    type="date"
+                                    value={cierreEditHasta}
+                                    onChange={(e) => setCierreEditHasta(e.target.value)}
+                                    className="h-7 w-[140px] text-xs"
+                                  />
+                                  <Button size="icon-sm" onClick={handleCierreEditSave} disabled={cierreEditSaving || !online} className="h-7 w-7">
+                                    {cierreEditSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                  </Button>
+                                  <Button size="icon-sm" variant="ghost" onClick={() => setCierreEditId(null)} className="h-7 w-7">
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <span>— {item.data.fecha_desde} al {item.data.fecha_hasta}</span>
+                              )}
+                              <span className="text-xs text-[var(--primary)] dark:text-[var(--primary)] ml-3">
+                                por {item.data.usuario_nombre}
+                              </span>
+                            </div>
+                            {userRol === "admin" && (
+                              <div className="flex gap-1">
+                                {cierreEditId !== item.data.id && (
+                                  <Button variant="ghost" size="icon-sm" onClick={() => handleOpenCierreEdit(item.data as CierrePeriodo)} title={!online ? "Necesitás conexión para cerrar caja" : "Editar fechas"} disabled={!online}>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteCierre(item.data.id)} title={!online ? "Necesitás conexión para cerrar caja" : "Eliminar cierre"} disabled={!online}>
+                                  <Trash2 className="w-3.5 h-3.5 text-[var(--destructive)]" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          {(() => {
+                            const activas = item.data.resumen.filter(
+                              (c) => c.saldo_final !== 0 || c.total_cobros !== 0 || c.total_gastos !== 0
+                            );
+                            const usd = activas.filter((c) => c.moneda === "USD");
+                            const clp = activas.filter((c) => c.moneda === "ARS");
+                            const TarjetaCuenta = ({ c }: { c: typeof activas[number] }) => (
+                              <div key={c.cuenta_id} className="text-xs bg-white/60 bg-[var(--muted)]800/60 rounded p-1.5">
+                                <div className="font-medium truncate">{c.cuenta_nombre}</div>
+                                <div>Depósito total: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.total_cobros, c.moneda)}</div>
+                                <div>Gasto total: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.total_gastos, c.moneda)}</div>
+                                <div className={c.saldo_final >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}>
+                                  Saldo: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.saldo_final, c.moneda)}
+                                </div>
+                              </div>
+                            );
+                            return (
+                              <div className="flex flex-row gap-4 mt-2">
+                                {usd.length > 0 && (
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-semibold text-[var(--primary)] dark:text-[var(--primary)] mb-1.5 uppercase tracking-wide">
+                                      Dólares (USD)
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {usd.map((c) => <TarjetaCuenta key={c.cuenta_id} c={c} />)}
+                                    </div>
+                                  </div>
+                                )}
+                                {clp.length > 0 && (
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-semibold text-[var(--warning)] dark:text-[var(--warning)] mb-1.5 uppercase tracking-wide">
+                                      Pesos Argentinos (ARS)
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {clp.map((c) => <TarjetaCuenta key={c.cuenta_id} c={c} />)}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={item.data.id} className="border-b hover:bg-muted/50">
+                        <td className="py-1.5 pr-2 whitespace-nowrap w-[90px]">{item.data.fecha}</td>
+                        <td className="py-1.5 pr-2 w-[32px]">{item.data.tipo === "cobro" ? "💰" : item.data.tipo === "reembolso" ? "📥" : "📤"}</td>
+                        <td className="py-1.5 pr-2 max-w-[140px] truncate" title={item.data.nombre_cliente || undefined}>{item.data.nombre_cliente || "—"}</td>
+                        <td className="py-1.5 pr-2">
+                          {item.data.empresa ? <Badge variant="outline" className="text-[10px] px-1 py-0">BN</Badge> : "—"}
+                        </td>
+                        <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : undefined}>
+                          {item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : "—"}
+                        </td>
+                        <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[110px] ${item.data.tipo === "cobro" ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                          {item.data.moneda === "ARS"
+                            ? `${item.data.tipo !== "cobro" ? "-" : ""}$${formatMonto(item.data.monto, "ARS")}`
+                            : "—"}
+                        </td>
+                        <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.cuenta_nombre}>{item.data.cuenta_nombre}</td>
+                        <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[90px] ${item.data.tipo === "cobro" ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                          {item.data.tipo !== "cobro" ? "-" : ""}{formatMonto((item.data.monto_usd ?? item.data.monto), "USD")}
+                        </td>
+                        <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[120px] truncate" title={item.data.observaciones || undefined}>
+                          {item.data.observaciones || "—"}
+                        </td>
+                        <td className="py-1.5 pr-2 text-xs w-[70px]">
+                          {item.data.forma_pago === "efectivo" ? "💵 Efectivo" : item.data.forma_pago === "cheque" ? "🔖 Cheque" : "🏦 Transf."}
+                        </td>
+                        <td className="py-1.5 pr-2 w-[50px]">
+                          {item.data.es_credito ? (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 bg-[var(--primary)] text-primary-foreground border-[var(--primary)]/30">C</Badge>
+                          ) : "—"}
+                        </td>
+                        <td className="py-1.5 flex gap-1">
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEditModal(item.data as MovimientoConCuenta)} title="Editar"><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => { openEditModal(item.data as MovimientoConCuenta); setEditDeleteConfirm(true); }} title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-[var(--destructive)]" /></Button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Paginación */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between text-xs text-[var(--body)] pt-2">
+              <span>{pagination.total} movimientos</span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => fetchMovimientos(pagination.page - 1)}>
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+                <span className="px-2 py-1">{pagination.page} / {pagination.totalPages}</span>
+                <Button variant="outline" size="sm" disabled={pagination.page >= pagination.totalPages} onClick={() => fetchMovimientos(pagination.page + 1)}>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Tabla de notas del cliente ────────────────── */}
+      {cliente && (
+        <div className="border rounded-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--body)]">
+              Notas de {cliente.nombre}
+            </h2>
+            {resumenLoading && (
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--body-subtle)]" />
+            )}
+          </div>
+
+          {/* Filtros */}
+          <div className="flex rounded-lg border p-1 bg-muted/50 w-fit">
+            {(["todas", "pendiente", "pagada"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFiltroEstado(f)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filtroEstado === f
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-[var(--body)] hover:text-foreground"
+                }`}
+              >
+                {f === "todas" ? "Todas" : f === "pendiente" ? "Pendientes" : "Pagadas"}
+              </button>
+            ))}
+          </div>
+
+          {/* Tabla */}
+          {!resumen ? (
+            <p className="text-sm text-[var(--body-subtle)] italic">Sin datos de notas.</p>
+          ) : notasFiltradas.length === 0 ? (
+            <p className="text-sm text-[var(--body-subtle)] italic">
+              {filtroEstado === "pendiente" ? "Sin notas pendientes." : "Sin notas pagadas."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-[var(--body)] uppercase">
+                    <th className="py-2 pr-2 font-medium">Nota</th>
+                    <th className="py-2 pr-2 font-medium">Fecha</th>
+                    <th className="py-2 pr-2 font-medium">Emp.</th>
+                    <th className="py-2 pr-2 font-medium text-right">Total</th>
+                    <th className="py-2 pr-2 font-medium text-right">Pagado</th>
+                    <th className="py-2 font-medium text-right">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {notasFiltradas.map((n) => {
+                    const key = `${n.origen}:${n.id}`;
+                    const expanded = notaExpandida === key;
+                    const saldado = n.saldo_pendiente <= 0.005;
+                    return (
+                      <tr key={key}>
+                        <td colSpan={6} className="p-0">
+                          <button
+                            onClick={() => setNotaExpandida(expanded ? null : key)}
+                            className={`w-full text-left border-b transition-colors ${
+                              saldado
+                                ? "bg-[var(--success)]50 dark:bg-[var(--success)]/30 hover:bg-[var(--success)] dark:hover:bg-[var(--success)]/50"
+                                : "bg-[var(--destructive)]/1050 dark:bg-[var(--destructive)]/10/30 hover:bg-[var(--destructive)]/10 dark:hover:bg-[var(--destructive)]/10/50"
+                            }`}
+                          >
+                            <div className="flex items-center px-2 py-2 gap-2">
+                              <span className="font-medium min-w-[60px]">{n.id}</span>
+                              <span className="text-[var(--body)] min-w-[80px]">{n.fecha}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 min-w-[40px]">
+                                BN
+                              </Badge>
+                              <span className="text-right min-w-[70px]">${formatMonto(n.total, "ARS")}</span>
+                              <span className="text-right min-w-[70px]">${formatMonto(n.total_pagado, "ARS")}</span>
+                              <span className={`text-right min-w-[70px] font-semibold ${saldado ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                                ${formatMonto(n.saldo_pendiente, "USD")}
+                              </span>
+                            </div>
+
+                            {/* Expanded: payment detail */}
+                            {expanded && n.pagos.length > 0 && (
+                              <div className="px-3 pb-3 pt-1 border-t border-dashed">
+                                {n.pagos.map((p, i) => (
+                                  <div key={i} className="text-xs text-[var(--body)] mt-1">
+                                    Mov #{p.movimiento_id} — {p.fecha} — {p.forma_pago}
+                                    {" · "}
+                                    {p.moneda_original === "ARS"
+                                      ? `${formatMonto(p.monto_original, "ARS")} ARS → ${formatMonto(p.monto_usd, "USD")} USD (tasa: ${p.tipo_cambio})`
+                                      : `${formatMonto(p.monto_usd, "USD")} USD`}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {expanded && n.pagos.length === 0 && (
+                              <div className="px-3 pb-3 pt-1 border-t border-dashed text-xs text-[var(--body-subtle)] italic">
+                                Sin pagos registrados
+                              </div>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {/* Totales */}
+                <tfoot>
+                  <tr className="border-t-2 text-xs font-semibold">
+                    <td className="py-2 pr-2" colSpan={3}>TOTALES</td>
+                    <td className="py-2 pr-2 text-right">${formatMonto(resumen.totales.total_vendido, "ARS")}</td>
+                    <td className="py-2 pr-2 text-right">${formatMonto(resumen.totales.total_pagado, "ARS")}</td>
+                    <td className={`py-2 text-right ${resumen.totales.total_pendiente > 0 ? "text-[var(--destructive)] dark:text-[var(--destructive)]" : "text-[var(--success)]700 dark:text-[var(--success)]"}`}>
+                      ${formatMonto(resumen.totales.total_pendiente, "USD")}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Modal cierre de período ────────────────── */}
+      <Dialog open={cierreModalOpen} onOpenChange={setCierreModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>🔒 Cierre de Período</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-[var(--body)]">
+              Se calculará automáticamente el resumen por cuenta desde el último cierre hasta hoy.
+              Los movimientos no se eliminan — solo se guarda un snapshot con los saldos al día de hoy.
+            </p>
+            <div className="bg-[var(--warning)]/1050 dark:bg-[var(--warning)]/10 border border-[var(--warning)]/30 dark:border-[var(--warning)]/30 rounded-lg px-3 py-2 text-sm text-[var(--warning)] dark:text-[var(--warning)]">
+              ⚠️ Esta acción no se puede deshacer fácilmente. Asegúrate de que todos los
+              movimientos del período estén registrados.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCierreModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCierre} disabled={cierreLoading}>
+              {cierreLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Confirmar cierre
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Modal editar movimiento ──────────────────── */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Movimiento #{editMov?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Tipo */}
+            <div className="flex rounded-lg border p-1 bg-muted/50">
+              {(["cobro", "gasto"] as const).map((t) => (
+                <button key={t} onClick={() => setEditTipo(t)} className={`flex-1 py-1.5 text-xs font-medium rounded-md ${editTipo === t ? "bg-background shadow-sm" : "text-[var(--body)]"}`}>
+                  {t === "cobro" ? "💰 Cobro" : "📤 Gasto"}
+                </button>
+              ))}
+            </div>
+            {/* Fecha */}
+            <div className="space-y-1"><label className="text-xs font-medium">Fecha</label><Input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)} /></div>
+            {/* Cliente */}
+            {editTipo === "cobro" && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Cliente</label>
+                <Input value={editClienteQuery} onChange={(e) => setEditClienteQuery(e.target.value)} placeholder="Nombre del cliente" />
+              </div>
+            )}
+            {/* Empresa */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Empresa</label>
+              <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as "bazar-naty" | "")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+                <option value="">—</option><option value="bazar-naty">Bazar Naty</option>
+              </select>
+            </div>
+            {/* Monto + Moneda */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1"><label className="text-xs font-medium">Monto</label><Input type="number" min="0" step="0.01" value={editMonto} onChange={(e) => setEditMonto(e.target.value)} /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Moneda</label><select value={editMoneda} onChange={(e) => setEditMoneda(e.target.value as "USD" | "ARS")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm"><option value="USD">USD</option><option value="ARS">ARS</option></select></div>
+            </div>
+            {/* Cuenta */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Cuenta bancaria</label>
+              <select value={editCuentaId} onChange={(e) => setEditCuentaId(e.target.value)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+                {cuentas.filter((c) => c.moneda === editMoneda).map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}
+              </select>
+            </div>
+            {/* Forma de pago */}
+            <div className="space-y-1"><label className="text-xs font-medium">Forma de pago</label>
+              <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as "efectivo" | "cheque" | "transferencia")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+                <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option>
+              </select>
+            </div>
+            {/* Venta a crédito (solo cobro) */}
+            {editTipo === "cobro" && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editEsCredito}
+                  onChange={(e) => setEditEsCredito(e.target.checked)}
+                  className="w-4 h-4 rounded border-[var(--border)]"
+                />
+                <span className="text-sm font-medium">Venta a crédito</span>
+              </label>
+            )}
+
+            {/* Observaciones */}
+            <div className="space-y-1"><label className="text-xs font-medium">Observaciones</label><Input value={editObs} onChange={(e) => setEditObs(e.target.value)} placeholder="Opcional" /></div>
+
+            {/* Delete confirmation */}
+            {editDeleteConfirm && (
+              <div className="border border-[var(--destructive)]/30 dark:border-[var(--destructive)]/30 rounded-lg p-3 bg-[var(--destructive)]/10 dark:bg-[var(--destructive)]/10/30">
+                <p className="text-sm text-[var(--destructive)] dark:text-[var(--destructive)] mb-2">¿Eliminar este movimiento permanentemente?</p>
+                <Button variant="outline" size="sm" className="w-full text-[var(--destructive)] hover:bg-[var(--destructive)]/10" onClick={handleEditDelete}>⚠ Eliminar movimiento</Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Guardar cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -1,0 +1,226 @@
+# PRD — La Esquina de las Novedades (ERP + e-commerce)
+
+## 1. Qué es el proyecto
+
+ERP de ventas, inventario y caja para LA ESQUINA DE LAS NOVEDADES SPA
+(Iquique, Chile), con tienda online donde el cliente arma su pedido y lo
+paga con Mercado Pago en el mismo momento.
+
+Origen técnico: copia del repositorio `bazar-naty`
+(https://github.com/pablovitalisant-pbt/bazar-naty), sin su historial de git.
+No es un proyecto desde cero: se adapta un sistema que ya está en producción.
+La documentación de Bazar Naty (PRD, BUGS, contexto, migración Vercel) queda
+como referencia en `docs/referencia-bazar-naty/`.
+
+Principio de diseño heredado: **muy simple y fácil de usar**. Ante la duda,
+gana la solución más simple.
+
+## 2. Usuarios y roles
+
+Una sola empresa (sin multitenant).
+
+| Rol | Acceso | Usuarios iniciales |
+|---|---|---|
+| Administración | Todo, incluido inventario/bodega | 2 |
+| Ventas | Notas de venta, precios, clientes, pedidos | 2 |
+| Cliente web (sin login) | Tienda online: ver productos, carrito, pagar | público |
+
+No se usa el rol Bodega: los administradores manejan el inventario. El rol
+puede quedar en código pero no se ofrece en el selector de usuarios.
+
+## 3. MVP
+
+1. **Rebranding + Chile**: nombre, logo, colores, landing, metadata, `es-CL`,
+   etiqueta "RUT" en usuarios/login.
+2. **Moneda única CLP**: eliminar USD/ARS, tipo de cambio y `dolar_dia`.
+3. **Venta mayorista y detalle**: mayorista = caja completa al precio
+   mayorista por caja; detalle = unidad al precio detalle. Mismo inventario.
+4. **Notas de venta con tipo** (mayor / menor / mixta, derivado de los ítems).
+5. **Clientes con etiqueta**: todos los clientes quedan registrados; etiqueta
+   derivada de su historial de compras: `mayorista`, `minorista` o `ambos`.
+6. **Tienda online con pago Mercado Pago (Checkout Pro)**: carrito con
+   unidades y cajas, despacho, reserva de stock, pago, webhook, conversión
+   automática a nota de venta y cobro en caja.
+7. **Módulos heredados que siguen**: Precios, Catálogo (admin + público),
+   Categorías, Bodega (ingresos, conciliación), Usuarios, Config de caja,
+   Caja Mayor, Clientes, Deudores, Alertas de stock bajo, Pedidos (staff),
+   Inversión en mercadería.
+
+## 4. Qué NO es parte del MVP
+
+- Boleta electrónica SII (la clienta dice que la gestiona Mercado Pago; hay
+  que verificar si cubre las ventas online. No se integra en el MVP)
+- Cotización / cobro automático del envío a Arica (se paga al chofer)
+- Reembolsos dentro del sistema vía API de Mercado Pago (se gestionan a mano)
+- Modo offline / PowerSync (se elimina; nunca funcionó en Bazar Naty)
+- Cuentas de cliente con login en la tienda
+- IA (despachos-ia, etc.)
+- Módulo Ventas/Kardex (ya estaba deshabilitado en Bazar Naty)
+
+## 5. Integraciones externas
+
+| Servicio | Uso | Cuenta |
+|---|---|---|
+| Neon Postgres | Base de datos | org `org-lucky-math-65013365`, proyecto `steep-shape-55022986`, branch `production` |
+| Vercel | Hosting + deploy | cuenta de la clienta (contactogvingenieria@gmail.com) |
+| Cloudinary | Imágenes de productos | cuenta de la clienta |
+| Mercado Pago (Chile) | Checkout Pro + webhooks | cuenta de la empresa (laesquinadelasnovedades2860@gmail.com) |
+| Namecheap | Dominio `laesquinadelasnovedades.store` | cuenta de la clienta |
+
+### Mercado Pago — referencias verificadas (2026-10-22)
+- Checkout Pro requiere cuenta vendedor, credenciales (prueba y producción) y
+  SSL: https://mercadopago.cl/developers/en/docs/checkout-pro/requirements
+- La preferencia acepta `external_reference`, `notification_url`, `back_urls`,
+  `auto_return`, `expires`, `expiration_date_from/to`:
+  https://www.mercadopago.com/developers/en/docs/checkout-pro/checkout-customization/preferences
+- Webhooks: tópico `payment`; validar `x-signature` con HMAC-SHA256 (hex)
+  sobre el manifest `id:[data.id];request-id:[x-request-id];ts:[ts];` usando la
+  clave secreta del panel de la aplicación; luego consultar
+  `GET https://api.mercadopago.com/v1/payments/{id}`:
+  https://www.mercadopago.cl/developers/es/docs/your-integrations/notifications/webhooks
+- SDK oficial Node: paquete npm `mercadopago` (v3.6.1 al 2026-10-22).
+
+## 6. Restricciones técnicas
+
+Stack confirmado por Pablo (2026-10-22), igual a bazar-naty:
+- Next.js 14.2 (App Router) + TypeScript
+- Neon Postgres con `@neondatabase/serverless`
+- NextAuth 4
+- Tailwind + shadcn/ui, skill de diseño en `design-skill/`
+- Cloudinary
+- Mercado Pago Checkout Pro con SDK `mercadopago`
+- Jest + Testing Library
+- Vercel. Si la cuenta es Hobby: cron solo 1 vez al día (verificado en
+  https://vercel.com/docs/cron-jobs/usage-and-pricing). El diseño de
+  expiración NO depende de un cron frecuente (ver §8.4).
+
+## 7. Escala esperada
+
+4 usuarios internos. Tienda pública con tráfico bajo-medio de clientes de
+Iquique, Alto Hospicio y Arica.
+
+## 8. Reglas de negocio confirmadas
+
+### 8.1 Empresa
+- Razón social: LA ESQUINA DE LAS NOVEDADES SPA — RUT 78.211.131-0
+- Dirección: Avenida Aeropuerto 2860, Iquique. Horario 11:00–20:00 (editable)
+- WhatsApp: +56 9 7340 9133. Redes: Facebook, Instagram, TikTok
+  ("La Esquina de las Novedades")
+
+### 8.2 Moneda y precios
+- Solo CLP, sin decimales en la UI.
+- Cada producto tiene: `precio detalle` (por unidad) y `precio mayorista`
+  (por caja completa). `cantcaja` = unidades por caja.
+- La comisión de Mercado Pago la absorbe la tienda (precios ya la consideran).
+
+### 8.3 Mayorista vs detalle
+- Mayorista = compra de cajas completas. Detalle = compra por unidad.
+- Un solo inventario en unidades (`productos.saldo`). Una caja descuenta
+  `cantcaja` unidades.
+- Cada ítem de nota de venta / pedido tiene `modalidad` = `unidad` | `caja`.
+  El tipo de la nota se deriva: todo caja → `mayor`; todo unidad → `menor`;
+  ambos → `mixta`.
+- Tienda online vende ambas modalidades a cualquier visitante; el carrito
+  puede mezclar unidades y cajas.
+
+### 8.4 Pedido online y pago
+- El cliente paga **al hacer el pedido**.
+- Datos obligatorios del pedido: nombre, teléfono, email (Mercado Pago lo
+  pide), modalidad de entrega y dirección si es delivery.
+- Todo pedido crea o reutiliza un **cliente registrado** (match por teléfono
+  normalizado, lógica existente en `app/api/pedidos/route.ts`).
+- Estados del pedido: `pendiente_pago` → `pagado` | `rechazado` | `expirado`
+  (+ estados heredados `convertido` / `descartado` para staff).
+- **Reserva de stock**: al crear el pedido se descuenta `saldo` de forma
+  atómica (patrón `UPDATE ... WHERE saldo >= x`). Si falla, el pedido no se crea.
+- **Expiración: 36 horas** sin pago → `expirado` y se devuelve el stock.
+  La preferencia de MP se crea con `expires=true` y `expiration_date_to` =
+  creación + 36 h. La liberación es *perezosa*: una función idempotente
+  `liberarReservasVencidas()` se ejecuta al inicio de los endpoints que leen o
+  escriben stock (crear pedido, agregar ítem a nota, listado público) y
+  además un cron diario de respaldo.
+- **Pago aprobado (webhook validado)** → pedido `pagado`, se crea la nota de
+  venta automáticamente con sus ítems y tipo, y un cobro en Caja Mayor en la
+  cuenta configurada como "Mercado Pago". El webhook debe ser idempotente
+  (MP reintenta notificaciones).
+- Pago rechazado/cancelado → `rechazado`, se devuelve el stock.
+- Pago aprobado sobre un pedido ya `expirado` → no se pierde: queda marcado
+  `pagado_tardio` para revisión manual del admin (reponer stock o reembolsar).
+
+### 8.5 Entrega
+| Modalidad | Costo en checkout |
+|---|---|
+| Retiro en tienda | $0 |
+| Delivery Iquique | $3.000 |
+| Delivery Alto Hospicio | $4.000 |
+| Envío a Arica (transporte externo) | $0 en checkout — se paga al chofer según tamaño |
+
+Los costos deben quedar configurables por admin (no hardcodeados en JSX).
+
+### 8.6 Reembolsos
+Se aceptan; se prefiere cambio por otro artículo. Devolución por
+transferencia o efectivo, fuera de Mercado Pago. El sistema solo registra
+(módulo de reembolso heredado de notas de venta).
+
+### 8.7 Caja
+Cajas configurables desde `/admin/caja-config` (la app permite crear las
+que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
+(efectivo)" y "Mercado Pago".
+
+## 9. Plan de slices sugerido (orden)
+
+| # | Slice | Notas |
+|---|---|---|
+| 0 | Neon + schema desde cero | Ver §10.1. Aplicar `migrations/` en orden contra la DB vacía y verificar que el schema real cubre todo lo que el código consulta. Seed: empresa + admin |
+| 1 | Rebranding Chile | LandingPage, layout metadata, catálogo, logo, `es-BO`→`es-CL`, "Documento de identidad"→"RUT" |
+| 2 | CLP única moneda | ~22 archivos con USD/ARS/tipo de cambio. Probablemente sub-slices |
+| 3 | Eliminar PowerSync / offline | `lib/powersync/*`, `api/powersync/token`, `admin/powersync-status`, `admin/sync-conflictos`, flags `*-offline-*`, `app/sw.ts`, `app/offline`, `components/AlertasBell`, `contexts/AlertasContext` (revisar dependencia) |
+| 4 | Precio mayorista por caja | columna nueva en `productos`, UI de precios y edición |
+| 5 | Modalidad unidad/caja en notas de venta + tipo derivado | `prenota_items` ya tiene `cajas` y `unidades` |
+| 6 | Etiqueta de cliente | derivada del historial (vista o query), visible en `/clientes` |
+| 7 | Tienda: carrito con modalidad + entrega + email | reusa `pedidos-publicos` / `carrito-pedidos-ui` |
+| 8 | Reserva de stock + expiración 36 h | §8.4 |
+| 9 | Mercado Pago: preferencia + redirect + back_urls | credenciales de prueba |
+| 10 | Webhook firmado + conversión a nota + cobro en caja | idempotente |
+| 11 | Deploy producción | dominio Namecheap → Vercel, credenciales de producción, Señal 3 |
+
+## 10. Riesgos y notas técnicas
+
+### 10.1 Schema en DB vacía (riesgo alto)
+Bazar Naty arrancó su DB desde un dump y migraciones aplicadas a mano; no hay
+runner de migraciones y faltan números (004–007). BUG-063 de Bazar Naty: una
+migración commiteada puede no estar aplicada. Antes de cualquier slice
+funcional hay que comprobar que `migrations/` recrea el schema completo en
+una DB vacía. Si falta algo, se crea una migración nueva — no se edita
+historia.
+
+### 10.2 Setup Neon (instrucciones de la consola Neon)
+```
+npm i -g neon@latest   (o npx neon@latest)
+neon init -y --org-id org-lucky-math-65013365 --project-id steep-shape-55022986 --branch production --services postgres
+neon deploy
+```
+`neon deploy` escribe las env vars en `.env.local` (o `.env` si existe).
+El código usa `DATABASE_URL`; verificar el nombre real de la variable que
+genera Neon y mapearla. El driver existente es `@neondatabase/serverless`
+(HTTP), adecuado para Vercel serverless.
+
+### 10.3 Variables de entorno esperadas
+`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `CLOUDINARY_CLOUD_NAME`,
+`CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`,
+`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`.
+Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
+
+### 10.4 Pendientes de la clienta
+- Logo (PNG) y colores
+- Excel de productos (código, nombre, categoría, precio detalle, precio
+  mayorista por caja, unidades por caja, stock, stock mínimo) y fotos
+- Nombres y emails de los 4 usuarios
+- Aplicación en Mercado Pago + credenciales de prueba + clave secreta webhook
+- Confirmar si la boleta electrónica de MP cubre ventas online
+
+## Zonas de riesgo conocidas
+
+| Archivo / módulo | Riesgo | Qué no tocar sin revisar |
+|-----------------|--------|--------------------------|
+| (se completa durante el desarrollo) | | |

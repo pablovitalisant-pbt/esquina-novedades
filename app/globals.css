@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  header, nav, footer, .print\:hidden {
+    display: none !important;
+  }
+
+  .catalogo-header {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Contenedor del grid: una columna en print */
+  .print-page-container {
+    display: block !important;
+  }
+
+  /* Cada producto ocupa su propia pagina */
+  .print-page {
+    page-break-before: always;
+    break-before: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    width: 100%;
+    display: block !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 1cm;
+    box-sizing: border-box;
+    background: white !important;
+  }
+
+  /* Primera tarjeta no necesita salto antes */
+  .print-page:first-child {
+    page-break-before: avoid;
+    break-before: avoid;
+  }
+
+  /* Imagen: altura fija generosa */
+  .print-page .aspect-square {
+    height: 180mm !important;
+    width: 100% !important;
+    position: relative !important;
+  }
+
+  /* Texto del producto */
+  .print-page .p-4 {
+    padding: 0.5cm 0 !important;
+  }
+
+  /* Ocultar footer del catalogo */
+  .catalogo-footer {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 1cm;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer base {
+  :root {
+    /* Backgrounds & surfaces */
+    --background: #FFFFFF;
+    --foreground: #4B5563;
+    --card: #FFFFFF;
+    --card-foreground: #111827;
+    --popover: #FFFFFF;
+    --popover-foreground: #111827;
+    --primary: #E21E26;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F58220;
+    --secondary-foreground: #231F20;
+    --muted: #F9FAFB;
+    --muted-foreground: #6B7280;
+    --accent: #FFB612;
+    --accent-foreground: #231F20;
+    --destructive: #A50036;
+    --destructive-foreground: #FFFFFF;
+    --border: #231F2026;
+    --input: #231F2026;
+    --ring: #F58220;
+
+    /* Design token extras */
+    --heading: #231F20;
+    --body: #231F20CC;
+    --body-subtle: #231F2066;
+
+    /* Border tokens */
+    --border-default: #E5E7EB;
+    --border-muted: #F9FAFB;
+    --border-brand: #D4A96E;
+
+    /* Disabled */
+    --disabled: #F3F4F6;
+    --fg-disabled: #9CA3AF;
+
+    /* Status base (botones) */
+    --success: #007A55;
+    --warning: #F97316;
+
+    /* Badge / pastel tokens */
+    --brand-soft: #FAECDA;
+    --fg-brand-strong: #7D5C2E;
+    --border-brand-subtle: #FAECDA;
+    --success-soft: #ECFDF5;
+    --fg-success-strong: #065F46;
+    --border-success-subtle: #A7F3D0;
+    --danger-soft: #FEF0F2;
+    --fg-danger-strong: #881337;
+    --border-danger-subtle: #FECDD3;
+    --warning-soft: #FFF7ED;
+    --fg-warning: #7C2D12;
+    --border-warning-subtle: #FED7AA;
+    --neutral-primary-soft: #FFFFFF;
+
+    /* Radius */
+    --radius: 0.75rem;
+    --radius-pill: 9999px;
+    --radius-card: 48px;
+    --radius-overlay: 24px;
+    --radius-sm: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #101828;
+      --foreground: #9CA3AF;
+      --card: #1E2939;
+      --card-foreground: #FFFFFF;
+      --popover: #030712;
+      --popover-foreground: #FFFFFF;
+      --primary: #E21E26;
+      --primary-foreground: #FFFFFF;
+      --secondary: #F58220;
+      --secondary-foreground: #231F20;
+      --muted: #101828;
+      --muted-foreground: #9CA3AF;
+      --accent: #FFB612;
+      --accent-foreground: #231F20;
+      --destructive: #A50036;
+      --destructive-foreground: #FFFFFF;
+      --border: #1F2937;
+      --input: #1F2937;
+      --ring: #F58220;
+      --heading: #FFFFFF;
+      --body: #9CA3AF;
+      --body-subtle: #9CA3AF;
+      --border-default: #1F2937;
+      --border-muted: #111827;
+      --border-brand: #F5DFBB;
+      --disabled: #1F2937;
+      --fg-disabled: #6B7280;
+      --success: #009966;
+      --warning: #F97316;
+      --brand-soft: #5C4520;
+      --fg-brand-strong: #EDD1A3;
+      --border-brand-subtle: #5C4520;
+      --success-soft: #002C22;
+      --fg-success-strong: #10B981;
+      --border-success-subtle: #064E3B;
+      --danger-soft: #4D0218;
+      --fg-danger-strong: #F87171;
+      --border-danger-subtle: #881337;
+      --warning-soft: #7C2D12;
+      --fg-warning: #FBBF24;
+      --border-warning-subtle: #7C2D12;
+      --neutral-primary-soft: #101828;
+    }
+  }
+
+  * {
+    border-color: var(--border);
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Landing page pública — tokens scoped */
+.landing-page {
+  --landing-primary: #E21E26;
+  --landing-surface: #FFF8ED;
+}
+
+@layer components {
+  .stat-label {
+    @apply text-[10px] uppercase tracking-wide text-zinc-400 font-medium;
+  }
+  .location-badge {
+    @apply font-mono text-sm font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-2.5 py-1 rounded;
+  }
+  .saldo-positive {
+    @apply text-blue-700 dark:text-blue-400 font-semibold;
+  }
+  .saldo-zero {
+    @apply text-emerald-700 dark:text-emerald-400 font-semibold;
+  }
+  .saldo-negative {
+    @apply text-red-700 dark:text-red-400 font-semibold;
+  }
+  .saldo-surplus {
+    @apply text-emerald-700 dark:text-emerald-400 font-semibold;
+  }
+}

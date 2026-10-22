@@ -1,0 +1,181 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { sql } from "@/lib/db";
+import { NextResponse } from "next/server";
+import { calcularPrecio } from "@/lib/calcular-precio";
+
+// ponytail: rechazar NaN/null — ver PBT-IA NaN/null bypass hallazgo
+const esNumeroValido = (v: any): boolean =>
+  v !== null && typeof v !== "boolean" && Number.isFinite(Number(v));
+
+// BUG-umed-corrupto: umed es la unidad de medida, no una cantidad. Texto
+// libre permitia guardar cantidades ("18U", "240") en vez de un codigo,
+// rompiendo la vista de Packing en /precios. El frontend ahora ofrece un
+// dropdown fijo (Unid / Set) — el servidor exige exactamente esos valores.
+const UMED_VALORES_VALIDOS = ["U", "SET"];
+const esUmedValido = (v: any): boolean =>
+  typeof v === "string" && UMED_VALORES_VALIDOS.includes(v.trim());
+
+// ponytail: whitelist de columnas — única fuente de verdad para el UPDATE dinámico.
+// Nunca interpolar nombres de columna desde el body directamente.
+const WHITELIST: Record<string, string> = {
+  detalle: "detalle", costo: "costo", margen_pct: "margen_pct",
+  prcventa: "prcventa", prcminimo: "prcminimo", umed: "umed",
+  cantcaja: "cantcaja", pesocaja: "pesocaja", cubicaja: "cubicaja",
+  es_nuevo: "es_nuevo", categoria: "categoria", imagen_url: "imagen_url",
+  stock_minimo: "stock_minimo", no_reponer: "no_reponer", // Slice 15: "no reponer" offline
+};
+
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const user = session.user as any;
+  if (user.rol !== "admin") {
+    return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const pid = parseInt((await context.params).id, 10);
+
+    // Paso 1: extraer solo campos del whitelist presentes en el body
+    const changes: Record<string, any> = {};
+    for (const key of Object.keys(WHITELIST)) {
+      if (body[key] !== undefined) changes[key] = body[key];
+    }
+    if (Object.keys(changes).length === 0) {
+      return NextResponse.json({ message: "Nada que actualizar" });
+    }
+
+    // Paso 2: validación de rango (fail-fast, sin SQL)
+    // Nota: esNumeroValido rechaza NaN, null, boolean — previene bypass NaN > 0 = false
+    if (changes.costo !== undefined && (!esNumeroValido(changes.costo) || Number(changes.costo) <= 0))
+      return NextResponse.json({ error: "Costo debe ser mayor a 0" }, { status: 400 });
+    if (changes.margen_pct !== undefined && (!esNumeroValido(changes.margen_pct) || Number(changes.margen_pct) < 0))
+      return NextResponse.json({ error: "Porcentaje de ganancia no puede ser negativo" }, { status: 400 });
+    if (changes.prcventa !== undefined && (!esNumeroValido(changes.prcventa) || Number(changes.prcventa) <= 0))
+      return NextResponse.json({ error: "Precio de venta debe ser mayor a 0" }, { status: 400 });
+    if (changes.prcminimo !== undefined && changes.prcminimo !== null && (!esNumeroValido(changes.prcminimo) || Number(changes.prcminimo) < 0))
+      return NextResponse.json({ error: "Precio minimo no puede ser negativo" }, { status: 400 });
+    if (changes.stock_minimo !== undefined && changes.stock_minimo !== null && (!esNumeroValido(changes.stock_minimo) || Number(changes.stock_minimo) < 0))
+      return NextResponse.json({ error: "Stock minimo no puede ser negativo" }, { status: 400 });
+    if (changes.cantcaja !== undefined && (!esNumeroValido(changes.cantcaja) || Number(changes.cantcaja) < 1))
+      return NextResponse.json({ error: "Cantidad por caja debe ser al menos 1" }, { status: 400 });
+    if (changes.pesocaja !== undefined && (!esNumeroValido(changes.pesocaja) || Number(changes.pesocaja) < 0))
+      return NextResponse.json({ error: "Peso por caja no puede ser negativo" }, { status: 400 });
+    if (changes.cubicaja !== undefined && (!esNumeroValido(changes.cubicaja) || Number(changes.cubicaja) < 0))
+      return NextResponse.json({ error: "Cubicaje no puede ser negativo" }, { status: 400 });
+    if (changes.umed !== undefined && !esUmedValido(changes.umed))
+      return NextResponse.json({ error: "Unidad de medida invalida: debe ser Unid o Set" }, { status: 400 });
+    if (changes.umed !== undefined) changes.umed = changes.umed.trim();
+
+    // Paso 3: access check
+    const existing = await sql`SELECT empresa_id, codigo FROM productos WHERE id = ${pid}`;
+    if (existing.length === 0)
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+    if (!user.empresas.includes(existing[0].empresa_id))
+      return NextResponse.json({ error: "No tienes acceso a este producto" }, { status: 403 });
+    const codigo = existing[0].codigo;
+
+    // Paso 4: validar categoria contra tabla (solo si presente y no null)
+    if (changes.categoria !== undefined && changes.categoria !== null) {
+      const catFound = await sql`SELECT nombre FROM categorias WHERE nombre = ${changes.categoria} LIMIT 1`;
+      if (catFound.length === 0)
+        return NextResponse.json({ error: "Categoria no valida" }, { status: 400 });
+    }
+
+    // Paso 5: invariante anti-drift — cuando el servidor debe calcular prcventa
+    const hasCosto = changes.costo !== undefined;
+    const hasMargen = changes.margen_pct !== undefined;
+    const hasPrcVenta = changes.prcventa !== undefined;
+    // S4: registrar qué campos propagables vienen del cliente (no del anti-drift)
+    const clientDetalle = changes.detalle;
+    const clientImagenUrl = changes.imagen_url;
+    const clientPrcVenta = hasPrcVenta ? changes.prcventa : undefined;
+
+    if (hasCosto && hasMargen) {
+      // Ambos provistos → calcular prcventa sin leer DB
+      const c = Number(changes.costo);
+      const m = Number(changes.margen_pct);
+      if (c > 0 && m >= 0) changes.prcventa = calcularPrecio(c, m);
+    } else if (hasCosto || hasMargen) {
+      // Solo uno provisto → leer el otro de DB
+      const cur = await sql`SELECT costo, margen_pct FROM productos WHERE codigo = ${codigo} LIMIT 1`;
+      const curCosto = cur.length > 0 ? Number(cur[0].costo) : null;
+      const curMargen = cur.length > 0 ? Number(cur[0].margen_pct) : null;
+      const cf = hasCosto ? Number(changes.costo) : curCosto;
+      const mf = hasMargen ? Number(changes.margen_pct) : curMargen;
+      if (cf !== null && cf > 0 && mf !== null && mf >= 0)
+        changes.prcventa = calcularPrecio(cf, mf);
+    } else if (hasPrcVenta) {
+      // Solo prcventa — aceptar, derivar margen de costo actual si existe
+      const cur = await sql`SELECT costo, margen_pct FROM productos WHERE codigo = ${codigo} LIMIT 1`;
+      const curCosto = cur.length > 0 ? Number(cur[0].costo) : null;
+      changes.margen_pct = (curCosto !== null && curCosto > 0)
+        ? Math.round(((Number(changes.prcventa) / curCosto) - 1) * 10000) / 100
+        : null;
+    }
+
+    // Paso 6: construir y ejecutar UPDATE + propagación en transacción atómica
+    const setClauses: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    for (const key of Object.keys(changes)) {
+      const col = WHITELIST[key];
+      if (!col) continue;
+      setClauses.push(`${col} = $${idx++}`);
+      params.push(changes[key]);
+    }
+    setClauses.push(`updated_at = NOW()`);
+    params.push(codigo);
+    const query = `UPDATE public.productos SET ${setClauses.join(", ")} WHERE codigo = $${idx} RETURNING *`;
+
+    // Transacción atómica: UPDATE + propagaciones en una sola transacción HTTP
+    const queries: any[] = [sql.query(query, params)];
+
+    // A) Propagar detalle a ubicaciones_bodega
+    if (clientDetalle !== undefined) {
+      queries.push(sql`
+        UPDATE ubicaciones_bodega SET detalle = ${clientDetalle}, updated_at = NOW()
+        WHERE codigo = ${codigo}
+      `);
+    }
+    // B) Propagar a prenota_items (solo activas sin pagos)
+    const prenotaChanges: string[] = [];
+    const prenotaParams: any[] = [];
+    let pIdx = 1;
+    if (clientDetalle !== undefined) {
+      prenotaChanges.push(`descripcion = $${pIdx++}`);
+      prenotaParams.push(clientDetalle);
+    }
+    if (clientImagenUrl !== undefined) {
+      prenotaChanges.push(`imagen_url = $${pIdx++}`);
+      prenotaParams.push(clientImagenUrl);
+    }
+    if (clientPrcVenta !== undefined) {
+      prenotaChanges.push(`precio = $${pIdx++}`);
+      prenotaParams.push(clientPrcVenta);
+    }
+    if (prenotaChanges.length > 0) {
+      prenotaParams.push(codigo);
+      queries.push(sql.query(`UPDATE prenota_items SET ${prenotaChanges.join(", ")}
+        WHERE codigo = $${pIdx}
+          AND prenota_id IN (
+            SELECT p.id FROM prenotas p
+            WHERE p.estado = 'activa'
+              AND NOT EXISTS (
+                SELECT 1 FROM caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id
+              )
+          )`, prenotaParams));
+    }
+
+    const [productResult] = await sql.transaction(queries);
+    return NextResponse.json({ data: productResult[0], message: "Producto actualizado" });
+
+  } catch (error: any) {
+    console.error("PUT /api/productos/[id] error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

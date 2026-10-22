@@ -1,0 +1,1238 @@
+'use client';
+
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { usePowerSync } from '@powersync/react';
+import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
+import flags from '@/config/feature-flags.json';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Search, Trash2, Pencil, FileDown, MessageCircle, Plus, DollarSign } from 'lucide-react';
+import { toast } from 'sonner';
+import { PagarNotaDialog } from '@/components/PagarNotaDialog';
+import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
+import { formatArsEquivalente } from '@/lib/utils';
+
+// Convierte un Blob (de /api/share-image) a data URL base64 para doc.addImage.
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function PrenotaItemsTable({
+  items,
+  onEliminar,
+  prenotaId,
+  onActualizar,
+  autoFocusItemId,
+  onAutoFocusConsumed,
+  dolarDia,
+  db,
+  offlineReady,
+}: {
+  items: any[];
+  onEliminar: (itemId: string) => void;
+  prenotaId: string;
+  onActualizar: () => void;
+  autoFocusItemId?: string | null;
+  onAutoFocusConsumed?: () => void;
+  dolarDia: number;
+  db?: any;
+  offlineReady?: boolean;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCajas, setEditCajas] = useState<number>(0);
+  const [editUnidades, setEditUnidades] = useState<number>(0);
+  const [editPrecio, setEditPrecio] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+  const consumedAutoFocusRef = useRef<string | null>(null);
+  const cajasInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-open editing when autoFocusItemId matches a loaded item
+  useEffect(() => {
+    if (autoFocusItemId != null && consumedAutoFocusRef.current !== autoFocusItemId) {
+      const target = items.find(item => item.id === autoFocusItemId);
+      if (target) {
+        consumedAutoFocusRef.current = autoFocusItemId;
+        setEditingId(autoFocusItemId);
+        setEditCajas(Number(target.cajas));
+        setEditUnidades(Number(target.unidades));
+        setEditPrecio(Number(target.precio));
+        onAutoFocusConsumed?.();
+      }
+    }
+  }, [items, autoFocusItemId]);
+
+  // Focus and select the Cajas input when editing opens via auto-focus
+  useEffect(() => {
+    if (editingId != null && cajasInputRef.current) {
+      cajasInputRef.current.focus();
+      cajasInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleGuardar = async (itemId: string) => {
+    setSaving(true);
+    try {
+      if (offlineReady && db) {
+        // Mutación local → la cola de PowerSync sincroniza a Neon. itemId es
+        // UUID string (migración 027) — NO convertirlo a Number. Sin esta rama,
+        // un ítem local sin sync a Neon daba 404 "Item no encontrado" (BUG-041).
+        await db.execute(
+          'UPDATE prenota_items SET cajas = ?, unidades = ?, precio = ? WHERE id = ?',
+          [editCajas, editUnidades, editPrecio, itemId]
+        );
+        setEditingId(null);
+        consumedAutoFocusRef.current = null;
+        onActualizar();
+      } else {
+        const res = await fetch(`/api/notas-venta/${prenotaId}/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          toast.error(err.error || 'Error al guardar');
+          return;
+        }
+        setEditingId(null);
+        consumedAutoFocusRef.current = null;
+        onActualizar();
+      }
+    } catch {
+      toast.error('Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-card overflow-hidden bg-[var(--card)] shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--muted)] text-[var(--body)]">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium">Código</th>
+              <th className="text-left px-4 py-3 font-medium">Imagen</th>
+              <th className="text-left px-4 py-3 font-medium">Descripción</th>
+              <th className="text-right px-4 py-3 font-medium">Cajas</th>
+              <th className="text-right px-4 py-3 font-medium">Unidades</th>
+              <th className="text-right px-4 py-3 font-medium">Precio unitario</th>
+              <th className="text-right px-4 py-3 font-medium">Total</th>
+              <th className="text-right px-4 py-3 font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(item => (
+              <tr key={item.id} className="border-t border-border align-top">
+                <td className="px-4 py-3 font-mono text-xs text-[var(--body)] text-[var(--body-subtle)]">{item.codigo}</td>
+                <td className="px-4 py-3">
+                  <div className="w-20 h-20 rounded-md overflow-hidden bg-[var(--muted)] border border-[var(--border)]">
+                    <ImageWithFallback
+                      src={item.imagen_url}
+                      codigo={item.codigo}
+                      empresaSlug="bazar-naty"
+                      fill
+                    />
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium">{item.descripcion}</div>
+                </td>
+                <td className="px-4 py-3 text-right">{item.cajas}</td>
+                <td className="px-4 py-3 text-right">{item.unidades}</td>
+                <td className="px-4 py-3 text-right">
+                  ${Number(item.precio).toFixed(2)}
+                  {formatArsEquivalente(Number(item.precio), dolarDia) && (
+                    <div className="text-xs text-[var(--body-subtle)]">
+                      {formatArsEquivalente(Number(item.precio), dolarDia)}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right font-medium text-[var(--heading)]">
+                  ${(Number(item.unidades) * Number(item.precio)).toFixed(2)}
+                  {formatArsEquivalente(Number(item.unidades) * Number(item.precio), dolarDia) && (
+                    <div className="text-xs text-[var(--body-subtle)]">
+                      {formatArsEquivalente(Number(item.unidades) * Number(item.precio), dolarDia)}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {editingId === item.id ? (
+                    <div className="flex flex-col gap-2 items-end min-w-[140px]">
+                      <div className="flex flex-col gap-1 w-full">
+                        <label className="text-xs text-[var(--body-subtle)]">Cajas</label>
+                        <input
+                          ref={cajasInputRef}
+                          type="number"
+                          min={1}
+                          value={editCajas}
+                          onFocus={e => e.target.select()}
+                          onChange={e => {
+                            const nuevasCajas = Number(e.target.value);
+                            setEditCajas(nuevasCajas);
+                            setEditUnidades(Math.round(nuevasCajas * (item.unidades / item.cajas)));
+                          }}
+                          className="border rounded px-2 py-1 text-sm w-full"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 w-full">
+                        <label className="text-xs text-[var(--body-subtle)]">Unidades</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={editUnidades}
+                          onFocus={e => e.target.select()}
+                          onChange={e => setEditUnidades(Number(e.target.value))}
+                          className="border rounded px-2 py-1 text-sm w-full"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 w-full">
+                        <label className="text-xs text-[var(--body-subtle)]">Precio USD</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={editPrecio}
+                          onFocus={e => e.target.select()}
+                          onChange={e => setEditPrecio(Number(e.target.value))}
+                          className="border rounded px-2 py-1 text-sm w-full"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="text-xs w-full" variant="brand"
+                        onClick={() => handleGuardar(item.id)}
+                        disabled={saving}
+                      >
+                        {saving ? 'Guardando...' : 'Guardar'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive" className="w-full"
+                        onClick={() => { onEliminar(item.id); setEditingId(null); }}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Eliminar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs w-full"
+                        onClick={() => {
+                          setEditingId(null);
+                          consumedAutoFocusRef.current = null;
+                        }}
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => {
+                        consumedAutoFocusRef.current = null;
+                        setEditingId(item.id);
+                        setEditCajas(Number(item.cajas));
+                        setEditUnidades(Number(item.unidades));
+                        setEditPrecio(Number(item.precio));
+                      }}
+                    >
+                      <Pencil className="w-3 h-3 mr-1" /> Editar
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// PrenotaDetallePage decide si montar PowerSync según el flag. Con el flag en
+// false (default) NO se monta el provider → fetch actual sin cambios.
+export function PrenotaDetallePage({ session, params }: { session: any; params: { id: string } }) {
+  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
+  if (OFFLINE_READ) {
+    return (
+      <PowerSyncProvider>
+        <PrenotaDetalleContent session={session} />
+      </PowerSyncProvider>
+    );
+  }
+  return <PrenotaDetalleContent session={session} />;
+}
+
+function PrenotaDetalleContent({ session }: { session: any }) {
+  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
+  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
+  const db = usePowerSync();
+  const router = useRouter();
+  // El id se lee de la URL real (useParams), no del prop `params` horneado en el
+  // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta
+  // URL, y el contenido debe corresponder a la URL que el usuario ve (slice
+  // notas-venta-shell-offline-nunca-visitada). Sin esto, offline se mostraría la
+  // nota cacheada en vez de la solicitada.
+  const id = useParams().id as string;
+
+
+  const [prenota, setPrenota] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [dolarDia, setDolarDia] = useState(0);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+  const [clienteQuery, setClienteQuery] = useState('');
+  const [clienteResults, setClienteResults] = useState<any[]>([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const prodAbortRef = useRef<AbortController | null>(null);
+
+  // Auto-focus on newly added item
+  const [autoFocusItemId, setAutoFocusItemId] = useState<string | null>(null);
+  const limpiarAutoFocus = useCallback(() => setAutoFocusItemId(null), []);
+  const agregarCallCounterRef = useRef(0);
+
+  // Búsqueda de productos (buscador directo, sin Kardex)
+  const [productoQuery, setProductoQuery] = useState('');
+  const [productoResults, setProductoResults] = useState<any[]>([]);
+  const [productoLoading, setProductoLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const agregandoRef = useRef<string | null>(null);
+
+  // ─── Pago ("Marcar como pagada") ────────────────────────────────
+  const [pagarOpen, setPagarOpen] = useState(false);
+  const [aplicarSaldoOpen, setAplicarSaldoOpen] = useState(false);
+
+  const fetchPrenota = async () => {
+    setLoading(true);
+    try {
+      if (OFFLINE_READ && db) {
+        // Lectura local (flag on): replica GET /api/notas-venta/[id] tal cual,
+        // incluida la resta de reembolsos en total_pagado (asimetría detalle
+        // vs. lista) — no se corrige en este slice.
+        const prenota = await db.get(
+          `SELECT p.*, c.nombre AS cliente_nombre
+           FROM prenotas p
+           LEFT JOIN clientes c ON c.id = p.cliente_id
+           WHERE p.id = ?`,
+          [Number(id)]
+        );
+        if (!prenota) {
+          toast.error('No se pudo cargar la nota de venta');
+          return;
+        }
+        const items = (await db.getAll(
+          `SELECT * FROM prenota_items WHERE prenota_id = ? ORDER BY created_at ASC`,
+          [Number(id)]
+        )) as any[];
+        const total = (items || []).reduce(
+          (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio),
+          0
+        );
+        const pagadoRow = await db.get(
+          `SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
+           FROM caja_movimiento_notas cmn
+           JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
+           WHERE cmn.prenota_id = ?`,
+          [Number(id)]
+        );
+        const totalPagado = parseFloat((pagadoRow as any)?.total ?? 0);
+        setPrenota({
+          ...prenota,
+          items,
+          total,
+          total_pagado: totalPagado,
+          saldo_pendiente: total - totalPagado,
+        });
+      } else {
+        const res = await fetch(`/api/notas-venta/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPrenota(data);
+        } else {
+          toast.error('No se pudo cargar la nota de venta');
+        }
+      }
+    } catch {
+      toast.error('No se pudo cargar la nota de venta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrenota();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Tipo de cambio para mostrar equivalentes en ARS (patrón PagarNotaDialog).
+  // Fetch una vez al cargar; si falla o dolar_dia es 0, formatArsEquivalente
+  // retorna null y no se muestra la línea ARS.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/caja/config');
+        const data = await res.json();
+        setDolarDia(parseFloat(data?.data?.valor || '0'));
+      } catch {
+        setDolarDia(0);
+      }
+    })();
+  }, []);
+
+  // Búsqueda de clientes con debounce + AbortController (patrón AgregarANotaVentaModal)
+  useEffect(() => {
+    if (clienteQuery.trim().length < 2) {
+      setClienteResults([]);
+      return;
+    }
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setClientesLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/clientes?q=${encodeURIComponent(clienteQuery)}`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const { data } = await res.json();
+          setClienteResults(data || []);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') setClienteResults([]);
+      } finally {
+        setClientesLoading(false);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [clienteQuery]);
+
+  const asignarCliente = async (c: any) => {
+    try {
+      await fetch(`/api/notas-venta/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: c.id }),
+      });
+      setClienteQuery('');
+      setClienteResults([]);
+      await fetchPrenota();
+    } catch {
+      toast.error('No se pudo asignar cliente');
+    }
+  };
+
+  const quitarCliente = async () => {
+    try {
+      await fetch(`/api/notas-venta/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: null }),
+      });
+      await fetchPrenota();
+    } catch {
+      toast.error('No se pudo quitar cliente');
+    }
+  };
+
+  // Búsqueda de productos con debounce + AbortController
+  useEffect(() => {
+    if (productoQuery.trim().length < 2) {
+      setProductoResults([]);
+      return;
+    }
+    if (prodAbortRef.current) prodAbortRef.current.abort();
+    const controller = new AbortController();
+    prodAbortRef.current = controller;
+    setProductoLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        if (OFFLINE_READ && db) {
+          // Lectura local (flag on): replica GET /api/productos?search=...
+          // sobre la tabla local. La API hace LOWER(codigo) LIKE OR
+          // LOWER(detalle) LIKE (case-insensitive ASCII); SQLite LIKE es
+          // case-insensitive para ASCII por default — coincide. empresa_id no
+          // existe localmente (single-tenant, AppSchema no lo declara) → se
+          // setea a 1 para que agregarProducto no falle si el campo falta.
+          const q = `%${productoQuery.trim().toLowerCase()}%`;
+          const rows = (await db.getAll(
+            `SELECT codigo, MAX(id) as id, MAX(detalle) as detalle, SUM(saldo) as saldo,
+                    MAX(prcventa) as prcventa, MAX(prcminimo) as prcminimo, MAX(costo) as costo,
+                    MAX(margen_pct) as margen_pct, MAX(umed) as umed, MAX(imagen_url) as imagen_url,
+                    MAX(es_nuevo) as es_nuevo, MAX(cantcaja) as cantcaja, MAX(pesocaja) as pesocaja,
+                    MAX(cubicaja) as cubicaja, MAX(stock_minimo) as stock_minimo
+             FROM productos
+             WHERE LOWER(codigo) LIKE ? OR LOWER(detalle) LIKE ?
+             GROUP BY codigo
+             ORDER BY codigo ASC
+             LIMIT 200`,
+            [q, q]
+          )) as any[];
+          setProductoResults((rows || []).map((r) => ({ ...r, empresa_id: 1 })));
+          setHighlightedIndex(0);
+          setShowResults(true);
+        } else {
+          const res = await fetch(`/api/productos?search=${encodeURIComponent(productoQuery)}`, {
+            signal: controller.signal,
+          });
+          if (res.ok) {
+            const { data } = await res.json();
+            setProductoResults(data || []);
+            setHighlightedIndex(0);
+            setShowResults(true);
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') setProductoResults([]);
+      } finally {
+        setProductoLoading(false);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productoQuery]);
+
+  const agregarProducto = async (prod: any) => {
+    // Bloquea solo re-agregar el MISMO producto en vuelo (anti doble-click);
+    // deja pasar adds concurrentes de productos distintos (el contador
+    // agregarCallCounterRef resuelve el auto-focus del último).
+    if (agregandoRef.current === prod.codigo) return;
+    agregandoRef.current = prod.codigo;
+    agregarCallCounterRef.current += 1;
+    const currentCall = agregarCallCounterRef.current;
+    try {
+      if (OFFLINE_READ && db) {
+        // Escritura local (flag on): INSERT directo a SQLite con id UUID del
+        // cliente. El sync a Postgres lo hace uploadData() (Slice 10b) al
+        // reconectar, que reutiliza el mismo id (COALESCE en la ruta, Slice 10a).
+        // NO se decrementa productos.saldo local (decisión explícita — ver
+        // contrato 10b: el descuento real es server-side al sincronizar).
+        const itemId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await db.execute(
+          `INSERT INTO prenota_items (id, prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, stock_referencia, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [itemId, Number(id), prod.codigo, prod.detalle, prod.imagen_url, prod.empresa_id, 1, prod.cantcaja ?? 1, prod.prcventa, prod.saldo, createdAt]
+        );
+        if (currentCall === agregarCallCounterRef.current) {
+          setAutoFocusItemId(itemId);
+        }
+        setProductoQuery('');
+        setProductoResults([]);
+        setShowResults(false);
+        await fetchPrenota();
+        toast.success('Producto agregado');
+        return;
+      }
+
+      const res = await fetch(`/api/notas-venta/${id}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo: prod.codigo,
+          descripcion: prod.detalle,
+          imagen_url: prod.imagen_url,
+          empresa_id: prod.empresa_id,
+          cajas: 1,
+          unidades: prod.cantcaja ?? 1,
+          precio: prod.prcventa,
+          stock_referencia: prod.saldo,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || 'Error al agregar producto');
+        return;
+      }
+      const item = await res.json();
+      // Only auto-focus if this is still the latest agregarProducto call
+      if (currentCall === agregarCallCounterRef.current) {
+        setAutoFocusItemId(item.id);
+      }
+      setProductoQuery('');
+      setProductoResults([]);
+      setShowResults(false);
+      await fetchPrenota();
+      toast.success('Producto agregado');
+    } catch {
+      toast.error('No se pudo agregar el producto');
+    } finally {
+      agregandoRef.current = null;
+    }
+  };
+
+  const eliminarItem = async (itemId: string) => {
+    if (!confirm('¿Eliminar este ítem de la nota de venta?')) return;
+    try {
+      if (OFFLINE_READ && db) {
+        // Mutación local → la cola de PowerSync sincroniza a Neon. Mismo patrón
+        // que eliminar nota vacía. itemId es UUID string (migración 027) — NO
+        // convertirlo a Number (Number(uuid)=NaN matchea 0 filas en silencio).
+        // (BUG-040, BUG-041)
+        await db.execute('DELETE FROM prenota_items WHERE id = ?', [itemId]);
+      } else {
+        const res = await fetch(`/api/notas-venta/${id}/items/${itemId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const err = await res.json();
+          toast.error(err.error || 'Error al eliminar item');
+          return;
+        }
+      }
+      await fetchPrenota();
+    } catch {
+      toast.error('No se pudo eliminar item');
+    }
+  };
+
+  const exportarExcel = () => {
+    if (!prenota?.items?.length) return;
+    const infoRows = [
+      { Campo: 'Título', Valor: prenota.titulo },
+      { Campo: 'Cliente comprador', Valor: prenota.nombre_cliente || prenota.cliente_nombre || '-' },
+    ];
+
+    const toRows = (items: any[]) => items.map(i => ({
+      'Código': i.codigo,
+      'Descripción': i.descripcion,
+      'Cajas': Number(i.cajas),
+      'Unidades': Number(i.unidades),
+      'Precio USD': Number(i.precio),
+      'Total USD': Number(i.unidades) * Number(i.precio),
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(infoRows), 'Info');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(prenota.items)), 'Items');
+
+    const filename = `${prenota.titulo}${prenota.nombre_cliente ? ' — ' + prenota.nombre_cliente : ''}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
+  // Construye el PDF en memoria (doc jsPDF) sin llamar a .save() — compartido
+  // por exportarPDF (descarga) y compartirWhatsApp (Web Share API).
+  const construirDocPDF = async (): Promise<jsPDF | null> => {
+    if (!prenota?.items?.length) return null;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const fecha = new Date().toLocaleDateString('es-CL', {
+      day: '2-digit', month: 'long', year: 'numeric'
+    });
+
+    // jsPDF usa Helvetica WinAnsi, que no renderiza ≈ (U+2248) y corrompe el
+    // texto. formatArsEquivalente lo sigue usando en la UI (HTML ok); acá solo
+    // se sanea el texto que va al PDF. Ver BUG-038 en BUGS.md.
+    const paraPdf = (t: string) => t.replace(/≈\s*/g, '');
+
+    // ─── Header: banda --accent (#FFB612) + logo/marca a la izquierda y
+    //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).
+    let logoBase64: string | null = null;
+    try {
+      const logoRes = await fetch('/logo-nota-venta.png');
+      if (logoRes.ok) {
+        logoBase64 = await blobToDataURL(await logoRes.blob());
+      }
+    } catch {
+      // logo opcional — si falla, el header sigue con el texto
+    }
+    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.rect(0, 0, pageWidth, 4, 'F');
+
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', 14, 15, 22, 22);
+      } catch {
+        // logo inválido → se omite, el header sigue con el texto
+      }
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(35, 31, 32); // heading (#231F20)
+    doc.text('Importadora Bazar Naty', 38, 20);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
+    doc.text('Calle Narciso Campero', 38, 26);
+    doc.text('Entre Motomendez y Guadalquivir', 38, 31);
+    doc.text('Bermejo, Tarija — Bolivia', 38, 36);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(24);
+    doc.setTextColor(35, 31, 32);
+    doc.text('NOTA DE VENTA', pageWidth - 14, 20, { align: 'right' });
+
+    // ─── Bloque de info: caja "Nota de venta para:" + caja N°/Fecha ───
+    const clienteNombre = prenota.nombre_cliente || prenota.cliente_nombre || '-';
+    const infoY = 46;
+    const boxH = 22;
+    const leftBoxW = 96;
+    const rightBoxW = 62;
+    const rightBoxX = pageWidth - 14 - rightBoxW;
+    doc.setFillColor(250, 236, 218); // brand-soft
+    doc.roundedRect(14, infoY, leftBoxW, boxH, 2, 2, 'F');
+    doc.roundedRect(rightBoxX, infoY, rightBoxW, boxH, 2, 2, 'F');
+    doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('Nota de venta para:', 20, infoY + 8);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(35, 31, 32);
+    doc.text(paraPdf(clienteNombre), 20, infoY + 17);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`N°: ${id}`, rightBoxX + 5, infoY + 10);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha: ${fecha}`, rightBoxX + 5, infoY + 18);
+
+    // Descargar imágenes vía proxy /api/share-image (mismo que WhatsApp).
+    // Ponytail: base64DataURL para que doc.addImage no dependa de CORS/red al dibujar.
+    const imageCache = new Map<number, string | null>();
+    await Promise.all(
+      prenota.items.map(async (item: any) => {
+        if (!item.imagen_url) { imageCache.set(item.id, null); return; }
+        try {
+          const res = await fetch(`/api/share-image?url=${encodeURIComponent(item.imagen_url)}`);
+          if (!res.ok) { imageCache.set(item.id, null); return; }
+          const blob = await res.blob();
+          imageCache.set(item.id, await blobToDataURL(blob));
+        } catch {
+          imageCache.set(item.id, null);
+        }
+      })
+    );
+
+    // Tabla con columna Imagen (primera) — sin columna Empresa (deuda PRD §9.3.1).
+    // Header dark, texto blanco, zebra striping. "Cajas" → "Cantidad de Cajas".
+    const startY = infoY + boxH + 10;
+    const rows = prenota.items.map((i: any) => {
+      const precioUsd = Number(i.precio);
+      const totalUsd = precioUsd * Number(i.unidades);
+      const precio = `USD$${precioUsd.toFixed(2)}`;
+      const total = `USD$${totalUsd.toFixed(2)}`;
+      const arsP = formatArsEquivalente(precioUsd, dolarDia);
+      const arsT = formatArsEquivalente(totalUsd, dolarDia);
+      return [
+        '', // columna Imagen — se dibuja aparte vía didDrawCell (index 0)
+        i.codigo,
+        i.descripcion || '',
+        Number(i.cajas),
+        Number(i.unidades),
+        arsP ? `${precio}\n${paraPdf(arsP)}` : precio,
+        arsT ? `${total}\n${paraPdf(arsT)}` : total,
+      ];
+    });
+
+    const totalCajas = prenota.items.reduce((sum: number, i: any) => sum + Number(i.cajas), 0);
+    const totalUnidadesSum = prenota.items.reduce((sum: number, i: any) => sum + Number(i.unidades), 0);
+
+    autoTable(doc, {
+      startY,
+      head: [['Imagen', 'Código', 'Descripción', 'Cantidad de Cajas', 'Unidades', 'Precio\nUnitario', 'Total']],
+      body: rows,
+      foot: [[
+        { content: 'TOTALES NETOS', colSpan: 3, styles: { halign: 'right' } },
+        { content: `${totalCajas} cajas`, styles: { halign: 'right' } },
+        { content: `${totalUnidadesSum} unidades`, colSpan: 2, styles: { halign: 'right' } },
+        { content: '', colSpan: 1 },
+      ]],
+      showFoot: 'lastPage', // fix duplicación: el foot solo se pinta en la última página
+      footStyles: {
+        fillColor: [255, 182, 18], // --accent #FFB612, mismo color que la caja de Total
+        textColor: [35, 31, 32],   // --heading
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      styles: { fontSize: 9, cellPadding: 3, fontStyle: 'bold' },
+      headStyles: { fillColor: [31, 41, 55], textColor: 255, fontSize: 9, fontStyle: 'bold' }, // dark + blanco
+      alternateRowStyles: { fillColor: [243, 244, 246] },       // zebra (neutral-tertiary light)
+      columnStyles: {
+        0: { cellWidth: 20 },            // Imagen — ancho fijo (BUG-039)
+        1: { cellWidth: 24, halign: 'left' },
+        2: { cellWidth: 37, halign: 'left' },   // Descripción (-3)
+        3: { cellWidth: 22, halign: 'right' }, // Cantidad de Cajas (header más largo)
+        4: { cellWidth: 21, halign: 'right' }, // Unidades (+3, ya no corta "Unidades")
+        5: { cellWidth: 26, halign: 'right' },
+        6: { cellWidth: 32, halign: 'right' },
+      },
+      didDrawCell: (data: any) => {
+        // Columna 0 = Imagen: dibujar si hay base64 cacheado
+        if (data.column.index === 0 && data.row?.index !== undefined && data.section === 'body') {
+          const item = prenota.items[data.row.index];
+          const b64 = item && imageCache.get(item.id);
+          if (b64) {
+            const img = data.cell;
+            try {
+              doc.addImage(b64, 'PNG', img.x + 1, img.y + 1, 14, 14);
+            } catch {
+              // imagen inválida → celda en blanco
+            }
+          }
+        }
+      },
+    });
+
+    // ─── Totales: caja "Total" resaltada --accent + Pagado/Pendiente ───
+    const total = prenota.items.reduce(
+      (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
+    );
+    const totalStr = `Total: USD$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const arsTotal = formatArsEquivalente(total, dolarDia);
+    const pagado = Number(prenota.total_pagado);
+    const pendiente = Number(prenota.saldo_pendiente);
+    const arsPagado = formatArsEquivalente(pagado, dolarDia);
+    const arsPend = formatArsEquivalente(pendiente, dolarDia);
+    const totalBoxW = 60;
+    const totalBoxX = pageWidth - 14 - totalBoxW;
+    const footerBandH = 16;
+    const footerBandY = pageHeight - footerBandH;
+
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
+    // BUG-062: medir el alto real del bloque de totales (desde finalY hasta el
+    // baseline de "Gracias por su compra"). Si cae en la banda del footer (que se
+    // pinta después y es opaca) o se pasa del borde de página, mover todo el
+    // bloque a una hoja nueva con un Y alto. Con tablas largas finalY queda muy
+    // abajo y Pagado/Pendiente llegaban a superar pageHeight (jsPDF no los dibuja).
+    const yResumen0 = finalY + (arsTotal ? 24 : 20);
+    const blockBottom = yResumen0 + (arsPagado ? 10 : 6) + 10; // baseline "Gracias"
+    if (blockBottom + 4 > footerBandY) {
+      doc.addPage();
+      finalY = 20;
+    }
+
+    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.rect(totalBoxX, finalY, totalBoxW, 14, 'F');
+    doc.setTextColor(35, 31, 32); // --heading
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(paraPdf(arsTotal ? `${totalStr}\n${arsTotal}` : totalStr), totalBoxX + 4, finalY + 8);
+
+    // Pagado / Pendiente reestilizados como filas etiqueta/valor, alineadas a la derecha.
+    let yResumen = finalY + (arsTotal ? 24 : 20);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(35, 31, 32); // --heading
+    const pagadoStr = `Pagado: USD$${pagado.toFixed(2)}`;
+    const pendStr = `Pendiente: USD$${pendiente.toFixed(2)}`;
+    doc.text(paraPdf(arsPagado ? `${pagadoStr}\n${arsPagado}` : pagadoStr), pageWidth - 14, yResumen, { align: 'right' });
+    yResumen += arsPagado ? 10 : 6;
+    doc.text(paraPdf(arsPend ? `${pendStr}\n${arsPend}` : pendStr), pageWidth - 14, yResumen, { align: 'right' });
+
+    // ─── Footer: agradecimiento + banda de contacto ───
+    let fy = yResumen + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(35, 31, 32);
+    doc.text('Gracias por su compra', 14, fy);
+
+    // Banda de contacto anclada al borde inferior real de la página (no al fy
+    // acumulado — con pocos ítems quedaba "flotando" en el medio de la hoja).
+    // footerBandH/footerBandY ya se declararon arriba (BUG-062) para medir el
+    // espacio del bloque de totales.
+    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.rect(0, footerBandY, pageWidth, footerBandH, 'F');
+    doc.setTextColor(35, 31, 32); // --heading
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('+5493878236289 | +59174512563 | +59172182788', 14, footerBandY + 6);
+    doc.text('Calle Narciso Campero - Entre Motomendez y Guadalquivir | Bermejo, Tarija — Bolivia', 14, footerBandY + 10);
+    doc.text('https://bazarnaty.vercel.app/', 14, footerBandY + 14);
+
+    return doc;
+  };
+
+  const exportarPDF = async () => {
+    if (!prenota?.items?.length) return;
+    setExportandoPdf(true);
+    try {
+      const doc = await construirDocPDF();
+      if (!doc) return;
+      const filename = `${prenota.titulo}${prenota.nombre_cliente ? ' — ' + prenota.nombre_cliente : ''}.pdf`;
+      doc.save(filename);
+    } finally {
+      setExportandoPdf(false);
+    }
+  };
+
+  const nombreArchivoPDF = () =>
+    `${prenota.titulo}${prenota.nombre_cliente ? ' — ' + prenota.nombre_cliente : ''}.pdf`;
+
+  // Slice: enviar PDF por WhatsApp en un click. Si el navegador soporta Web
+  // Share con archivos (canShare), se arma un File PDF y se abre el selector
+  // nativo del SO; el usuario elige WhatsApp y el PDF va adjunto. Sin soporte
+  // (p.ej. Firefox) → fallback: descarga + aviso. Detrás de feature flag.
+  const compartirWhatsApp = async () => {
+    if (!prenota?.items?.length) return;
+    if (!(flags as any)['notas-venta-whatsapp-pdf']) {
+      // Flag off → comportamiento legacy (mensaje de texto por wa.me).
+      const total = prenota.items.reduce(
+        (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
+      );
+      const totalStr = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const lineas = prenota.items.map((i: any) =>
+        `• ${i.codigo} — ${i.descripcion || ''} (${i.cajas} cajas / ${i.unidades} uds) $${Number(i.precio).toFixed(2)}`
+      ).join('\n');
+      const mensaje = [
+        `*${prenota.titulo}*`,
+        (prenota.nombre_cliente || prenota.cliente_nombre) ? `Cliente: ${prenota.nombre_cliente || prenota.cliente_nombre}` : null,
+        ``,
+        lineas,
+        ``,
+        `*Total: $${totalStr}*`,
+      ].filter(l => l !== null).join('\n');
+      const url = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+      window.open(url, '_blank');
+      return;
+    }
+
+    setEnviandoWhatsapp(true);
+    try {
+      const doc = await construirDocPDF();
+      if (!doc) return;
+      const filename = nombreArchivoPDF();
+
+      // Web Share API con archivos soportada?
+      if (navigator.canShare && navigator.share) {
+        const blob = doc.output('blob');
+        const pdfFile = new File([blob], filename, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [pdfFile] })) {
+          try {
+            await navigator.share({ files: [pdfFile], title: prenota.titulo });
+            return; // éxito — no cae al fallback
+          } catch (err: any) {
+            if (err?.name === 'AbortError') return; // usuario cerró el selector — no es error
+            toast.error('No se pudo compartir el PDF por WhatsApp');
+            return;
+          }
+        }
+      }
+
+      // Fallback obligatorio (sin soporte de canShare con archivos, p.ej. Firefox).
+      doc.save(filename);
+      toast.warning('Tu navegador no soporta compartir el PDF directo. Adjuntalo manualmente en WhatsApp.');
+    } finally {
+      setEnviandoWhatsapp(false);
+    }
+  };
+
+  return (
+    <>
+    <div className="flex flex-col gap-6 fade-in zoom-in-95 duration-200">
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={async () => {
+            if (prenota?.items?.length === 0) {
+              if (confirm('Esta nota de venta no tiene productos. ¿Deseas eliminarla?')) {
+                if (OFFLINE_READ && db) {
+                  // Anular offline (Slice 14): nota vacía → nunca tiene pago ni
+                  // stock que restaurar; solo se muta prenotas.estado localmente.
+                  await db.execute(
+                    `UPDATE prenotas SET estado = 'anulada', updated_at = ? WHERE id = ? AND estado = 'activa'`,
+                    [new Date().toISOString(), Number(id)]
+                  );
+                } else {
+                  const res = await fetch(`/api/notas-venta/${id}`, { method: 'DELETE' });
+                  if (!res.ok) {
+                    toast.error('No se pudo eliminar la nota de venta');
+                    return;
+                  }
+                }
+              }
+            }
+            router.push('/notas-venta');
+          }}
+          className="text-sm text-[var(--body)] hover:text-[var(--heading)] w-fit"
+        >
+          ← Volver
+        </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight">{prenota?.titulo || 'Nota de Venta'}</h1>
+          </div>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button
+              variant="outline"
+              onClick={exportarExcel}
+              disabled={!prenota?.items?.length}
+            >
+              Exportar Excel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportarPDF}
+              disabled={!prenota?.items?.length || exportandoPdf}
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              {exportandoPdf ? 'Generando PDF...' : 'Exportar PDF'}
+            </Button>
+            <Button
+              variant="success"
+              onClick={compartirWhatsApp}
+              disabled={!prenota?.items?.length || enviandoWhatsapp}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              {enviandoWhatsapp ? 'Enviando...' : 'Enviar por WhatsApp'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border rounded-card p-5 bg-[var(--card)] shadow-sm flex flex-col gap-4">
+        <h2 className="font-semibold text-base">Cliente</h2>
+        {(prenota?.nombre_cliente || prenota?.cliente_nombre) ? (
+          <div className="flex items-center gap-3">
+            <div className="font-medium">Cliente: {prenota.nombre_cliente || prenota.cliente_nombre}</div>
+            <button onClick={quitarCliente} className="text-sm text-[var(--destructive)] hover:brightness-110">✕</button>
+          </div>
+        ) : (
+          <>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--body-subtle)]" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={clienteQuery}
+                onChange={e => setClienteQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {clientesLoading && <p className="text-xs text-[var(--body-subtle)]">Buscando...</p>}
+            {clienteResults.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {clienteResults.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => asignarCliente(c)}
+                    className="text-left p-3 rounded-card border border-border hover:bg-[var(--accent)]"
+                  >
+                    <span className="font-medium">{c.nombre}</span>
+                    {c.telefono && <span className="text-[var(--body-subtle)] ml-2">{c.telefono}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ─── Buscador de productos (sin Kardex) ─── */}
+      <div className="border rounded-card p-5 bg-[var(--card)] shadow-sm flex flex-col gap-3">
+        <h2 className="font-semibold text-base">Agregar producto</h2>
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--body-subtle)]" />
+          <Input
+            placeholder="Buscar por código o descripción..."
+            value={productoQuery}
+            onChange={e => { setProductoQuery(e.target.value); setShowResults(true); }}
+            onFocus={() => { if (productoResults.length > 0) setShowResults(true); }}
+            onBlur={() => setTimeout(() => setShowResults(false), 200)}
+            onKeyDown={e => {
+              if (!showResults || productoResults.length === 0) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlightedIndex(i => Math.min(i + 1, productoResults.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlightedIndex(i => Math.max(i - 1, 0));
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const prod = productoResults[highlightedIndex];
+                if (prod) agregarProducto(prod);
+              } else if (e.key === 'Escape') {
+                setShowResults(false);
+              }
+            }}
+            className="pl-9"
+          />
+        </div>
+        {productoLoading && <p className="text-xs text-[var(--body-subtle)]">Buscando...</p>}
+        {showResults && productoResults.length > 0 && (
+          <div
+            className="flex flex-col gap-2 max-h-64 overflow-y-auto"
+            onMouseDown={e => e.preventDefault()}
+          >
+            {productoResults.map((prod: any, index: number) => (
+              <button
+                key={prod.codigo}
+                onClick={() => agregarProducto(prod)}
+                className={`text-left p-3 rounded-card border flex items-center justify-between gap-3 ${index === highlightedIndex ? 'border-[var(--primary)] bg-[var(--accent)]' : 'border-border hover:bg-[var(--accent)]'}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-xs text-[var(--body)]">{prod.codigo}</div>
+                  <div className="font-medium text-sm truncate">{prod.detalle}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-semibold">${Number(prod.prcventa).toFixed(2)}</div>
+                  <div className="text-xs text-[var(--body-subtle)]">stock: {prod.saldo}</div>
+                  <div className="text-[10px] text-[var(--body-subtle)] leading-none">
+                    {Math.floor(prod.saldo / prod.cantcaja)} cj{prod.saldo % prod.cantcaja > 0 ? ` + ${prod.saldo % prod.cantcaja}` : ''}
+                  </div>
+                </div>
+                <Plus className="w-4 h-4 text-[var(--success)] shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+        {showResults && !productoLoading && productoQuery.trim().length >= 2 && productoResults.length === 0 && (
+          <p className="text-sm text-[var(--body-subtle)]">Sin resultados para "{productoQuery}"</p>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col gap-3 animate-pulse">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-[var(--muted)] rounded-card" />
+          ))}
+        </div>
+      ) : prenota?.items?.length > 0 ? (
+        <>
+          {(() => {
+            const total = prenota.items.reduce(
+              (sum: number, item: any) => sum + Number(item.unidades) * Number(item.precio),
+              0
+            );
+            return (
+              <div className="flex flex-col items-end gap-0.5 px-1">
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-sm text-[var(--body)] font-medium">Total nota de venta:</span>
+                  <span className="text-lg font-bold text-[var(--heading)]">
+                    ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {formatArsEquivalente(total, dolarDia) && (
+                  <span className="text-xs text-[var(--body-subtle)]">
+                    {formatArsEquivalente(total, dolarDia)}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+          {/* ─── Estado de pago ─── */}
+          {prenota?.saldo_pendiente !== undefined && (
+            <div className="flex items-center justify-between gap-2 px-1 py-2 border-t">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-[var(--body)]">
+                  Pagado:{' '}
+                  <strong className="text-[var(--success)]">
+                    ${Number(prenota.total_pagado).toFixed(2)}
+                  </strong>
+                  {formatArsEquivalente(Number(prenota.total_pagado), dolarDia) && (
+                    <span className="block text-xs text-[var(--body-subtle)]">
+                      {formatArsEquivalente(Number(prenota.total_pagado), dolarDia)}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[var(--body)]">
+                  Pendiente:{' '}
+                  <strong className={Number(prenota.saldo_pendiente) <= 0.005 ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
+                    ${Number(prenota.saldo_pendiente).toFixed(2)}
+                  </strong>
+                  {formatArsEquivalente(Number(prenota.saldo_pendiente), dolarDia) && (
+                    <span className="block text-xs text-[var(--body-subtle)]">
+                      {formatArsEquivalente(Number(prenota.saldo_pendiente), dolarDia)}
+                    </span>
+                  )}
+                </span>
+                {prenota?.estado !== 'anulada' && Number(prenota.saldo_pendiente) <= 0.005 && (
+                  <Badge variant="success">
+                    Pagada
+                  </Badge>
+                )}
+                {prenota?.estado === 'anulada' && (
+                  <Badge variant="destructive">
+                    Anulada
+                  </Badge>
+                )}
+              </div>
+              {prenota?.estado !== 'anulada' && Number(prenota.saldo_pendiente) > 0.005 && (
+                <Button
+                  variant="success"
+                  onClick={() => setPagarOpen(true)}
+                >
+                  <DollarSign className="w-4 h-4 mr-1" /> Marcar como pagada
+                </Button>
+              )}
+              {prenota?.estado !== 'anulada' && prenota?.cliente_id && Number(prenota.cliente_saldo_favor) > 0.005 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setAplicarSaldoOpen(true)}
+                >
+                  Aplicar saldo a favor (${Number(prenota.cliente_saldo_favor).toFixed(2)})
+                </Button>
+              )}
+              {prenota?.estado !== 'anulada' && Number(prenota.total_pagado) > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!confirm('¿Reembolsar esta nota de venta? Esto anulará la nota y revertirá todos los pagos registrados.')) return;
+                    try {
+                      const res = await fetch(`/api/notas-venta/${id}/reembolsar`, { method: 'POST' });
+                      if (res.status === 400) {
+                        const body = await res.json();
+                        toast.error(body.mensaje || 'No hay pagos registrados para reembolsar');
+                        return;
+                      }
+                      if (res.status === 409) {
+                        const body = await res.json();
+                        toast.error(body.mensaje || 'La nota cambió, reintentar');
+                        return;
+                      }
+                      if (!res.ok) {
+                        toast.error('Error al procesar el reembolso');
+                        return;
+                      }
+                      const body = await res.json();
+                      toast.success(`Nota anulada y reembolsada — $${body.total_pagos_reembolsados} devueltos`);
+                      await fetchPrenota();
+                    } catch {
+                      toast.error('Error al procesar el reembolso');
+                    }
+                  }}
+                >
+                  <DollarSign className="w-4 h-4 mr-1" /> Reembolsar
+                </Button>
+              )}
+            </div>
+          )}
+          <PrenotaItemsTable items={prenota.items} onEliminar={eliminarItem} prenotaId={id} onActualizar={fetchPrenota} autoFocusItemId={autoFocusItemId} onAutoFocusConsumed={limpiarAutoFocus} dolarDia={dolarDia} db={db} offlineReady={OFFLINE_READ} />
+        </>
+      ) : (
+        <p className="text-[var(--body-subtle)]">No hay productos en esta nota de venta aún</p>
+      )}
+    </div>
+
+      {/* ─── Diálogo de pago ─── */}
+      <PagarNotaDialog
+        notaId={id}
+        saldoPendiente={prenota?.saldo_pendiente ?? 0}
+        open={pagarOpen}
+        onOpenChange={setPagarOpen}
+        onSuccess={fetchPrenota}
+      />
+
+      {/* ─── Diálogo de saldo a favor (Slice 3b) ─── */}
+      <AplicarSaldoFavorDialog
+        notaId={id}
+        saldoPendiente={prenota?.saldo_pendiente ?? 0}
+        saldoDisponible={Number(prenota?.cliente_saldo_favor ?? 0)}
+        open={aplicarSaldoOpen}
+        onOpenChange={setAplicarSaldoOpen}
+        onSuccess={fetchPrenota}
+      />
+    </>
+  );
+}

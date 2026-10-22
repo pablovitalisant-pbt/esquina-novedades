@@ -1,0 +1,126 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { sql } from '@/lib/db';
+import { authOptions } from '@/lib/auth';
+
+// POST /api/pedidos/[id]/convertir — convierte un pedido en Nota de Venta.
+//
+// Secuencial, NO atómico entre ítems (mismo comportamiento que cargar la nota
+// a mano): cada ítem descuenta stock por separado; si falla por stock, se omite
+// y sigue. El pedido queda 'convertido' aunque la conversión sea parcial (una
+// sola vía — no hay reconvertir). El ítem faltante lo agrega el vendedor luego
+// a mano desde /notas-venta/[id], donde ya puede editar precios.
+// ponytail: sin lock FOR UPDATE sobre el pedido — dos conversiones concurrentes
+// del mismo pedido podrían crear dos notas (mismo riesgo que el flujo manual);
+// si el throughput lo exige, serializar con un UPDATE estado='convertido' previo.
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  const rol = (session?.user as any)?.rol;
+  if (!session) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+  if (rol === 'bodeguero') {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+  }
+
+  try {
+    const { id } = await params;
+    const empresaId = 1; // single-tenant, Bazar Naty
+
+    // 1. Pedido pendiente?
+    const pedidoRows = await sql`
+      SELECT id, estado, cliente_id FROM public.pedidos WHERE id = ${id}
+    `;
+    if (pedidoRows.length === 0) {
+      return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
+    }
+    if (pedidoRows[0].estado !== 'pendiente') {
+      return NextResponse.json({ error: 'El pedido no está pendiente' }, { status: 409 });
+    }
+    const clienteId = pedidoRows[0].cliente_id;
+
+    // 2. Crear la prenota (misma numeración que POST /api/notas-venta)
+    const usuarioId = Number((session.user as any).id);
+    const usuarioNombre = (session.user as any).nombre;
+    const count = await sql`SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}`;
+    const n = Number((count as any)[0].count) + 1;
+    const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+    const titulo = `Nota de Venta #${n} de ${usuarioNombre} — ${fecha}`;
+    const prenotaRows = await sql`
+      INSERT INTO public.prenotas (titulo, titulo_base, usuario_id, cliente_id)
+      VALUES (${titulo}, ${titulo}, ${usuarioId}, ${clienteId})
+      RETURNING id
+    `;
+    const prenotaId = Number(prenotaRows[0].id);
+
+    // 3. Ítems del pedido → descuento de stock + prenota_items por ítem
+    const items = await sql`
+      SELECT codigo, detalle, cantidad, precio_referencia
+      FROM public.pedido_items
+      WHERE pedido_id = ${id}
+    `;
+
+    const convertidos: { codigo: string; cajas: number }[] = [];
+    const fallidos: { codigo: string; motivo: string; disponible: number; solicitado: number }[] = [];
+
+    for (const item of items) {
+      const codigo = item.codigo;
+      const cajas = Number(item.cantidad);
+
+      // cantcaja fresco de productos al momento de convertir (no se duplica en pedido_items)
+      const prod = await sql`
+        SELECT cantcaja, imagen_url FROM public.productos WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
+      `;
+      if (prod.length === 0) {
+        fallidos.push({ codigo, motivo: 'Producto no encontrado', disponible: 0, solicitado: cajas });
+        continue;
+      }
+      const cantcaja = Number(prod[0].cantcaja) || 1;
+      const unidades = cajas * cantcaja;
+
+      const updateRows = await sql`
+        UPDATE public.productos SET saldo = saldo - ${unidades}
+        WHERE codigo = ${codigo} AND empresa_id = ${empresaId} AND saldo >= ${unidades}
+        RETURNING saldo
+      `;
+      if (updateRows.length === 0) {
+        const current = await sql`
+          SELECT saldo FROM public.productos WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
+        `;
+        fallidos.push({
+          codigo,
+          motivo: 'Stock insuficiente',
+          disponible: current.length > 0 ? Number(current[0].saldo) : 0,
+          solicitado: unidades,
+        });
+        continue;
+      }
+
+      await sql`
+        UPDATE public.ubicaciones_bodega SET saldo = saldo - ${unidades}, updated_at = NOW()
+        WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
+      `;
+
+      await sql`
+        INSERT INTO public.prenota_items (prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio)
+        VALUES (${prenotaId}, ${codigo}, ${item.detalle ?? null}, ${prod[0].imagen_url ?? null}, ${empresaId}, ${cajas}, ${unidades}, ${item.precio_referencia ?? null})
+      `;
+
+      convertidos.push({ codigo, cajas });
+    }
+
+    // 4. Marcar pedido convertido (una sola vía), incluso con conversión parcial
+    await sql`
+      UPDATE public.pedidos SET estado = 'convertido', prenota_id = ${prenotaId}
+      WHERE id = ${id}
+    `;
+
+    return NextResponse.json(
+      { data: { prenota_id: prenotaId, convertidos, fallidos } },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

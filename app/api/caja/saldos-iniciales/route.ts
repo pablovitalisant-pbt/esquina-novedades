@@ -1,0 +1,93 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { sql } from "@/lib/db";
+import { NextResponse } from "next/server";
+import { CajaSaldoInicialSchema } from "@/docs/specs/caja-mayor.spec";
+
+function adminGuard(session: any) {
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const rol = (session.user as any).rol;
+  if (rol !== "admin") {
+    return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
+  }
+  return null;
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const g = adminGuard(session);
+  if (g) return g;
+
+  try {
+    const rows = await sql`
+      SELECT si.id, si.cuenta_id, cc.nombre AS cuenta_nombre, cc.moneda AS cuenta_moneda,
+        si.fecha::text, si.saldo, si.observaciones,
+        si.created_at::text
+      FROM caja_saldos_iniciales si
+      JOIN caja_cuentas cc ON cc.id = si.cuenta_id
+      ORDER BY cc.orden ASC
+    `;
+
+    const data = rows.map((r: any) => ({
+      id: r.id,
+      cuenta_id: r.cuenta_id,
+      cuenta_nombre: r.cuenta_nombre,
+      cuenta_moneda: r.cuenta_moneda as "USD" | "ARS",
+      fecha: r.fecha,
+      saldo: parseFloat(r.saldo),
+      observaciones: r.observaciones,
+      created_at: r.created_at,
+    }));
+
+    return NextResponse.json({ data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  const g = adminGuard(session);
+  if (g) return g;
+
+  try {
+    const body = await request.json();
+    const parsed = CajaSaldoInicialSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const { cuenta_id, fecha, saldo, observaciones } = parsed.data;
+    const creadoPor = (session!.user as any).nombre as string;
+
+    // UPSERT: solo un saldo inicial por cuenta
+    const rows = await sql`
+      INSERT INTO caja_saldos_iniciales (cuenta_id, fecha, saldo, observaciones, creado_por)
+      VALUES (${cuenta_id}, ${fecha}::date, ${saldo}, ${observaciones ?? null}, ${creadoPor})
+      ON CONFLICT (cuenta_id)
+      DO UPDATE SET fecha = EXCLUDED.fecha, saldo = EXCLUDED.saldo,
+        observaciones = EXCLUDED.observaciones
+      RETURNING id, cuenta_id, fecha::text, saldo, observaciones, creado_por, created_at::text
+    `;
+
+    // Fetch cuenta name/moneda
+    const cuentaRows = await sql`
+      SELECT nombre, moneda FROM caja_cuentas WHERE id = ${cuenta_id}
+    `;
+
+    const result = {
+      id: rows[0].id,
+      cuenta_id: rows[0].cuenta_id,
+      cuenta_nombre: cuentaRows[0]?.nombre || "",
+      cuenta_moneda: (cuentaRows[0]?.moneda || "USD") as "USD" | "ARS",
+      fecha: rows[0].fecha,
+      saldo: parseFloat(rows[0].saldo),
+      observaciones: rows[0].observaciones,
+      created_at: rows[0].created_at,
+    };
+
+    return NextResponse.json({ data: result }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

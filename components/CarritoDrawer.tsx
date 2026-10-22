@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,51 +12,73 @@ import {
 } from '@/components/ui/sheet';
 import { ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCarrito } from '@/contexts/CarritoContext';
+import { CarritoCheckoutForm, DatosCheckout, OpcionEntrega } from '@/components/CarritoCheckoutForm';
 import { formatCLP } from '@/lib/utils';
 
 /**
  * Carrito: trigger flotante (solo visible con items) + Sheet lateral con el
- * resumen, edición de cantidades y "Enviar pedido". El envío hace POST a
- * /api/pedidos; ante error conserva los items del visitante.
+ * resumen, edición de cantidades y checkout (contacto/entrega). El total
+ * mostrado es estimado: el servidor lo recalcula en 7e. Al POST solo se envían
+ * producto_id, modalidad y cantidad.
  */
 export function CarritoDrawer() {
-  const { contacto, items, origen, origen_slug, totalItems, actualizarCantidad, quitarItem, limpiar } =
+  const { contacto, items, origen, origen_slug, totalItems, actualizarCantidad, quitarItem, limpiar, setContacto } =
     useCarrito();
   const [open, setOpen] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [opciones, setOpciones] = useState<OpcionEntrega[]>([]);
+  const [checkout, setCheckout] = useState<DatosCheckout | null>(null);
 
-  // Total de la compra: Σ precio_referencia × cantcaja × cantidad (solo con precio)
-  const total = items.reduce((acc, i) => {
-    if (i.precio_referencia == null) return acc;
-    return acc + i.precio_referencia * i.cantcaja * i.cantidad;
-  }, 0);
-  const haySinPrecio = items.some((i) => i.precio_referencia == null);
+  useEffect(() => {
+    // Las opciones solo hacen falta al abrir el checkout.
+    if (!open) return;
+    let activo = true;
+    fetch('/api/entrega/opciones')
+      .then((res) => res.json())
+      .then((body) => {
+        if (activo && Array.isArray(body?.data)) setOpciones(body.data);
+      })
+      .catch(() => {
+        // sin opciones no se puede enviar; no romper el carrito
+      });
+    return () => {
+      activo = false;
+    };
+  }, [open]);
 
-  async function enviarPedido() {
+  // Total estimado: Σ precio de la modalidad × cantidad + costo de entrega.
+  const subtotal = items.reduce((acc, i) => (i.precio == null ? acc : acc + i.precio * i.cantidad), 0);
+  const costoEntrega = checkout?.opcion?.costo ?? 0;
+  const total = subtotal + costoEntrega;
+  const haySinPrecio = items.some((i) => i.precio == null);
+
+  async function enviarPedido(datos: DatosCheckout) {
     // Guard contra doble envío: ignora si ya hay un envío en curso.
-    if (!contacto || items.length === 0 || enviando) return;
+    if (items.length === 0 || enviando) return;
     setEnviando(true);
     try {
       const res = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nombre_contacto: contacto.nombre,
-          telefono_contacto: contacto.telefono,
+          nombre_contacto: datos.nombre,
+          telefono_contacto: datos.telefono,
+          email_contacto: datos.email,
           origen,
           origen_slug,
+          entrega_codigo: datos.entrega_codigo,
+          direccion_entrega: datos.opcion?.requiere_direccion ? datos.direccion_entrega : null,
           items: items.map((i) => ({
             producto_id: i.producto_id,
-            codigo: i.codigo,
-            detalle: i.detalle,
+            modalidad: i.modalidad,
             cantidad: i.cantidad,
-            precio_referencia: i.precio_referencia,
           })),
         }),
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
         toast.success('Pedido enviado');
+        setContacto({ nombre: datos.nombre, telefono: datos.telefono, email: datos.email });
         limpiar(); // conserva el contacto para un próximo pedido
         setOpen(false);
       } else {
@@ -97,17 +119,19 @@ export function CarritoDrawer() {
               <p className="text-sm text-[var(--body-subtle)] text-center py-10">Tu carrito está vacío.</p>
             )}
             {items.map((item) => {
-              const precioPorCaja = item.precio_referencia != null ? item.precio_referencia * item.cantcaja : null;
+              const subtotalItem = item.precio == null ? null : item.precio * item.cantidad;
               return (
                 <div
-                  key={item.producto_id}
+                  key={`${item.producto_id}-${item.modalidad}`}
                   className="flex items-start justify-between gap-3 border border-[var(--border-default)] rounded-xl p-3"
                 >
                   <div className="min-w-0">
                     <div className="font-mono text-xs text-[var(--body-subtle)]">{item.codigo}</div>
                     <div className="font-medium text-sm line-clamp-2">{item.detalle}</div>
-                    {precioPorCaja != null && (
-                      <div className="text-xs text-[var(--body-subtle)]">{formatCLP(precioPorCaja)} / caja</div>
+                    {item.precio != null && (
+                      <div className="text-xs text-[var(--body-subtle)]">
+                        {formatCLP(item.precio)} / {item.modalidad}
+                      </div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -115,7 +139,7 @@ export function CarritoDrawer() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad - 1)}
+                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad - 1, item.modalidad)}
                         aria-label="Disminuir"
                       >
                         <Minus className="w-4 h-4" />
@@ -124,20 +148,23 @@ export function CarritoDrawer() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad + 1)}
+                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad + 1, item.modalidad)}
                         aria-label="Aumentar"
                       >
                         <Plus className="w-4 h-4" />
                       </Button>
                     </div>
                     <div className="text-[10px] text-[var(--body-subtle)] text-right leading-tight">
-                      <div>{item.cantidad} caja{item.cantidad !== 1 ? 's' : ''}</div>
-                      <div>= {item.cantidad * item.cantcaja} unidades</div>
+                      <div>
+                        {item.cantidad} {item.modalidad === 'caja' ? `caja${item.cantidad !== 1 ? 's' : ''}` : `unidad${item.cantidad !== 1 ? 'es' : ''}`}
+                      </div>
+                      {item.modalidad === 'caja' && <div>= {item.cantidad * item.cantcaja} unidades</div>}
+                      {subtotalItem != null && <div className="font-bold text-[var(--heading)]">{formatCLP(subtotalItem)}</div>}
                     </div>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => quitarItem(item.producto_id)}
+                      onClick={() => quitarItem(item.producto_id, item.modalidad)}
                       aria-label="Quitar"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -146,22 +173,36 @@ export function CarritoDrawer() {
                 </div>
               );
             })}
+
+            <CarritoCheckoutForm
+              contacto={contacto}
+              opciones={opciones}
+              onCambio={setCheckout}
+              onSubmit={enviarPedido}
+            />
           </div>
 
           <div className="border-t border-[var(--border-default)] pt-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[var(--body-subtle)]">Subtotal</span>
+              <span data-testid="subtotal">{formatCLP(subtotal)}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[var(--body-subtle)]">Costo de entrega</span>
+              <span data-testid="costo-entrega">{formatCLP(costoEntrega)}</span>
+            </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-[var(--body-subtle)]">Total de la compra</span>
-              <div className="text-right">
-                <div className="text-lg font-bold">{formatCLP(total)}</div>
-              </div>
+              <span className="text-sm font-medium text-[var(--body-subtle)]">Total estimado</span>
+              <div className="text-lg font-bold" data-testid="total-estimado">{formatCLP(total)}</div>
             </div>
             {haySinPrecio && (
               <p className="text-xs text-[var(--body-subtle)]">algunos productos sin precio no incluidos</p>
             )}
             <Button
+              type="submit"
+              form="checkout-form"
               className="w-full"
               disabled={enviando || items.length === 0}
-              onClick={enviarPedido}
             >
               {enviando ? 'Enviando…' : 'Enviar pedido'}
             </Button>

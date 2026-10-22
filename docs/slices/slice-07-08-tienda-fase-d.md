@@ -68,3 +68,24 @@
 - Fase D (`npx jest` sobre el corte + co-ubicados/relacionados `carrito`, `catalogo-print`, `catalog-footer`, `slice2a-clp`, `pedidos-precios-server`, `ProductCard`): **7 suites, 64 tests, verde**.
 - `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
 - `CarritoDrawer` sigue mostrando el precio legacy (`precio_referencia`); su adaptación a modalidad/subtotal corresponde a 7d.
+
+## Sub-slice 7d — Checkout con entrega
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §3.1–3.2 (fila 7d) y §9 (tests UI 33–35).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `components/CarritoGateModal.tsx` | modificado | Email obligatorio (no vacío y con `@`); se guarda en `ContactoCarrito`. |
+| `components/CarritoCheckoutForm.tsx` | nuevo | Formulario de checkout: contacto editable, opción de entrega (costo incluido en el label), dirección solo si `requiere_direccion`, nota de la opción (Arica: se paga al chofer) y validación cliente. Emite `DatosCheckout` al drawer. |
+| `components/CarritoDrawer.tsx` | modificado | Carga opciones desde `GET /api/entrega/opciones` al abrir; líneas por modalidad con subtotal y edición/borrado por `producto_id + modalidad`; subtotal, costo de entrega y total estimado; el POST envía solo `producto_id`, `modalidad` y `cantidad` (sin precios ni total), más contacto y entrega. |
+| `__tests__/checkout-entrega.test.tsx` | nuevo | 6 casos: email obligatorio en el gate, carga de opciones, delivery sin/con dirección, retiro sin dirección + body sin precios, subtotal/costo/total estimado, nota de Arica. |
+| `__tests__/carrito.test.tsx` | modificado | Seeds con email, mock de opciones, selección de retiro antes de enviar; totales leídos por `data-testid` (las aserciones de precio/caja siguen iguales). |
+
+### Resultados
+
+- Fase B: `npx jest __tests__/checkout-entrega.test.tsx` → **rojo por la razón correcta**: 6/6 fallan porque el drawer no tenía selector de entrega ni checkout (los items se mostraban con el formato legacy).
+- Fase D (`npx jest` sobre el corte + co-ubicados/relacionados `carrito`, `tienda-modalidad`, `slice2a-clp`, `catalog-footer`, `catalogo-print`): **6 suites, 50 tests, verde**.
+- `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
+- El total del drawer es estimado: el servidor lo recalcula y valida entrega/dirección en 7e. Suite completa: la corre el Director Técnico.

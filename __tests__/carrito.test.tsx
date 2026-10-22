@@ -33,7 +33,34 @@ function TotalProbe() {
   );
 }
 
-function Seed({ contacto, items }: { contacto?: { nombre: string; telefono: string }; items?: ItemCarrito[] }) {
+const OPCIONES = {
+  data: [
+    { codigo: 'retiro', nombre: 'Retiro en tienda', costo: 0, requiere_direccion: false, nota: null },
+    { codigo: 'delivery_iquique', nombre: 'Delivery Iquique', costo: 3000, requiere_direccion: true, nota: null },
+  ],
+};
+
+// El drawer pide opciones al montar; el POST es el que este test controla.
+function mockFetch(post: any) {
+  const fetchMock = jest.fn((url: any) => {
+    if (String(url).includes('/api/entrega/opciones')) {
+      return Promise.resolve({ ok: true, json: async () => OPCIONES });
+    }
+    return post;
+  });
+  (global as any).fetch = fetchMock;
+  return fetchMock;
+}
+
+const posts = (fetchMock: jest.Mock) =>
+  fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/pedidos')).length;
+
+async function elegirRetiro() {
+  await screen.findByRole('option', { name: /Retiro en tienda/ });
+  fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'retiro' } });
+}
+
+function Seed({ contacto, items }: { contacto?: { nombre: string; telefono: string; email?: string }; items?: ItemCarrito[] }) {
   const { setContacto, agregarItem } = useCarrito();
   useEffect(() => {
     if (contacto) setContacto(contacto);
@@ -124,9 +151,10 @@ describe('Gate obligatorio (BotonAgregarPedido)', () => {
     await waitFor(() => expect(screen.getByText(/a qué nombre armamos el pedido/i)).toBeInTheDocument());
     expect(screen.getByTestId('total').textContent).toBe('0');
 
-    // Confirmar el gate con nombre+teléfono
+    // Confirmar el gate con nombre+teléfono+email
     fireEvent.change(screen.getByPlaceholderText('Tu nombre'), { target: { value: 'Juana Pérez' } });
     fireEvent.change(screen.getByPlaceholderText('+591 700 12345'), { target: { value: '+591 700 12345' } });
+    fireEvent.change(screen.getByPlaceholderText('tu@email.com'), { target: { value: 'juana@mail.com' } });
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
 
     // El item pendiente se agrega recién tras confirmar
@@ -151,19 +179,19 @@ describe('Gate obligatorio (BotonAgregarPedido)', () => {
 
     // Submit con todo vacío → error, no se agrega
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
-    expect(screen.getByText(/completá tu nombre y teléfono/i)).toBeInTheDocument();
+    expect(screen.getByText(/completá tu nombre, teléfono y email/i)).toBeInTheDocument();
     expect(screen.getByTestId('total').textContent).toBe('0');
   });
 });
 
 // ─── R2 Doble envío ───────────────────────────────────────────────────
 describe('R2 — Guard contra doble envío (CarritoDrawer)', () => {
-  it('dos clics en "Enviar pedido" mientras carga → un solo fetch', async () => {
-    (global as any).fetch = jest.fn(() => new Promise(() => {})); // nunca resuelve
+  it('dos clics en "Enviar pedido" mientras carga → un solo POST', async () => {
+    const fetchMock = mockFetch(new Promise(() => {})); // el POST nunca resuelve
 
     render(
       <CarritoProvider origen="catalogo" origen_slug="juegos">
-        <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, ITEM_B]} />
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A, ITEM_B]} />
         <CarritoDrawer />
       </CarritoProvider>
     );
@@ -171,27 +199,28 @@ describe('R2 — Guard contra doble envío (CarritoDrawer)', () => {
     // Abrir el drawer (el trigger aparece con items)
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
 
     const enviar = await screen.findByRole('button', { name: /enviar pedido/i });
     fireEvent.click(enviar);
     fireEvent.click(enviar);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(posts(fetchMock)).toBe(1));
   });
 });
 
 // ─── R4 API falla → no pierde items ───────────────────────────────────
 describe('R4 — Error del POST conserva los items', () => {
   it('respuesta 400/500 → toast.error y los items siguen en el carrito', async () => {
-    (global as any).fetch = jest.fn().mockResolvedValue({
+    mockFetch(Promise.resolve({
       ok: false,
       status: 400,
       json: async () => ({ error: 'Telefono requerido' }),
-    });
+    }));
 
     render(
       <CarritoProvider origen="productos">
-        <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, ITEM_B]} />
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A, ITEM_B]} />
         <CarritoDrawer />
         <TotalProbe />
       </CarritoProvider>
@@ -199,6 +228,7 @@ describe('R4 — Error del POST conserva los items', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
 
     const enviar = await screen.findByRole('button', { name: /enviar pedido/i });
     fireEvent.click(enviar);
@@ -209,15 +239,15 @@ describe('R4 — Error del POST conserva los items', () => {
   });
 
   it('respuesta 201 → toast.success, limpia items y conserva contacto', async () => {
-    (global as any).fetch = jest.fn().mockResolvedValue({
+    mockFetch(Promise.resolve({
       ok: true,
       status: 201,
       json: async () => ({ data: { id: 'x' } }),
-    });
+    }));
 
     render(
       <CarritoProvider origen="productos">
-        <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A]} />
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A]} />
         <CarritoDrawer />
         <TotalProbe />
       </CarritoProvider>
@@ -225,6 +255,7 @@ describe('R4 — Error del POST conserva los items', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
 
     const enviar = await screen.findByRole('button', { name: /enviar pedido/i });
     fireEvent.click(enviar);
@@ -276,8 +307,8 @@ describe('Total de la compra en el Drawer', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
-    // ITEM_A 5*6*1=30, ITEM_B 9*12*2=216 → total 246 → "$246.00"
-    await screen.findByText('$246');
+    // ITEM_A 30*1=30, ITEM_B 108*2=216 → total 246
+    await waitFor(() => expect(screen.getByTestId('subtotal').textContent).toBe('$246'));
   });
 
   it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
@@ -296,8 +327,8 @@ describe('Total de la compra en el Drawer', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
-    // Solo ITEM_A cuenta: 5*6*1=30 → "$30.00"
-    await screen.findByText('$30');
+    // Solo ITEM_A cuenta: 30*1=30
+    await waitFor(() => expect(screen.getByTestId('subtotal').textContent).toBe('$30'));
     expect(screen.getByText(/algunos productos sin precio no incluidos/i)).toBeInTheDocument();
   });
 });

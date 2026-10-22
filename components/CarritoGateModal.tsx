@@ -15,9 +15,9 @@ import { Label } from '@/components/ui/label';
 import type { ContactoCarrito } from '@/contexts/CarritoContext';
 
 /**
- * Gate obligatorio: pide nombre+teléfono la primera vez (patrón Form Modal
- * de design-skill/modals.md). Al confirmar llama onConfirm; la validación
- * replica la del backend (ambos campos no vacíos tras trim).
+ * Gate obligatorio: pide nombre+teléfono+email la primera vez (patrón Form
+ * Modal de design-skill/modals.md). Al confirmar llama onConfirm; la
+ * validación replica la del backend (campos no vacíos y email con @).
  */
 export function CarritoGateModal({
   open,
@@ -30,19 +30,26 @@ export function CarritoGateModal({
 }) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const n = nombre.trim();
     const t = telefono.trim();
-    if (!n || !t) {
-      setError('Completá tu nombre y teléfono para continuar.');
+    const m = email.trim();
+    if (!n || !t || !m) {
+      setError('Completá tu nombre, teléfono y email para continuar.');
       return;
     }
-    onConfirm({ nombre: n, telefono: t });
+    if (!m.includes('@')) {
+      setError('Ingresá un email válido.');
+      return;
+    }
+    onConfirm({ nombre: n, telefono: t, email: m });
     setNombre('');
     setTelefono('');
+    setEmail('');
     setError(null);
   }
 
@@ -77,6 +84,17 @@ export function CarritoGateModal({
                 placeholder="+591 700 12345"
                 inputMode="tel"
                 autoComplete="tel"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="gate-email">Email</Label>
+              <Input
+                id="gate-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                autoComplete="email"
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}

@@ -96,8 +96,8 @@ describe('Migracion 040', () => {
     expect(sqlText()).toMatch(/ADD COLUMN IF NOT EXISTS precio_mayor INTEGER NULL/);
     expect(sqlText()).toMatch(/precio_mayor IS NULL OR precio_mayor > 0/);
   });
-  it('queda al final de MIGRATION_ORDER', () => {
+  it('se agrega al final de MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('041_prenota_items_modalidad_subtotal.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('042_opciones_entrega_checkout.sql');
   });
 });

@@ -50,12 +50,13 @@ describe('5a — subtotal', () => {
     expect(s).not.toMatch(/unidades\)?\s*\*\s*(Number\()?[\w.]*precio/);
   });
 
-  it('migracion 041 idempotente con CHECK y GENERATED STORED, ultima en el orden', () => {
+  it('migracion 041 idempotente con CHECK y GENERATED STORED, presente en el orden', () => {
     const s = read('migrations/041_prenota_items_modalidad_subtotal.sql');
     expect(s).toContain('IF NOT EXISTS');
     expect(s).toContain("CHECK (modalidad IN ('unidad','caja'))");
     expect(s).toMatch(/GENERATED ALWAYS AS[\s\S]*STORED/);
-    expect(read('scripts/migrations-order.ts')).toMatch(/041_prenota_items_modalidad_subtotal\.sql',\s*\];/);
+    const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
+    expect(MIGRATION_ORDER).toContain('041_prenota_items_modalidad_subtotal.sql');
   });
 });
 

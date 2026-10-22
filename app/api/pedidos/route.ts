@@ -5,11 +5,51 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { calcularPedido, ErrorPrecio, type OpcionEntrega, type Origen, type ProductoPrecio } from '@/lib/pedidos/precios';
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
+import { crearPreferenciaPedido } from '@/lib/pedidos/preferencia';
+import { rechazarPedido } from '@/lib/pedidos/rechazar';
+import { mpAccessToken, siteUrl } from '@/lib/mercadopago/config';
 import { precioCatalogoBase } from '@/lib/precio-catalogo';
 import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
 import flags from '@/config/feature-flags.json';
 
 const ORIGENES = ['productos', 'catalogo'] as const;
+
+const ERROR_PAGO = 'No se pudo iniciar el pago. Intenta nuevamente.';
+
+/** Slice 9c — preflight MP: sin config no se reserva stock. */
+async function pagoOnlineConfigurado(): Promise<boolean> {
+  try {
+    mpAccessToken();
+    siteUrl();
+  } catch {
+    return false;
+  }
+  const [config] = await sql`SELECT valor FROM public.caja_config WHERE clave = 'mp_cuenta_id'`;
+  const cuentaId = Number(config?.valor);
+  if (!Number.isInteger(cuentaId) || cuentaId <= 0) return false;
+  const [cuenta] = await sql`
+    SELECT id FROM public.caja_cuentas WHERE id = ${cuentaId} AND activa = true
+  `;
+  return Boolean(cuenta);
+}
+
+/** Replay de Idempotency-Key con pago online: reusa el init point guardado. */
+async function responderReplay(pedido: any, pagoOnline: boolean) {
+  if (!pagoOnline) return NextResponse.json({ data: pedido }, { status: 200 });
+  if (pedido.estado !== 'pendiente_pago') {
+    return NextResponse.json({ data: pedido }, { status: 200 });
+  }
+  if (pedido.mp_init_point) {
+    return NextResponse.json({ data: { ...pedido, init_point: pedido.mp_init_point } }, { status: 200 });
+  }
+  try {
+    const { initPoint } = await crearPreferenciaPedido(pedido.id);
+    return NextResponse.json({ data: { ...pedido, init_point: initPoint } }, { status: 200 });
+  } catch {
+    // No se castiga una reserva viva por un replay.
+    return NextResponse.json({ error: ERROR_PAGO, pedido_id: pedido.id }, { status: 502 });
+  }
+}
 
 // Slice unicidad: match por teléfono normalizado a dígitos. El INSERT de
 // cliente se hace standalone con captura de 23505: si dos requests concurrentes
@@ -70,10 +110,6 @@ export async function POST(request: NextRequest) {
 
     // ─── Reserva online (flag) + idempotencia ───────────────────────
     const pagoOnline = flags['tienda-pago-online'] === true;
-    if (pagoOnline) {
-      // Llamada perezosa antes de descontar: nunca reservar sobre stock sucio.
-      await liberarReservasVencidas();
-    }
 
     const idempotencyKey = (
       request.headers.get('idempotency-key')
@@ -81,14 +117,27 @@ export async function POST(request: NextRequest) {
     ).trim() || null;
     if (idempotencyKey) {
       const existentes = await sql`
-        SELECT id, cliente_id, estado, created_at::text, total
+        SELECT id, cliente_id, estado, created_at::text, total,
+               expira_en::text, mp_init_point
         FROM public.pedidos
         WHERE idempotency_key = ${idempotencyKey}
         LIMIT 1
       `;
       if (existentes[0]) {
-        return NextResponse.json({ data: existentes[0] }, { status: 200 });
+        return responderReplay(existentes[0], pagoOnline);
       }
+    }
+
+    if (pagoOnline) {
+      // Sin config de MP no se reserva nada (ni pedido ni stock).
+      if (!(await pagoOnlineConfigurado())) {
+        return NextResponse.json(
+          { error: 'El pago online no está configurado. Contacta a la tienda.' },
+          { status: 503 },
+        );
+      }
+      // Llamada perezosa antes de descontar: nunca reservar sobre stock sucio.
+      await liberarReservasVencidas();
     }
 
     // ─── Lectura de productos, entrega y precio de catálogo ─────────
@@ -100,7 +149,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const opciones = await sql`
-      SELECT codigo, costo, requiere_direccion, activa
+      SELECT codigo, nombre, costo, requiere_direccion, activa
       FROM public.opciones_entrega
       WHERE codigo = ${entregaCodigo}
     `;
@@ -216,7 +265,7 @@ export async function POST(request: NextRequest) {
               ${idempotencyKey}, ${pagoOnline ? 'pendiente_pago' : 'pendiente'}, ${pagoOnline},
               CASE WHEN ${pagoOnline} THEN NOW() + INTERVAL '36 hours' ELSE NULL END,
               ${calculado.total})
-      RETURNING id, cliente_id, estado, created_at::text, total
+      RETURNING id, cliente_id, estado, created_at::text, total, expira_en::text
     `);
     for (const linea of calculado.lineas) {
       queries.push(sql`
@@ -257,12 +306,13 @@ export async function POST(request: NextRequest) {
       // el pedido que ganó la carrera sin reservar de nuevo.
       if (idempotencyKey && String(error?.code) === '23505') {
         const [existente] = await sql`
-          SELECT id, cliente_id, estado, created_at::text, total
+          SELECT id, cliente_id, estado, created_at::text, total,
+                 expira_en::text, mp_init_point
           FROM public.pedidos
           WHERE idempotency_key = ${idempotencyKey}
           LIMIT 1
         `;
-        if (existente) return NextResponse.json({ data: existente }, { status: 200 });
+        if (existente) return responderReplay(existente, pagoOnline);
       }
       if (String(error?.code) === '22012') {
         // Rollback ya deshizo lo nuestro: releemos el saldo real para el detalle.
@@ -282,16 +332,30 @@ export async function POST(request: NextRequest) {
       throw error;
     }
     const pedido = results[0][0];
+    const data: any = {
+      id: pedido.id,
+      cliente_id: pedido.cliente_id,
+      estado: pedido.estado,
+      created_at: pedido.created_at,
+      total: pedido.total,
+      expira_en: pedido.expira_en,
+    };
 
-    return NextResponse.json({
-      data: {
-        id: pedido.id,
-        cliente_id: pedido.cliente_id,
-        estado: pedido.estado,
-        created_at: pedido.created_at,
-        total: pedido.total,
-      },
-    }, { status: 201 });
+    if (pagoOnline) {
+      try {
+        const { initPoint } = await crearPreferenciaPedido(pedido.id);
+        data.init_point = initPoint;
+      } catch {
+        // Slice 9c: no dejar stock retenido por un pedido que nunca podrá pagarse.
+        await rechazarPedido(pedido.id);
+        return NextResponse.json({
+          error: 'No se pudo iniciar el pago. El pedido fue cancelado y el stock liberado. Intenta nuevamente.',
+          pedido_id: pedido.id,
+        }, { status: 502 });
+      }
+    }
+
+    return NextResponse.json({ data }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

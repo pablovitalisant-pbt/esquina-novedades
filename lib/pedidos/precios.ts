@@ -28,6 +28,8 @@ export interface ProductoPrecio {
 
 export interface OpcionEntrega {
   codigo: string;
+  /** Slice 9c: nombre visible para el ítem de despacho de la preferencia. */
+  nombre?: string | null;
   costo: number | string;
   requiere_direccion: boolean;
   activa?: boolean;

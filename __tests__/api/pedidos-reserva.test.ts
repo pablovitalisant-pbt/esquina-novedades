@@ -11,6 +11,11 @@ const sql = jest.fn();
 const sqlTransaction = jest.fn();
 
 jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': true }));
+jest.mock('@/lib/pedidos/preferencia', () => ({
+  crearPreferenciaPedido: jest.fn(async () => ({
+    preferenceId: 'pref-1', initPoint: 'https://mp/sandbox',
+  })),
+}));
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
   mockSql.transaction = (...args: any[]) => sqlTransaction(...args);
@@ -42,6 +47,9 @@ let pedidoExistente: any;
 const setupSql = () => sql.mockImplementation((strings: any, ...values: any[]) => {
   const q = strings.join('');
   if (q.includes('WITH vencidos')) return [{ liberados: 0, unidades: 0 }];
+  // Slice 9c: preflight de pago online configurado.
+  if (q.includes('FROM public.caja_config')) return [{ valor: '1' }];
+  if (q.includes('FROM public.caja_cuentas')) return [{ id: 1 }];
   if (q.includes('FROM public.pedidos') && q.includes('idempotency_key')) return pedidoExistente ? [pedidoExistente] : [];
   if (q.includes('SELECT id, codigo, saldo FROM public.productos')) {
     return productos.map((p) => ({ id: p.id, codigo: p.codigo, saldo: saldoDiagnostico }));
@@ -58,6 +66,8 @@ const txQuery = (fragment: string) => (sqlTransaction.mock.calls[0][0] as any[])
 
 beforeEach(() => {
   jest.clearAllMocks();
+  process.env.MP_ACCESS_TOKEN = 'TEST-token';
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://tienda.example.com';
   productos = [{ ...PRODUCTO }];
   saldoDiagnostico = 0;
   pedidoExistente = null;

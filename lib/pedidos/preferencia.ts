@@ -1,4 +1,7 @@
 /** Slice 9b — preferencia armada desde DB (nunca desde el body). Funciones puras. */
+import { Preference } from 'mercadopago';
+import { sql } from '@/lib/db';
+import { elegirInitPoint, mpConfig, siteUrl } from '@/lib/mercadopago/config';
 export interface LineaPreferencia {
   producto_id: number;
   codigo: string;
@@ -71,4 +74,47 @@ export function construirPreferencia(
     // Viene de pedidos.expira_en (leído de DB), no de un +36 h recalculado.
     expiration_date_to: expira.toISOString(),
   };
+}
+
+/**
+ * Slice 9c — relee pedido e ítems desde DB (nunca del body), crea la
+ * preferencia con idempotencyKey = pedido.id y persiste id + init point
+ * solo si el pedido sigue `pendiente_pago`.
+ */
+export async function crearPreferenciaPedido(
+  pedidoId: string,
+): Promise<{ preferenceId: string; initPoint: string }> {
+  const [pedido] = await sql`
+    SELECT p.id, p.email_contacto, p.entrega_codigo, p.entrega_costo,
+           p.expira_en::text AS expira_en, o.nombre AS entrega_nombre
+    FROM public.pedidos p
+    LEFT JOIN public.opciones_entrega o ON o.codigo = p.entrega_codigo
+    WHERE p.id = ${pedidoId}
+  `;
+  if (!pedido) throw new Error('pedido inexistente para la preferencia');
+
+  const lineas = await sql`
+    SELECT producto_id, codigo, detalle, cantidad, precio
+    FROM public.pedido_items
+    WHERE pedido_id = ${pedidoId}
+  `;
+
+  const body = construirPreferencia(
+    pedido as PedidoPreferencia,
+    lineas as LineaPreferencia[],
+    siteUrl(),
+  );
+  const preferencia = await new Preference(mpConfig()).create({
+    body,
+    requestOptions: { idempotencyKey: pedidoId },
+  });
+  if (!preferencia.id) throw new Error('Mercado Pago no devolvió el id de la preferencia');
+  const initPoint = elegirInitPoint(preferencia);
+
+  await sql`
+    UPDATE public.pedidos
+    SET mp_preference_id = ${preferencia.id}, mp_init_point = ${initPoint}
+    WHERE id = ${pedidoId} AND estado = 'pendiente_pago'
+  `;
+  return { preferenceId: preferencia.id, initPoint };
 }

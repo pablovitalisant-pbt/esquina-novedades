@@ -22,3 +22,24 @@
 - `npx jest` (tests del corte + co-ubicados/relacionados: `entrega-opciones`, `slice5ab-modalidad`, `productos-precio-mayor`, `slice-00-schema`): **4 suites, 83 tests, verde**.
 - `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
 - Suite completa y migración contra Neon: pendientes del Director Técnico.
+
+## Sub-slice 7b — Cálculo server-side de precios y totales
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §1, §6 y sub-slice 7b.
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `lib/pedidos/precios.ts` | nuevo | Puro y testeable: `calcularLinea` (unidad/caja, precio desde `productos`, unidades de stock) y `calcularPedido` (valida entrega/dirección y calcula `total = Σ subtotales + entrega_costo`). Ignora por construcción cualquier precio/total del body. `ErrorPrecio` para 400. Origen `catalogo` exige el precio ya resuelto con `precioCatalogoBase` y lo redondea a CLP entero. |
+| `lib/precio-catalogo.ts` | nuevo | `precioCatalogoBase(costo, margen)`: fórmula extraída 1:1 de `page.tsx` (ceil a 1 decimal). Única fuente para la página y el checkout. |
+| `app/catalogo/[slug]/page.tsx` | modificado | Usa `precioCatalogoBase` en lugar de la fórmula inline. Resultado idéntico; override se mantiene igual. |
+| `__tests__/api/pedidos-precios-server.test.ts` | nuevo | 10 casos: precio manipulado ignorado, caja sin `precio_mayor`/`cantcaja`, caja factura `cantidad * cantcaja` unidades, delivery sin dirección, retiro sin dirección, opción inactiva, total con entrega, misma fórmula de catálogo y redondeo CLP. |
+| `docs/slices/slice-07-08-tienda-fase-d.md` | modificado | Esta sección. |
+
+### Resultados
+
+- `npx jest __tests__/api/pedidos-precios-server.test.ts`: **1 suite, 10 tests, verde**.
+- Relacionados/co-ubicados: `productos-softdelete-impacto-lateral`, `slice-audit-ponytail-yagni`, `slice2a-clp` → verde. `catalogo-precio-override` no corre en este entorno: su `beforeAll` requiere filas en `catalogos` de la BD de integración y falla antes de importar código del corte (preexistente, no causado por 7b).
+- `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
+- POST `/api/pedidos` aún no consume este módulo (corresponde a 7e). Suite completa: la corre el Director Técnico.

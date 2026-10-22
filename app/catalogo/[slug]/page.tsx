@@ -3,6 +3,7 @@ import { PublicCatalogoClient } from "./client_page";
 import { sql } from "@/lib/db";
 import { filterProducts, type CatalogoProducto } from "@/app/api/catalogos/public/[slug]/filter-products";
 import { getLatestIngresoRealCodigos } from "@/utils/catalogo-ingreso";
+import { precioCatalogoBase } from "@/lib/precio-catalogo";
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +110,7 @@ export async function getCatalogData(slug: string) {
 
     productos = productos.map((p: any) => {
       const precioBase = mostrarPrecio
-        ? Math.ceil(parseFloat(p.costo) * (1 + margen / 100) * 10) / 10
+        ? precioCatalogoBase(parseFloat(p.costo), margen)
         : null;
       const precioOverride = mostrarPrecio
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)

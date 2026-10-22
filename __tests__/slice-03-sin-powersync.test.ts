@@ -33,6 +33,9 @@ const MIGRADOS = [
   '__tests__/notas-venta-guardar-offline.test.tsx',
   '__tests__/notas-venta-compartir-whatsapp.test.tsx',
   '__tests__/notas-venta-exportar-pdf.test.tsx',
+  'app/(app)/caja-mayor/client_page.tsx',
+  'app/(app)/caja-mayor/client_page.test.tsx',
+  '__tests__/caja-mayor-bug054-ui.test.tsx',
 ];
 const PROHIBIDO = /@powersync|lib\/powersync|usePowerSync|OFFLINE_READ|wa-sqlite|offline-lectura|alertas-badge-offline/;
 

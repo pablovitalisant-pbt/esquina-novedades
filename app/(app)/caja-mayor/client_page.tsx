@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { usePowerSync } from "@powersync/react";
-import { PowerSyncProvider } from "@/lib/powersync/PowerSyncProvider";
-import flags from "@/config/feature-flags.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +19,7 @@ interface ClienteOption {
   ultima_compra: string;
 }
 
-// CajaMayorClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → no se abre la conexión de sync y
-// el comportamiento actual (fetch a /api/caja/movimientos y resumen-cuentas)
-// no cambia. El guard de rol lo hace el middleware (bodeguero no tiene acceso
-// a /caja-mayor).
+// El guard de rol lo hace el middleware (bodeguero no tiene acceso a /caja-mayor).
 export function CajaMayorClient({
   dolarDia,
   cuentas,
@@ -40,33 +33,6 @@ export function CajaMayorClient({
   userRol: string;
   userId: number;
 }) {
-  const OFFLINE_READ = (flags as any)["caja-mayor-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <CajaMayorContent dolarDia={dolarDia} cuentas={cuentas} userName={userName} userRol={userRol} userId={userId} />
-      </PowerSyncProvider>
-    );
-  }
-  return <CajaMayorContent dolarDia={dolarDia} cuentas={cuentas} userName={userName} userRol={userRol} userId={userId} />;
-}
-
-function CajaMayorContent({
-  dolarDia,
-  cuentas,
-  userName,
-  userRol,
-  userId,
-}: {
-  dolarDia: number;
-  cuentas: Cuenta[];
-  userName: string;
-  userRol: string;
-  userId: number;
-}) {
-  const OFFLINE_READ = (flags as any)["caja-mayor-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   // BUG-054 (Parte 3): estado de conexión en vivo. "Cierre de caja" requiere
   // red (escribe a Postgres), así que se bloquea offline. Se actualiza con
   // listeners online/offline, sin recargar.
@@ -101,16 +67,6 @@ function CajaMayorContent({
 
   useEffect(() => {
     async function refrescarDolar() {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): el valor queda "capturado" en el estado —
-        // es lo que el usuario ve en el formulario al registrar (Slice 11b).
-        const row = await db.get<{ valor: string }>(
-          `SELECT valor FROM caja_config WHERE clave = 'dolar_dia'`
-        );
-        const valor = parseFloat(row?.valor ?? '0');
-        if (valor > 0) setDolarVigente(valor);
-        return;
-      }
       try {
         const res = await fetch("/api/caja/config");
         if (res.ok) {
@@ -185,121 +141,6 @@ function CajaMayorContent({
   const fetchMovimientos = useCallback((page = 1) => {
     setMovsLoading(true);
 
-    if (OFFLINE_READ && db) {
-      // Lectura local (flag on): replica GET /api/caja/movimientos tal cual —
-      // filtros NULL-safe, ORDER BY fecha/id DESC, LIMIT/OFFSET, GROUP_CONCAT
-      // para notas_imputadas (SQLite no tiene ARRAY_AGG) y merge de cierres en
-      // rango. Sin filtro de empresa_id (single-tenant).
-      (async () => {
-        try {
-          const limit = 50;
-          const offset = (page - 1) * limit;
-          const f = filtros;
-          const cuentaId = f.cuenta_id ? parseInt(f.cuenta_id, 10) : null;
-          const monedaF = f.moneda || null;
-          const tipoF = f.tipo || null;
-          const empresaF = f.empresa || null;
-          const desde = f.desde || null;
-          const hasta = f.hasta || null;
-
-          const whereSql = `(? IS NULL OR m.cuenta_id = ?)
-            AND (? IS NULL OR m.moneda = ?)
-            AND (? IS NULL OR m.tipo = ?)
-            AND (? IS NULL OR m.empresa = ?)
-            AND (? IS NULL OR m.fecha >= ?)
-            AND (? IS NULL OR m.fecha <= ?)`;
-          const whereParams = [
-            cuentaId, cuentaId, monedaF, monedaF, tipoF, tipoF, empresaF, empresaF,
-            desde, desde, hasta, hasta,
-          ];
-
-          const rows = (await db.getAll(
-            `SELECT m.id, m.fecha, m.tipo, m.kcodcli2 AS cliente_id, m.nombre_cliente,
-               m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.monto_usd,
-               m.tipo_cambio, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
-               COALESCE((SELECT GROUP_CONCAT(cmn.prenota_id) FROM caja_movimiento_notas cmn WHERE cmn.movimiento_id = m.id), '') AS notas_imputadas,
-               m.usuario_id, m.usuario_nombre, m.created_at, m.updated_at
-             FROM caja_movimientos m
-             JOIN caja_cuentas cc ON cc.id = m.cuenta_id
-             WHERE ${whereSql}
-             ORDER BY m.fecha DESC, m.id DESC
-             LIMIT ? OFFSET ?`,
-            [...whereParams, limit, offset]
-          )) as any[];
-
-          const countRow = (await db.get(
-            `SELECT COUNT(*) AS total FROM caja_movimientos m WHERE ${whereSql}`,
-            whereParams
-          )) as any;
-          const total = Number(countRow?.total ?? 0);
-
-          const dataRows: MovimientoConCuenta[] = (rows || []).map((r) => ({
-            ...r,
-            es_credito: !!r.es_credito,
-            notas_imputadas: r.notas_imputadas ? String(r.notas_imputadas).split(",").filter(Boolean) : [],
-          }));
-
-          // cierres en rango de fechas (minFecha/maxFecha, mismo default que la API)
-          const minFecha = desde || "2000-01-01";
-          const maxFecha = hasta || new Date().toISOString().slice(0, 10);
-          let cierresEnRango: CierrePeriodo[] = [];
-          try {
-            const cierresRows = (await db.getAll(
-              `SELECT id, fecha_desde, fecha_hasta, resumen, usuario_id, usuario_nombre, created_at
-               FROM caja_cierres
-               WHERE fecha_hasta >= ? AND fecha_desde <= ?
-               ORDER BY fecha_hasta ASC`,
-              [minFecha, maxFecha]
-            )) as any[];
-            cierresEnRango = (cierresRows || []).map((r: any) => ({
-              id: r.id,
-              fecha_desde: r.fecha_desde,
-              fecha_hasta: r.fecha_hasta,
-              resumen: typeof r.resumen === "string" ? JSON.parse(r.resumen) : r.resumen,
-              usuario_id: r.usuario_id,
-              usuario_nombre: r.usuario_nombre,
-              created_at: r.created_at,
-            }));
-          } catch {
-            cierresEnRango = [];
-          }
-
-          // merge (mismo algoritmo de intercalación que la API)
-          const data: MovimientoOCierre[] = dataRows.map((row) => ({ tipo_fila: "movimiento", data: row }));
-          const fechas = dataRows.map((r) => r.fecha);
-          const fechaMinPagina = fechas.length ? fechas[fechas.length - 1] : null;
-          const fechaMaxPagina = fechas.length ? fechas[0] : null;
-          const cierresDePagina = fechaMinPagina && fechaMaxPagina
-            ? cierresEnRango.filter((c) => c.fecha_hasta >= fechaMinPagina && (c.fecha_hasta <= fechaMaxPagina || page === 1))
-            : (page === 1 ? cierresEnRango : []);
-
-          let merged: MovimientoOCierre[] = data;
-          if (cierresDePagina.length > 0) {
-            let cierreIdx = cierresDePagina.length - 1;
-            const out: MovimientoOCierre[] = [];
-            for (const item of data) {
-              const mov = item.data as MovimientoConCuenta;
-              while (cierreIdx >= 0 && cierresDePagina[cierreIdx].fecha_hasta >= mov.fecha) {
-                out.push({ tipo_fila: "cierre", data: cierresDePagina[cierreIdx] });
-                cierreIdx--;
-              }
-              out.push(item);
-            }
-            while (cierreIdx >= 0) { out.push({ tipo_fila: "cierre", data: cierresDePagina[cierreIdx] }); cierreIdx--; }
-            merged = out;
-          }
-
-          setMovimientos(merged);
-          setPagination({ page, limit, total, totalPages: Math.ceil(total / limit) });
-        } catch {
-          // mantener estado
-        } finally {
-          setMovsLoading(false);
-        }
-      })();
-      return;
-    }
-
     const params = new URLSearchParams({ page: String(page), limit: "50" });
     if (filtros.moneda) params.set("moneda", filtros.moneda);
     if (filtros.cuenta_id) params.set("cuenta_id", filtros.cuenta_id);
@@ -315,80 +156,18 @@ function CajaMayorContent({
       })
       .catch(() => {})
       .finally(() => setMovsLoading(false));
-  }, [filtros, db, OFFLINE_READ]);
+  }, [filtros]);
 
   // ─── Fetch saldos ─────────────────────────────────────
   const fetchSaldos = useCallback(() => {
-    if (OFFLINE_READ && db) {
-      // Lectura local (flag on): replica GET /api/caja/resumen-cuentas —
-      // GROUP BY cuenta con SUM(CASE WHEN tipo=...) + saldos iniciales.
-      (async () => {
-        try {
-          const rows = (await db.getAll(
-            `SELECT
-               m.cuenta_id,
-               cc.nombre AS cuenta_nombre,
-               cc.moneda,
-               COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE 0 END), 0) AS total_cobros,
-               COALESCE(SUM(CASE WHEN m.tipo = 'gasto' THEN m.monto ELSE 0 END), 0) AS total_gastos,
-               COALESCE(SUM(CASE WHEN m.tipo = 'reembolso' THEN m.monto ELSE 0 END), 0) AS total_reembolsos,
-               COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE -m.monto END), 0) AS movimientos_neto
-             FROM caja_movimientos m
-             JOIN caja_cuentas cc ON cc.id = m.cuenta_id
-             GROUP BY m.cuenta_id, cc.nombre, cc.moneda, cc.orden, cc.id
-             ORDER BY cc.orden ASC, cc.id ASC`
-          )) as any[];
-
-          const saldosInit = (await db.getAll(
-            `SELECT cuenta_id, saldo FROM caja_saldos_iniciales`
-          )) as any[];
-          const saldoMap = new Map<number, number>();
-          for (const s of saldosInit || []) saldoMap.set(Number(s.cuenta_id), Number(s.saldo));
-
-          const result: SaldoCuenta[] = (rows || []).map((r: any) => ({
-            cuenta_id: r.cuenta_id,
-            cuenta_nombre: r.cuenta_nombre,
-            moneda: r.moneda,
-            total_cobros: Number(r.total_cobros),
-            total_gastos: Number(r.total_gastos),
-            total_reembolsos: Number(r.total_reembolsos),
-            saldo_neto: (saldoMap.get(Number(r.cuenta_id)) || 0) + Number(r.movimientos_neto),
-          }));
-          setSaldos(result);
-        } catch {
-          // mantener estado
-        }
-      })();
-      return;
-    }
-
     fetch("/api/caja/resumen-cuentas")
       .then((r) => r.json())
       .then((json) => setSaldos(json.data || []))
       .catch(() => {});
-  }, [db, OFFLINE_READ]);
+  }, []);
 
   useEffect(() => { fetchMovimientos(1); fetchSaldos(); }, [fetchMovimientos, fetchSaldos]);
 
-  // Refresco reactivo: ante cualquier cambio real en las tablas locales
-  // relevantes (escritura offline o sync que termina en background), re-leer
-  // movimientos y saldos. Sin esto, un UPDATE local persiste fresco en SQLite
-  // pero la tabla no lo muestra hasta otra invocación manual. Las llamadas
-  // manuales post-submit quedan como red de seguridad; el watcher cubre todo
-  // lo demás.
-  useEffect(() => {
-    if (!(OFFLINE_READ && db)) return;
-    const dispose = db.onChangeWithCallback(
-      {
-        onChange: () => {
-          fetchMovimientos(pagination.page);
-          fetchSaldos();
-        },
-      },
-      { tables: ["caja_movimientos", "caja_movimiento_notas", "caja_saldos_iniciales", "caja_cierres"] }
-    );
-    return () => dispose();
-  }, [OFFLINE_READ, db, pagination.page, fetchMovimientos, fetchSaldos]);
   useEffect(() => { if (!cliente) fetchMovimientos(1); }, [cliente, fetchMovimientos]);
 
   useEffect(() => {
@@ -444,87 +223,6 @@ function CajaMayorContent({
       return;
     }
 
-    if (OFFLINE_READ && db) {
-      // Lectura local: replica GET /api/caja/nota-busqueda (isDigits) y
-      // GET /api/caja/clientes (si no). total_pagado se arma con un merge en
-      // JS contra caja_movimiento_notas (mismo patrón que notasPendientes,
-      // evita el JOIN SQL directo contra un id que localmente es texto).
-      setSearchLoading(true);
-      const q = searchQuery.trim().toLowerCase();
-      (async () => {
-        try {
-          if (isDigits) {
-            const rows = (await db.getAll(
-              `SELECT p.id, p.created_at AS fecha, p.cliente_id, p.nombre_cliente,
-                 COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
-               FROM prenotas p
-               LEFT JOIN prenota_items pi ON pi.prenota_id = p.id
-               WHERE CAST(p.id AS TEXT) LIKE ? OR LOWER(p.titulo) LIKE ? OR LOWER(p.nombre_cliente) LIKE ?
-               GROUP BY p.id
-               LIMIT 10`,
-              [`%${q}%`, `%${q}%`, `%${q}%`]
-            )) as any[];
-            const pagos = (await db.getAll(
-              `SELECT prenota_id, SUM(monto_aplicado) AS total FROM caja_movimiento_notas GROUP BY prenota_id`
-            )) as any[];
-            const pagoMap = new Map<number, number>();
-            for (const p of pagos || []) pagoMap.set(Number(p.prenota_id), Number(p.total));
-            const results: ResultadoBusqueda[] = (rows || [])
-              .map((r: any) => {
-                const total = Number(r.total);
-                const total_pagado = pagoMap.get(Number(r.id)) ?? 0;
-                return {
-                  tipo: "nota" as const,
-                  nota: {
-                    id: Number(r.id),
-                    fecha: r.fecha,
-                    total,
-                    total_pagado,
-                    saldo_pendiente: total - total_pagado,
-                    cliente_id: r.cliente_id,
-                    nombre_cliente: r.nombre_cliente,
-                    origen: "bazar-naty" as const,
-                  },
-                };
-              })
-              .sort((a, b) => {
-                const aPending = a.nota.saldo_pendiente > 0.005 ? 0 : 1;
-                const bPending = b.nota.saldo_pendiente > 0.005 ? 0 : 1;
-                if (aPending !== bPending) return aPending - bPending;
-                return a.nota.fecha.localeCompare(b.nota.fecha);
-              });
-            setSearchResults(results);
-            setSearchOpen(results.length > 0);
-          } else {
-            const rows = (await db.getAll(
-              `SELECT p.cliente_id, c.nombre, COUNT(*) AS total_compras, MAX(p.created_at) AS ultima_compra
-               FROM prenotas p
-               JOIN clientes c ON c.id = p.cliente_id
-               WHERE LOWER(c.nombre) LIKE ? OR LOWER(p.titulo) LIKE ?
-               GROUP BY p.cliente_id, c.nombre
-               ORDER BY ultima_compra DESC
-               LIMIT 15`,
-              [`%${q}%`, `%${q}%`]
-            )) as any[];
-            const results: ResultadoBusqueda[] = (rows || []).map((r: any) => ({
-              tipo: "cliente" as const,
-              cliente: {
-                cliente_id: r.cliente_id,
-                nombre: r.nombre,
-                total_compras: Number(r.total_compras),
-                ultima_compra: r.ultima_compra,
-              },
-            }));
-            setSearchResults(results);
-            setSearchOpen(results.length > 0);
-          }
-        } catch (e) { console.error('[caja-mayor] búsqueda local:', e); setSearchResults([]); } finally {
-          setSearchLoading(false);
-        }
-      })();
-      return;
-    }
-
     const endpoint = isDigits
       ? `/api/caja/nota-busqueda?q=${encodeURIComponent(searchQuery)}`
       : `/api/caja/clientes?q=${encodeURIComponent(searchQuery)}`;
@@ -544,7 +242,7 @@ function CajaMayorContent({
       setSearchLoading(false);
     }, 250);
     return () => clearTimeout(timer);
-  }, [searchQuery, OFFLINE_READ, db]);
+  }, [searchQuery]);
 
   // Auto-select first available cuenta when moneda changes
   useEffect(() => {
@@ -593,63 +291,6 @@ function CajaMayorContent({
       return;
     }
     setNotasPendientesLoading(true);
-
-    if (OFFLINE_READ && db) {
-      // Lectura local (flag on): replica GET /api/caja/notas/[kcodcli2] —
-      // prenotas + prenota_items agrupado + caja_movimiento_notas para
-      // total_pagado, merge en JS. Single-tenant → origen = empresa actual.
-      (async () => {
-        try {
-          const notas = (await db.getAll(
-            `SELECT p.id, p.created_at AS fecha, p.cliente_id, p.nombre_cliente,
-               COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
-             FROM prenotas p
-             LEFT JOIN prenota_items pi ON pi.prenota_id = p.id
-             WHERE p.cliente_id = ?
-             GROUP BY p.id`,
-            [cliente.cliente_id]
-          )) as any[];
-          const pagos = (await db.getAll(
-            `SELECT prenota_id, SUM(monto_aplicado) AS total
-             FROM caja_movimiento_notas GROUP BY prenota_id`
-          )) as any[];
-          const pagoMap = new Map<number, number>();
-          for (const p of pagos || []) pagoMap.set(Number(p.prenota_id), Number(p.total));
-
-          const todas: NotaVentaConSaldo[] = (notas || []).map((n) => {
-            const total = Number(n.total);
-            const total_pagado = pagoMap.get(Number(n.id)) ?? 0;
-            return {
-              id: Number(n.id),
-              fecha: n.fecha,
-              total,
-              total_pagado,
-              saldo_pendiente: total - total_pagado,
-              cliente_id: n.cliente_id,
-              nombre_cliente: n.nombre_cliente,
-              origen: empresa,
-              empresa,
-            };
-          });
-          const pendientes = todas.filter((n) => {
-            if (n.saldo_pendiente <= 0.005) return false;
-            if (empresa && n.origen !== empresa) return false;
-            return true;
-          });
-          setNotasPendientes(pendientes);
-          setNotaSeleccionada((actual) =>
-            actual && pendientes.some(n => n.origen === actual.origen && n.id === actual.id)
-              ? actual
-              : null
-          );
-        } catch {
-          setNotasPendientes([]);
-        } finally {
-          setNotasPendientesLoading(false);
-        }
-      })();
-      return;
-    }
 
     fetch(`/api/caja/notas/${cliente.cliente_id}`)
       .then((r) => r.json())
@@ -722,48 +363,6 @@ function CajaMayorContent({
         es_credito: editTipo === "cobro" ? editEsCredito : false,
       };
 
-      if (OFFLINE_READ && db) {
-        // BUG-054 + bugfix (monto_usd stale): editar offline → mutar la DB local.
-        // Replica la lógica de la ruta online para recalcular monto_usd/tipo_cambio
-        // con el dolarVigente local, e incluye ambos en el UPDATE. Sin esto, el
-        // render prioriza monto_usd (nunca null) sobre monto y muestra el monto
-        // viejo hasta que la sincronización baja la fila corregida.
-        let montoUsdEdit: number;
-        let tipoCambioEdit: number | null;
-        if (editMoneda === "USD") {
-          montoUsdEdit = parseFloat(editMonto);
-          tipoCambioEdit = null;
-        } else {
-          if (dolarVigente <= 0) {
-            toast.error("Dólar del día no disponible offline");
-            setEditSaving(false);
-            return;
-          }
-          montoUsdEdit = roundUpToHalf(parseFloat(editMonto) / dolarVigente);
-          tipoCambioEdit = dolarVigente;
-        }
-
-        const updateParams = [
-          body.fecha, body.tipo, body.cliente_id, body.nombre_cliente, body.cuenta_id,
-          body.moneda, body.monto, montoUsdEdit, tipoCambioEdit, body.forma_pago,
-          body.observaciones, body.empresa, body.es_credito ? 1 : 0,
-          new Date().toISOString(), editMov.id,
-        ];
-        await db.execute(
-          `UPDATE caja_movimientos SET
-             fecha = ?, tipo = ?, kcodcli2 = ?, nombre_cliente = ?, cuenta_id = ?,
-             moneda = ?, monto = ?, monto_usd = ?, tipo_cambio = ?, forma_pago = ?,
-             observaciones = ?, empresa = ?, es_credito = ?, updated_at = ?
-           WHERE id = ?`,
-          updateParams
-        );
-        toast.success("Movimiento actualizado offline — se sincronizará cuando haya conexión");
-        setEditModalOpen(false);
-        fetchMovimientos(pagination.page);
-        fetchSaldos();
-        return;
-      }
-
       const res = await fetch(`/api/caja/movimientos/${editMov.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -798,21 +397,13 @@ function CajaMayorContent({
   const handleEditDelete = async () => {
     if (!editMov) return;
     try {
-      if (OFFLINE_READ && db) {
-        // BUG-054: eliminar offline → mutar la DB local; el sync a Postgres lo
-        // hace uploadData() (rama DELETE). La cascada de imputaciones
-        // (caja_movimiento_notas) la hace el server al sync (ON DELETE CASCADE).
-        await db.execute(`DELETE FROM caja_movimientos WHERE id = ?`, [editMov.id]);
-        toast.success("Movimiento eliminado offline — se sincronizará cuando haya conexión");
-      } else {
-        const res = await fetch(`/api/caja/movimientos/${editMov.id}`, { method: "DELETE" });
-        if (!res.ok) {
-          const err = await res.json().catch(() => null);
-          toast.error(err?.error || "Error al eliminar");
-          return;
-        }
-        toast.success("Movimiento eliminado");
+      const res = await fetch(`/api/caja/movimientos/${editMov.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Error al eliminar");
+        return;
       }
+      toast.success("Movimiento eliminado");
       setEditModalOpen(false);
       fetchMovimientos(1);
       fetchSaldos();
@@ -826,89 +417,6 @@ function CajaMayorContent({
   // ─── Submit ──────────────────────────────────────────
   const handleSubmit = async () => {
     setSaving(true);
-
-    if (OFFLINE_READ && db) {
-      // Escritura local (flag on): INSERT directo a SQLite. El sync a Postgres
-      // lo hace uploadData() (Slice 11b). Tipo de cambio: Opción B — se captura
-      // el valor que el usuario vio al registrar (dolarVigente), no se re-deriva
-      // al sincronizar.
-      try {
-        if (moneda === "ARS" && dolarVigente <= 0) {
-          toast.error("Dólar del día no disponible offline");
-          return;
-        }
-        const tipoCambio = moneda === "ARS" ? dolarVigente : null;
-        const montoUsd = moneda === "ARS"
-          ? roundUpToHalf(parseFloat(monto) / dolarVigente)
-          : parseFloat(monto);
-        const movimientoId = crypto.randomUUID();
-        const now = new Date().toISOString();
-
-        await db.execute(
-          `INSERT INTO caja_movimientos (id, fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda, monto, monto_usd, tipo_cambio, forma_pago, observaciones, empresa, es_credito, usuario_id, usuario_nombre, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            movimientoId, fecha, tipo,
-            cliente?.cliente_id ?? null, // UUID (string) desde 13a
-            cliente?.nombre ?? null,
-            parseInt(cuentaId, 10),
-            moneda, parseFloat(monto), montoUsd, tipoCambio, formaPago,
-            observaciones.trim() || null, empresa || null,
-            (tipo === "cobro" ? esCredito : false) ? 1 : 0,
-            userId, userName, now, now,
-          ]
-        );
-
-        // Imputación manual a nota (misma lógica JS que la rama online)
-        if (imputacionManual && notaSeleccionada && tipo === "cobro" && montoUSD) {
-          let remaining = montoUSD;
-          const notasParaImputar: { empresa: string; prenota_id: number; monto_aplicado: number }[] = [];
-          const aplicado = Math.min(remaining, notaSeleccionada.saldo_pendiente);
-          if (aplicado > 0.005) {
-            notasParaImputar.push({ empresa: notaSeleccionada.empresa ?? "", prenota_id: notaSeleccionada.id, monto_aplicado: aplicado });
-            remaining -= aplicado;
-          }
-          if (remaining > 0.005) {
-            const sorted = [...notasPendientes].sort((a, b) => a.fecha.localeCompare(b.fecha));
-            for (const nota of sorted) {
-              if (nota.id === notaSeleccionada.id && nota.empresa === notaSeleccionada.empresa) continue;
-              if (remaining <= 0.005) break;
-              const aplicar = Math.min(remaining, nota.saldo_pendiente);
-              if (aplicar > 0.005) {
-                notasParaImputar.push({ empresa: nota.empresa ?? "", prenota_id: nota.id, monto_aplicado: aplicar });
-                remaining -= aplicar;
-              }
-            }
-          }
-          for (const n of notasParaImputar) {
-            await db.execute(
-              `INSERT INTO caja_movimiento_notas (id, movimiento_id, prenota_id, monto_aplicado) VALUES (?, ?, ?, ?)`,
-              [crypto.randomUUID(), movimientoId, n.prenota_id, n.monto_aplicado]
-            );
-          }
-        }
-
-        toast.success(
-          `${tipo === "cobro" ? "Cobro" : "Gasto"} guardado offline — se sincronizará cuando haya conexión ($${formatMonto(parseFloat(monto), moneda)} ${moneda})`,
-          { duration: 6000 }
-        );
-        setJustSaved(true);
-        setTimeout(() => setJustSaved(false), 2500);
-        clearCliente();
-        setMonto("");
-        setObservaciones("");
-        if (moneda === "ARS") setMoneda("USD");
-        setFormaPago("transferencia");
-        fetchMovimientos(1);
-        fetchSaldos();
-        return;
-      } catch (e) {
-        console.error('[caja-mayor] error al guardar offline:', e);
-        toast.error('No se pudo guardar el cobro offline. Revisá la consola y reintentá.');
-      } finally {
-        setSaving(false);
-      }
-    }
 
     const body: Record<string, unknown> = {
       fecha,

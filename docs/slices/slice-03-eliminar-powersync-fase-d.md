@@ -58,3 +58,12 @@ Se conservan guards `navigator.onLine` y `OFFLINE_WRITE_MSG` (D2). `lib/powersyn
 - `npx tsc --noEmit`: 127 errores (baseline 129, sin aumento).
 
 **Diff (numstat, archivos que permanecen):** 90 líneas añadidas / 505 borradas (límite D8: añadidas ≤ 200).
+
+## Corte 3.9a-d — caja-mayor
+
+- Archivos: `app/(app)/caja-mayor/client_page.tsx` (+10/−502: wrapper PowerSyncProvider, dólar, fetchMovimientos, fetchSaldos, watcher, búsqueda, notas pendientes, edit/delete, handleSubmit; todo vía fetch), `client_page.test.tsx`, `__tests__/caja-mayor-bug054-ui.test.tsx` (se quitan R3/R7 offline; quedan R4/R4b/R4c), `__tests__/slice-03-sin-powersync.test.ts` (+3 en MIGRADOS).
+- Borrados (git rm): `bugfix-caja-mayor-busqueda-offline`, `caja-mayor-refresco-reactivo`, `caja-mayor-sync-bug054`.
+- Líneas añadidas: 24 (< 200).
+- Fase B: T1 en rojo (3 fallos) antes de editar. Fase D: jest del corte + tests de archivos tocados verdes (10 suites); tsc 125 errores (baseline 129).
+- Nota: `/api/caja/movimientos` se pide 2x en el mount (dos efectos), comportamiento previo; el test no lo fija.
+- Pendientes para 3.10/3.11: `@powersync` sólo queda en lib/powersync, app/api/powersync, powersync-status, sync-conflictos, sw.ts, tests a borrar (`notas-venta-buscador-productos-offline`, `-shell-offline-id-url`, `-sync-bug052`), PRD.md, next.config.mjs, package*.json. Flag `caja-mayor-offline-lectura` sigue en feature-flags.json (se quita en 3.10).

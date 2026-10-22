@@ -60,3 +60,31 @@ Slice 0 completado (pendiente commit). Ver docs/slices/slice-00-neon-schema-fase
 ## Contador de slices desde el último ponytail audit
 
 1
+
+## Estado al 2026-10-22 (sesion autonoma Director Tecnico)
+
+Slices completados y commiteados (cada corte verificado por el DT con suite completa + tsc; cierres con build + smoke E2E):
+- 0 Neon + schema + seed | BUG-001 jest usaba produccion (ahora .env.test -> rama test-integration + safeguard)
+- 3 PowerSync/offline/SW eliminados | 2 CLP unica moneda (guard)
+- 4 precio_mayor (040) | 5 modalidad unidad/caja + subtotal generado (041) + tipo de nota | 6 etiqueta cliente
+- 7 tienda: carrito por modalidad, checkout con email y entrega (042), precios server-side
+- 8 reserva atomica de stock + expiracion 36 h perezosa + cron diario (043)
+- 9 preferencia Checkout Pro + pagina publica /pedido/[id] (044) | 10 webhook firmado + nota y cobro automaticos
+- 1 rebranding sin logo (wordmark de texto)
+Migraciones 040-044 aplicadas en test-integration y production (scripts: C:\Users\pablo\.pbt-runner\apply-one.ps1).
+
+Flags nuevos en false (activar con Pablo): precio-mayorista-ui, notas-venta-modalidad, clientes-etiqueta, tienda-pago-online.
+
+Decisiones DT relevantes: rejected/cancelled de MP NO liberan stock (el comprador puede reintentar); solo expiracion 36 h o fallo al crear preferencia. Usuario sistema SISTEMA-MP (inactivo) para notas/cobros del webhook. Precio de catalogo solo para productos de la seleccion del catalogo.
+
+Pendientes:
+- Credenciales MP de prueba + MP_WEBHOOK_SECRET; definir en Vercel: MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, NEXT_PUBLIC_SITE_URL, CRON_SECRET, DATABASE_URL (pooled), NEXTAUTH_*, CLOUDINARY_*.
+- Validar init_point vs sandbox_init_point con credenciales reales (lib/mercadopago/config.ts).
+- Logo y colores de la clienta; Excel de productos; usuarios.
+- 5 suites heredadas en rojo: rama test-integration sin fixtures (cuentas, productos) + 2 tests de labels de precios. Slice de fixtures de test.
+- Catalogo publico redondea a 1 decimal (herencia USD): limpiar a entero.
+- Deploy (Senal 3): next.config tiene ignoreBuildErrors/ignoreDuringBuilds -> revisar antes de produccion.
+
+## Contador de slices desde el ultimo ponytail audit
+
+11 (SENAL 2 ACTIVA: correr ponytail audit antes del proximo slice)

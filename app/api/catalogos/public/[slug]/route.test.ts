@@ -2,7 +2,7 @@
  * Tests PBT-IA — Slice 2: parseKeywords retrocompatible
  * Estado inicial: ROJO (función aún no existe)
  */
-import { parseKeywords } from './route';
+import { parseKeywords } from './seleccion';
 
 jest.mock('@/lib/db', () => ({ sql: jest.fn() }));
 jest.mock('next/server', () => ({

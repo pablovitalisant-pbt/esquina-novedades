@@ -89,3 +89,33 @@
 - Fase D (`npx jest` sobre el corte + co-ubicados/relacionados `carrito`, `tienda-modalidad`, `slice2a-clp`, `catalog-footer`, `catalogo-print`): **6 suites, 50 tests, verde**.
 - `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
 - El total del drawer es estimado: el servidor lo recalcula y valida entrega/dirección en 7e. Suite completa: la corre el Director Técnico.
+
+## Sub-slice 7e — POST/GET pedidos con precios server-side
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §5.1 y sub-slice 7e.
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `app/api/pedidos/route.ts` | modificado | POST: valida email (`@`) y `entrega_codigo`; lee productos (`prcventa`, `precio_mayor`, `cantcaja`, `activo`, `costo`) y la opción de entrega desde DB; calcula líneas, subtotales y total con `calcularPedido` (origen `catalogo` usa `precioCatalogoBase` + override, la misma fórmula de la página); `ErrorPrecio → 400`; ignora precios/total del body; inserta `pedidos` con email/entrega/dirección/total e ítems con `modalidad`/`precio`. Cliente por teléfono: completa `email` solo si faltaba. Sin reserva de stock (`stock_reservado` queda en su default `false`). GET: devuelve email, entrega, costo, dirección, total e ítems con modalidad/precio/subtotal. |
+| `__tests__/api/pedidos.test.ts` | modificado | Mock por contenido SQL; cubre los casos 1–3, 5–11 de §9 para el corte: body manipulado ignorado, caja sin `precio_mayor` → 400, delivery sin dirección → 400, catálogo con margen/override, email requerido, cliente sin/con email y carrera 23505, y GET con los campos nuevos. |
+
+### Resultados
+
+- Fase D (`npx jest` sobre tests del corte + relacionados que mencionan `/api/pedidos`: `pedidos.test`, `pedidos-precios-server`, `pedidos-id`, `pedidos-convertir`, `carrito`, `checkout-entrega`): **6 suites, 64 tests, verde**.
+- `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
+- Sin reserva de stock ni flag: `tienda-pago-online` no existe aún; queda para 8b/8c. `stock_reservado` no se escribe hasta la migración 043 (8a).
+
+### Corrección de seguridad (post-7e)
+
+**Hallazgo del Director Técnico:** con `origen='catalogo'` se aplicaba el precio de catálogo a cualquier `producto_id` del body. Un cliente podía elegir un catálogo con margen bajo y comprar productos que ese catálogo no muestra, pagando menos que `prcventa`.
+
+**Fix:**
+- `app/api/catalogos/public/[slug]/seleccion.ts` | nuevo | Extrae la selección del catálogo público (`parseKeywords` + `filterProducts` + `solo_stock`/`solo_nuevo` + filtro empresa/categoría) a una única función `seleccionarProductosCatalogo`, usada por el GET público y por el POST de pedidos.
+- `app/api/catalogos/public/[slug]/route.ts` | modificado | El GET delega la selección en `seleccionarProductosCatalogo` (sin cambiar la respuesta).
+- `app/api/catalogos/public/[slug]/route.test.ts` | modificado | Importa `parseKeywords` desde `seleccion.ts` (el route ya no exporta helpers: Next rechaza exports extra en route handlers).
+- `app/api/pedidos/route.ts` | modificado | Con `origen='catalogo'`, verifica cada producto contra la selección real del catálogo; si alguno no pertenece → `400 'producto no pertenece al catalogo'`, sin escrituras. `costo` NULL/no numérico sin override sigue cayendo en `ErrorPrecio` (`precioCatalogoBase` → NaN) → 400.
+- `__tests__/api/pedidos.test.ts` | modificado | Nuevos: producto fuera del catálogo → 400, producto dentro por palabra clave → 201 con precio de catálogo, costo NULL sin override → 400.
+
+**Resultados:** rojo confirmado (el caso "fuera del catálogo" devolvía 201). Verde: `npx jest __tests__/api/pedidos.test.ts app/api/catalogos/public` (39 tests), más `filter-products`, `catalogo-codigos-incluir`, `catalogo-solo-nuevo*` (16 tests). `npx tsc --noEmit` sin errores nuevos en los archivos tocados.

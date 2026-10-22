@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import { calcularPedido, ErrorPrecio, type OpcionEntrega, type Origen, type ProductoPrecio } from '@/lib/pedidos/precios';
+import { precioCatalogoBase } from '@/lib/precio-catalogo';
+import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
 
 const ORIGENES = ['productos', 'catalogo'] as const;
-type Origen = (typeof ORIGENES)[number];
 
 // Slice unicidad: match por teléfono normalizado a dígitos. El INSERT de
 // cliente se hace standalone con captura de 23505: si dos requests concurrentes
@@ -27,13 +29,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'telefono_contacto es requerido' }, { status: 400 });
     }
 
+    const email = typeof body?.email_contacto === 'string' ? body.email_contacto.trim() : '';
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ error: 'email_contacto válido es requerido' }, { status: 400 });
+    }
+
+    const entregaCodigo = typeof body?.entrega_codigo === 'string' ? body.entrega_codigo.trim() : '';
+    if (!entregaCodigo) {
+      return NextResponse.json({ error: 'entrega_codigo es requerido' }, { status: 400 });
+    }
+
     const items = Array.isArray(body?.items) ? body.items : null;
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'items debe ser un array con al menos 1 elemento' }, { status: 400 });
     }
     for (const it of items) {
+      if (!Number.isInteger(it?.producto_id)) {
+        return NextResponse.json({ error: 'cada item.producto_id debe ser un entero' }, { status: 400 });
+      }
       if (!Number.isInteger(it?.cantidad) || (it.cantidad as number) <= 0) {
         return NextResponse.json({ error: 'cada item.cantidad debe ser un entero > 0' }, { status: 400 });
+      }
+      if (it?.modalidad !== 'unidad' && it?.modalidad !== 'caja') {
+        return NextResponse.json({ error: "cada item.modalidad debe ser 'unidad' o 'caja'" }, { status: 400 });
       }
     }
 
@@ -48,23 +66,74 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'origen_slug es obligatorio cuando origen es catalogo' }, { status: 400 });
     }
 
-    // ─── Verificación de que todos los productos existen ───────────
+    // ─── Lectura de productos, entrega y precio de catálogo ─────────
     const productoIds = items.map((it: any) => it.producto_id);
-    if (productoIds.some((id: any) => !Number.isInteger(id))) {
-      return NextResponse.json({ error: 'cada item.producto_id debe ser un entero' }, { status: 400 });
-    }
-    const existentes = await sql`
-      SELECT id FROM public.productos
+    const productos = await sql`
+      SELECT id, codigo, detalle, prcventa, precio_mayor, cantcaja, activo, costo
+      FROM public.productos
       WHERE id = ANY(${productoIds})
     `;
-    if (existentes.length !== productoIds.length) {
-      return NextResponse.json({ error: 'uno o más productos no existen' }, { status: 400 });
+
+    const opciones = await sql`
+      SELECT codigo, costo, requiere_direccion, activa
+      FROM public.opciones_entrega
+      WHERE codigo = ${entregaCodigo}
+    `;
+    const entrega = opciones[0] as OpcionEntrega | undefined;
+
+    let preciosCatalogo: Record<number, number> | undefined;
+    if (origen === 'catalogo') {
+      const cats = await sql`
+        SELECT * FROM public.catalogos
+        WHERE slug = ${origenSlug} AND activo = true
+      `;
+      if (!cats[0]) {
+        return NextResponse.json({ error: 'catálogo inexistente' }, { status: 400 });
+      }
+      // Misma selección que muestra el catálogo público: un producto que no
+      // está en esa lista no puede comprarse con el precio del catálogo.
+      const seleccion = await seleccionarProductosCatalogo(sql, cats[0]);
+      const codigosCatalogo = new Set(
+        seleccion.map((p: any) => String(p.codigo).trim().toUpperCase()),
+      );
+      for (const p of productos as any[]) {
+        if (!codigosCatalogo.has(String(p.codigo).trim().toUpperCase())) {
+          return NextResponse.json({ error: 'producto no pertenece al catalogo' }, { status: 400 });
+        }
+      }
+      const codigos = (productos as any[]).map((p) => String(p.codigo).toUpperCase());
+      const overrides = await sql`
+        SELECT codigo, precio FROM public.catalogo_precio_override
+        WHERE catalogo_id = ${cats[0].id} AND UPPER(codigo) = ANY(${codigos})
+      `;
+      const porCodigo = new Map(overrides.map((o: any) => [String(o.codigo).toUpperCase(), parseFloat(o.precio)]));
+      const margen = parseFloat(cats[0].margen_precio) || 0;
+      preciosCatalogo = {};
+      for (const p of productos as any[]) {
+        preciosCatalogo[p.id] = porCodigo.get(String(p.codigo).toUpperCase())
+          ?? precioCatalogoBase(parseFloat(p.costo), margen);
+      }
+    }
+
+    let calculado;
+    try {
+      calculado = calcularPedido(items, productos as ProductoPrecio[], {
+        origen,
+        preciosCatalogo,
+        entrega: entrega as OpcionEntrega,
+        direccion_entrega: body?.direccion_entrega,
+      });
+    } catch (error) {
+      if (error instanceof ErrorPrecio) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
     }
 
     // ─── Match / creación de cliente (normalizado a dígitos) ───────
     const normalizado = telefono.replace(/\D/g, '');
     const match = await sql`
-      SELECT id FROM public.clientes
+      SELECT id, email FROM public.clientes
       WHERE regexp_replace(telefono, '[^0-9]', '', 'g') = ${normalizado}
       LIMIT 1
     `;
@@ -79,8 +148,8 @@ export async function POST(request: NextRequest) {
       const nuevoId = randomUUID();
       try {
         await sql`
-          INSERT INTO public.clientes (id, nombre, telefono)
-          VALUES (${nuevoId}, ${nombre}, ${telefono})
+          INSERT INTO public.clientes (id, nombre, telefono, email)
+          VALUES (${nuevoId}, ${nombre}, ${telefono}, ${email})
         `;
         clienteId = nuevoId;
       } catch (err: any) {
@@ -100,19 +169,32 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+    // El email existente no se sobrescribe; solo se completa si faltaba.
+    if (match[0] && !match[0].email) {
+      await sql`
+        UPDATE public.clientes SET email = ${email}
+        WHERE id = ${clienteId} AND (email IS NULL OR email = '')
+      `;
+    }
     const pedidoId = randomUUID();
 
-    // ─── Transacción atómica: pedido + items ───────────────────────
+    // ─── Transacción atómica: pedido + items (precios ya calculados) ─
     const queries: any[] = [];
     queries.push(sql`
-      INSERT INTO public.pedidos (id, cliente_id, nombre_contacto, telefono_contacto, origen, origen_slug)
-      VALUES (${pedidoId}, ${clienteId}, ${nombre}, ${telefono}, ${origen}, ${origenSlug})
-      RETURNING id, cliente_id, estado, created_at::text
+      INSERT INTO public.pedidos
+        (id, cliente_id, nombre_contacto, telefono_contacto, email_contacto,
+         origen, origen_slug, entrega_codigo, entrega_costo, direccion_entrega, total)
+      VALUES (${pedidoId}, ${clienteId}, ${nombre}, ${telefono}, ${email},
+              ${origen}, ${origenSlug}, ${calculado.entrega_codigo},
+              ${calculado.entrega_costo}, ${calculado.direccion_entrega}, ${calculado.total})
+      RETURNING id, cliente_id, estado, created_at::text, total
     `);
-    for (const it of items) {
+    for (const linea of calculado.lineas) {
       queries.push(sql`
-        INSERT INTO public.pedido_items (pedido_id, producto_id, codigo, detalle, cantidad, precio_referencia)
-        VALUES (${pedidoId}, ${it.producto_id}, ${it.codigo}, ${it.detalle ?? null}, ${it.cantidad}, ${it.precio_referencia ?? null})
+        INSERT INTO public.pedido_items
+          (pedido_id, producto_id, codigo, detalle, cantidad, modalidad, precio)
+        VALUES (${pedidoId}, ${linea.producto_id}, ${linea.codigo}, ${linea.detalle},
+                ${linea.cantidad}, ${linea.modalidad}, ${linea.precio})
       `);
     }
 
@@ -125,6 +207,7 @@ export async function POST(request: NextRequest) {
         cliente_id: pedido.cliente_id,
         estado: pedido.estado,
         created_at: pedido.created_at,
+        total: pedido.total,
       },
     }, { status: 201 });
   } catch (error: any) {
@@ -147,6 +230,7 @@ export async function GET(request: NextRequest) {
 
     const pedidos = await sql`
       SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
+             p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
              c.nombre, c.telefono
       FROM public.pedidos p
       LEFT JOIN public.clientes c ON c.id = p.cliente_id
@@ -160,7 +244,8 @@ export async function GET(request: NextRequest) {
 
     const pedidoIds = pedidos.map((p: any) => p.id);
     const items = await sql`
-      SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.precio_referencia, p.cantcaja
+      SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
+             pi.precio, pi.subtotal, p.cantcaja
       FROM public.pedido_items pi
       LEFT JOIN public.productos p ON p.id = pi.producto_id
       WHERE pi.pedido_id = ANY(${pedidoIds})
@@ -173,7 +258,9 @@ export async function GET(request: NextRequest) {
         codigo: it.codigo,
         detalle: it.detalle,
         cantidad: it.cantidad,
-        precio_referencia: it.precio_referencia,
+        modalidad: it.modalidad,
+        precio: it.precio,
+        subtotal: it.subtotal,
         cantcaja: it.cantcaja ?? null,
       });
       itemsPorPedido.set(it.pedido_id, lista);
@@ -182,8 +269,14 @@ export async function GET(request: NextRequest) {
     const data = pedidos.map((p: any) => ({
       id: p.id,
       cliente: { id: p.cliente_id, nombre: p.nombre, telefono: p.telefono },
+      email_contacto: p.email_contacto,
       origen: p.origen,
+      origen_slug: p.origen_slug,
       estado: p.estado,
+      entrega_codigo: p.entrega_codigo,
+      entrega_costo: p.entrega_costo,
+      direccion_entrega: p.direccion_entrega,
+      total: p.total,
       created_at: p.created_at,
       items: itemsPorPedido.get(p.id) ?? [],
     }));

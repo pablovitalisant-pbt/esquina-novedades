@@ -33,9 +33,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { nombre } = body;
-    // UUID opcional — lo manda BackendConnector (Slice 12) con el id local de
-    // PowerSync, para que local = servidor siempre (el DELETE offline no deja
-    // categorías huérfanas). Flujo online sin id → gen_random_uuid().
+    // UUID opcional; sin id → gen_random_uuid().
     const id = body?.id ?? null;
 
     if (!nombre || !nombre.trim()) {

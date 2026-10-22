@@ -161,8 +161,7 @@ export async function POST(request: Request) {
     }
 
     const { fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, monto, forma_pago, observaciones, empresa, es_credito } = parsed.data;
-    // UUID opcional — lo manda BackendConnector en Slice 11b (id local de
-    // PowerSync). Se toma del body crudo porque el schema (Zod) descarta
+    // UUID opcional. Se toma del body crudo porque el schema (Zod) descarta
     // campos desconocidos.
     const id = body?.id ?? null;
 
@@ -196,9 +195,8 @@ export async function POST(request: Request) {
         ${forma_pago}, ${observaciones ?? null},
         ${finalEmpresa ?? null}, ${es_credito ?? false}, ${usuarioId}, ${usuarioNombre}
       )
-      -- Retry-safety (Slice 11b): si el INSERT del movimiento sube pero la
-      -- imputación después falla, PowerSync reintenta toda la transacción
-      -- incluido este INSERT ya aplicado. ON CONFLICT (id) DO UPDATE SET
+      -- Retry-safety: si el INSERT del movimiento sube pero la imputación
+      -- después falla, un reintento repite este INSERT ya aplicado. ON CONFLICT (id) DO UPDATE SET
       -- id = EXCLUDED.id es un no-op sobre sí mismo que hace que RETURNING
       -- funcione en el reintento sin chocar contra la PK UUID.
       ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id

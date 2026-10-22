@@ -9,8 +9,8 @@ import { authOptions } from '@/lib/auth';
  * Cualquier rol autenticado (admin, bodeguero, vendedor). Body:
  *   { codigo: string, cantidad: number, cantcaja_nuevo?: number, observaciones?: string }
  *
- * empresa_id se deriva de la sesión (session.user.empresas[0]) porque Bazar
- * Naty es single-tenant — el body no lo trae por contrato.
+ * empresa_id se deriva de la sesión (session.user.empresas[0]) porque la
+ * empresa es única (single-tenant) — el body no lo trae por contrato.
  *
  * Transacción atómica (sql.transaction):
  *   1. INSERT en ingresos_mercaderia (auditoría + packing registrado).

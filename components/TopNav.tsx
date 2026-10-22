@@ -114,13 +114,11 @@ export function TopNav() {
                       <Users className="w-4 h-4" /> Deudores
                     </Link>
                   </DropdownMenuItem>
-                  {(flags as any)['pedidos-staff-ui'] && (
-                    <DropdownMenuItem>
-                      <Link href="/pedidos" className="flex items-center gap-2 w-full">
-                        <Inbox className="w-4 h-4" /> Pedidos
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem>
+                    <Link href="/pedidos" className="flex items-center gap-2 w-full">
+                      <Inbox className="w-4 h-4" /> Pedidos
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem>
                       <Link href="/caja-mayor" className="flex items-center gap-2 w-full">
@@ -169,13 +167,11 @@ export function TopNav() {
                       <Box className="w-4 h-4" /> Ubicaciones
                     </Link>
                   </DropdownMenuItem>
-                  {(flags as any)['ingreso-mercaderia'] && (
-                    <DropdownMenuItem>
-                      <Link href="/bodega/ingresos" className="flex items-center gap-2 w-full">
-                        <PackagePlus className="w-4 h-4" /> Ingreso de Mercadería
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem>
+                    <Link href="/bodega/ingresos" className="flex items-center gap-2 w-full">
+                      <PackagePlus className="w-4 h-4" /> Ingreso de Mercadería
+                    </Link>
+                  </DropdownMenuItem>
                   {(flags as any)['registro_notas_bodega_ui'] && (
                     <DropdownMenuItem>
                       <Link href="/bodega/registro-notas" className="flex items-center gap-2 w-full">
@@ -221,13 +217,11 @@ export function TopNav() {
                       <Landmark className="w-4 h-4" /> Config de Caja
                     </Link>
                   </DropdownMenuItem>
-                  {(flags as any)['inversion-mercaderia'] && (
-                    <DropdownMenuItem>
-                      <Link href="/admin/inversion-mercaderia" className="flex items-center gap-2 w-full">
-                        <PieChart className="w-4 h-4" /> Inversión en Mercadería
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem>
+                    <Link href="/admin/inversion-mercaderia" className="flex items-center gap-2 w-full">
+                      <PieChart className="w-4 h-4" /> Inversión en Mercadería
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

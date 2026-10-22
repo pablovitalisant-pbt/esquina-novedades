@@ -15,15 +15,12 @@ import { render, screen } from '@testing-library/react';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 import { ProductosPublicos } from '@/app/productos/client_page';
 
-// Fuerza carrito-pedidos-ui a false → ambas páginas renderizan el grid simple,
-// sin CarritoProvider/Drawer. Aísla el test del carrito.
-jest.mock('@/config/feature-flags.json', () => ({ 'carrito-pedidos-ui': false }));
-
 jest.mock('@/components/ImageWithFallback', () => ({
   ImageWithFallback: () => <div data-testid="image-fallback" />,
 }));
 
 jest.mock('@/lib/utils', () => ({
+  ...jest.requireActual('@/lib/utils'),
   formatCLP: (value: number) => String(value),
 }));
 

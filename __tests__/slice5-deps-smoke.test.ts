@@ -26,7 +26,6 @@ const REMOVED_DEPS = [
 
 const KEPT_DEPS = [
   '@dnd-kit/core',
-  'sharp',
   'next-themes',
   '@base-ui/react',
   'exceljs',

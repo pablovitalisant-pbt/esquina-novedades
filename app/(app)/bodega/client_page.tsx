@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import flags from '@/config/feature-flags.json';
 import { UbicacionBodegaAgrupada } from '@/types';
 import { BodegaCard } from '@/components/BodegaCard';
 import { Input } from '@/components/ui/input';
@@ -207,12 +206,11 @@ function UbicacionEditor({ ubicacion, onSaved, session }: { ubicacion: Ubicacion
   const [saving, setSaving] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
-  // Conciliación de stock: flag maestro + admin-only. Para vendedor/bodeguero
+  // Conciliación de stock: admin-only. Para vendedor/bodeguero
   // el botón no se muestra (no solo deshabilitado). El fetch de conciliación
   // SIEMPRE va al backend (POST /api/bodega/conciliaciones) — es admin-only y online.
-  const conciliacionFlag = (flags as any)['bodega-conciliacion-stock'];
   const isAdmin = (session?.user as any)?.rol === 'admin';
-  const showConciliacion = conciliacionFlag && isAdmin;
+  const showConciliacion = isAdmin;
   const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   useEffect(() => {

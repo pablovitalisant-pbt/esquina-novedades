@@ -19,10 +19,8 @@ interface PreciosClientProps {
 }
 
 export function PreciosClient({ session }: PreciosClientProps) {
-  const PRECIO_VENTA = (flags as any)['precios-precio-venta-card'] === true;
   const PRECIO_MAYOR_UI = (flags as any)['precio-mayorista-ui'] === true;
   const [crearPrecioMayor, setCrearPrecioMayor] = useState('');
-  const COMPARTIR_PRECIO = (flags as any)['drawer-compartir-precio'] === true;
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,7 +350,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
               empresaNombre={(p as any).nombre_empresa}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
-              mostrarPrecioVenta={PRECIO_VENTA}
+              mostrarPrecioVenta
               rol={(session as any)?.user?.rol ?? session?.rol}
             />
           ))}
@@ -367,7 +365,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
         empresaNombre={(selectedProduct as any)?.nombre_empresa || ''}
         onUpdated={handleProductUpdate}
         ocultarPrecios={ocultarPrecios}
-        mostrarPrecioEnShare={COMPARTIR_PRECIO}
+        mostrarPrecioEnShare
       />
     </div>
   );

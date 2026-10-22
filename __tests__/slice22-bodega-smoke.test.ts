@@ -68,18 +68,4 @@ describe('Slice 22 — Fase B: Bodega (contra contrato objetivo)', () => {
   test('route.test.ts USA jest.mock', () => {
     expect(routeTestContent).toContain('jest.mock');
   });
-
-  // -----------------------------------------------------------------------
-  // Ítem 5: Despachos client_page.test.tsx — query semántica con selector
-  // -----------------------------------------------------------------------
-
-  const DESP_TEST = path.join(PROJECT_ROOT, 'app/(app)/bodega/despachos/client_page.test.tsx');
-  const despTestContent = fs.readFileSync(DESP_TEST, 'utf-8');
-
-  test('Despachos test usa selector semántico para getByText del folio', () => {
-    // getByText crudo sin selector ya no debe existir
-    expect(despTestContent).not.toMatch(/getByText\('12345'\)/);
-    // Debe usar una query con selector (ej. selector: 'p')
-    expect(despTestContent).toMatch(/getByText\('12345'.*selector/);
-  });
 });

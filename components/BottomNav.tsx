@@ -93,7 +93,7 @@ export function BottomNav() {
                   {sheetLink('/notas-venta', <FileText className="w-5 h-5" />, 'Notas de Venta', () => setVentasOpen(false))}
                   {sheetLink('/clientes', <Users className="w-5 h-5" />, 'Clientes', () => setVentasOpen(false))}
                   {sheetLink('/deudores', <Users className="w-5 h-5" />, 'Deudores', () => setVentasOpen(false))}
-                  {(flags as any)['pedidos-staff-ui'] && sheetLink('/pedidos', <Inbox className="w-5 h-5" />, 'Pedidos', () => setVentasOpen(false))}
+                  {sheetLink('/pedidos', <Inbox className="w-5 h-5" />, 'Pedidos', () => setVentasOpen(false))}
                   {isAdmin && sheetLink('/caja-mayor', <Landmark className="w-5 h-5" />, 'Caja Mayor', () => setVentasOpen(false))}
                 </div>
               </SheetContent>
@@ -135,7 +135,7 @@ export function BottomNav() {
                 </h3>
                 <div className="space-y-0">
                   {sheetLink('/bodega', <Box className="w-5 h-5" />, 'Ubicaciones', () => setBodegaOpen(false))}
-                  {(flags as any)['ingreso-mercaderia'] && sheetLink('/bodega/ingresos', <PackagePlus className="w-5 h-5" />, 'Ingreso de Mercadería', () => setBodegaOpen(false))}
+                  {sheetLink('/bodega/ingresos', <PackagePlus className="w-5 h-5" />, 'Ingreso de Mercadería', () => setBodegaOpen(false))}
                   {(flags as any)['registro_notas_bodega_ui'] && sheetLink('/bodega/registro-notas', <ClipboardList className="w-5 h-5" />, 'Registro de Notas', () => setBodegaOpen(false))}
                   {(isAdmin || isBodeguero || isVendedor) &&
                     sheetLink('/alertas-stock', <AlertTriangle className="w-5 h-5" />, 'Alertas de stock', () => setBodegaOpen(false))
@@ -172,12 +172,10 @@ export function BottomNav() {
                       className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
                       <Landmark className="w-4 h-4 text-[var(--body)]" /> Config de Caja
                     </Link>
-                    {(flags as any)['inversion-mercaderia'] && (
-                      <Link href="/admin/inversion-mercaderia" onClick={() => setAdminOpen(false)}
-                        className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
-                        <PieChart className="w-4 h-4 text-[var(--body)]" /> Inversión en Mercadería
-                      </Link>
-                    )}
+                    <Link href="/admin/inversion-mercaderia" onClick={() => setAdminOpen(false)}
+                      className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
+                      <PieChart className="w-4 h-4 text-[var(--body)]" /> Inversión en Mercadería
+                    </Link>
                   </div>
                   <Button variant="destructive" onClick={() => signOut({ callbackUrl: '/' })} className="w-full">
                     Cerrar sesión

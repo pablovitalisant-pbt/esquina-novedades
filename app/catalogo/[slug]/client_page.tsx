@@ -9,13 +9,8 @@ import { formatCLP } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingBag } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
-import flags from '@/config/feature-flags.json';
 
-// ponytail: flag carrito-pedidos-ui — con false (default) la página se renderiza
-// igual que antes de 2a/2b (sin botón, sin drawer). Mismo patrón que
-// PreciosClient (provider montado solo si el flag está activo).
 export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }) {
-  const CARRITO = (flags as any)['carrito-pedidos-ui'] === true;
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('print=1')) {
@@ -78,13 +73,11 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
                       </div>
                     </div>
                   )}
-                  {CARRITO && (
-                    <div className="mt-3">
-                      <BotonAgregarPedido
-                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
-                      />
-                    </div>
-                  )}
+                  <div className="mt-3">
+                    <BotonAgregarPedido
+                      item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
@@ -95,8 +88,6 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
       <CatalogFooter />
     </div>
   );
-
-  if (!CARRITO) return grid;
 
   return (
     <CarritoProvider origen="catalogo" origen_slug={slug}>

@@ -24,9 +24,6 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/notas-venta/1',
 }));
 
-jest.mock('@/config/feature-flags.json', () => ({
-  get 'notas-venta-whatsapp-pdf'() { return true; }, // el slice está detrás de este flag
-}));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 
 const save = jest.fn();

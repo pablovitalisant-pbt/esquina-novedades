@@ -87,4 +87,5 @@ Pendientes:
 
 ## Contador de slices desde el ultimo ponytail audit
 
-11 (SENAL 2 ACTIVA: correr ponytail audit antes del proximo slice)
+0 (ponytail audit 2026-10-22 hecho: docs/audits/ponytail-audit-2026-10-22.md; aplicado en slice L1 salvo registro de notas de bodega, que se conserva por decision de Pablo)
+

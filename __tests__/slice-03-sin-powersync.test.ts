@@ -26,7 +26,6 @@ const MIGRADOS = [
   'app/(app)/admin/categorias/client_page.tsx',
   'app/(app)/notas-venta/client_page.tsx',
   'app/(app)/notas-venta/client_page.test.tsx',
-  '__tests__/notas-venta-prefetch-hover.test.tsx',
   'app/(app)/notas-venta/[id]/client_page.tsx',
   'app/(app)/notas-venta/[id]/client_page.test.tsx',
   '__tests__/notas-venta-eliminar-item.test.tsx',
@@ -58,11 +57,10 @@ const recorrer = (d: string): string[] =>
     : [];
 
 describe('Slice 3 — cierre (3.10 + 3.11)', () => {
-  it('T2 flags: solo los 17 esperados', () => {
+  it('T2 flags: solo los 5 esperados', () => {
     const keys = Object.keys(JSON.parse(leer('config/feature-flags.json'))).sort();
     expect(keys.filter((k) => /offline|sync-conflictos/.test(k))).toEqual([]);
-    expect(keys).toHaveLength(17);
-    expect(keys).toContain('notas-venta-prefetch-hover');
+    expect(keys).toHaveLength(5);
     expect(leer('.env.example')).not.toMatch(/POWERSYNC/);
   });
 

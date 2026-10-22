@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import flags from '@/config/feature-flags.json';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,6 @@ type Prenota = {
 export function PrenotasPage({ session }: { session: any }) {
   const router = useRouter();
   const rol = (session?.user as any)?.rol;
-  const PREFETCH_HOVER = flags['notas-venta-prefetch-hover'] === true;
 
   const [prenotas, setPrenotas] = useState<Prenota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,36 +55,6 @@ export function PrenotasPage({ session }: { session: any }) {
   useEffect(() => {
     fetchPrenotas();
   }, []);
-
-  // Prefetch on-hover (flag `notas-venta-prefetch-hover`): Next trae el payload
-  // RSC de la nota recién cuando el puntero se sostiene ~150ms sobre la fila.
-  // Reemplaza al loop que prefetcheaba TODAS las notas al montar (commit
-  // 1f75a9a), que costaba una invocación de función + middleware por nota en
-  // cada visita a la lista. El dedupe evita repetir la request en la sesión.
-  const prefetched = useRef<Set<number>>(new Set());
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cancelHoverPrefetch = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-  };
-
-  const prefetchNota = (id: number) => {
-    if (prefetched.current.has(id)) return;
-    prefetched.current.add(id);
-    router.prefetch(`/notas-venta/${id}`);
-  };
-
-  const handleHoverStart = (id: number) => {
-    if (!PREFETCH_HOVER) return;
-    cancelHoverPrefetch();
-    hoverTimer.current = setTimeout(() => prefetchNota(id), 150);
-  };
-
-  useEffect(() => cancelHoverPrefetch, []);
-
 
   const handleCrear = async () => {
     setCreating(true);
@@ -164,10 +133,6 @@ export function PrenotasPage({ session }: { session: any }) {
             <div
               key={prenota.id}
               data-testid={`nota-row-${prenota.id}`}
-              onMouseEnter={() => handleHoverStart(prenota.id)}
-              onMouseLeave={cancelHoverPrefetch}
-              // Sin hover en mobile: el touch prefetchea directo, sin debounce.
-              onTouchStart={() => { if (PREFETCH_HOVER) prefetchNota(prenota.id); }}
               className="bg-[var(--card)] border rounded-card p-4 shadow-sm flex items-start justify-between gap-4"
             >
               <div className="min-w-0">

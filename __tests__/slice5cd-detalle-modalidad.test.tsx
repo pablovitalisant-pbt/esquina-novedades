@@ -11,7 +11,6 @@ import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
-jest.mock('@/config/feature-flags.json', () => ({ 'notas-venta-whatsapp-pdf': false }));
 
 // 'xlsx' tiene vulnerabilidades sin parche: importarlo debe fallar (S1).
 jest.mock('xlsx', () => { throw new Error('xlsx prohibido: usar exceljs'); }, { virtual: true });
@@ -163,15 +162,5 @@ describe('5d — Excel, PDF y WhatsApp', () => {
     expect(mockAutoTable.body[0][6]).toBe('$30.000');
     expect(mockAutoTable.body[0][7]).toBe('Caja');
     expect(mockAutoTable.body[0][6]).not.toBe('$360.000');
-  });
-
-  it('WhatsApp legacy describe cajas/unidades y agrega subtotal', async () => {
-    window.open = jest.fn();
-    await renderNota([caja]);
-    fireEvent.click(screen.getByText('Enviar por WhatsApp'));
-    const url = (window.open as jest.Mock).mock.calls[0][0] as string;
-    const msg = decodeURIComponent(url.split('text=')[1]);
-    expect(msg).toContain('(3 cajas x $10.000)');
-    expect(msg).toContain('$30.000');
   });
 });

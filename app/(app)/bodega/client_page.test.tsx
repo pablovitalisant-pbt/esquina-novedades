@@ -6,13 +6,6 @@ import { BodegaClient } from './client_page';
 
 var toastMock: any;
 
-// Flags mutables: los getters leen globalThis en tiempo de render.
-jest.mock('@/config/feature-flags.json', () => ({
-  get 'bodega-conciliacion-stock'() {
-    return (globalThis as any).__bodegaConciliacion === true;
-  },
-}));
-
 jest.mock('next/image', () => ({ fill, ...props }: any) =>
   require('react').createElement('img', { ...props, alt: '' })
 );
@@ -41,7 +34,6 @@ global.fetch = fetchMock as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (globalThis as any).__bodegaConciliacion = true;
   toastMock = { success: jest.fn(), error: jest.fn() };
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
   // jsdom arranca online por defecto; asegurarse por si un test anterior lo cambió.
@@ -122,8 +114,8 @@ describe('app/(app)/bodega — carga y guardado por API', () => {
   });
 });
 
-describe('app/(app)/bodega — botón "Actualizar Stock" (bodega-conciliacion-stock)', () => {
-  it('admin + flag on → botón visible', async () => {
+describe('app/(app)/bodega — botón "Actualizar Stock" ', () => {
+  it('admin → botón visible', async () => {
     await openDrawerAs({ user: { id: '1', nombre: 'Pablo', rol: 'admin' } });
     expect(screen.getByRole('button', { name: /actualizar stock/i })).toBeInTheDocument();
   });
@@ -135,12 +127,6 @@ describe('app/(app)/bodega — botón "Actualizar Stock" (bodega-conciliacion-st
 
   it('bodeguero → botón NO aparece', async () => {
     await openDrawerAs({ user: { id: '3', nombre: 'B', rol: 'bodeguero' } });
-    expect(screen.queryByRole('button', { name: /actualizar stock/i })).not.toBeInTheDocument();
-  });
-
-  it('flag off → botón NO aparece aunque sea admin (feature desactivada)', async () => {
-    (globalThis as any).__bodegaConciliacion = false;
-    await openDrawerAs({ user: { id: '1', nombre: 'Pablo', rol: 'admin' } });
     expect(screen.queryByRole('button', { name: /actualizar stock/i })).not.toBeInTheDocument();
   });
 

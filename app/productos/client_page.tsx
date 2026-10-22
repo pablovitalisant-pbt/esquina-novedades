@@ -8,7 +8,6 @@ import { formatCLP } from '@/lib/utils';
 import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
 import Link from 'next/link';
-import flags from '@/config/feature-flags.json';
 
 interface ProductoItem {
   codigo: string;
@@ -23,11 +22,7 @@ interface ProductoItem {
   es_nuevo: boolean;
 }
 
-// ponytail: flag carrito-pedidos-ui — con false (default) la página se renderiza
-// igual que antes de 2a/2b (sin botón, sin drawer). Mismo patrón que
-// PreciosClient (provider montado solo si el flag está activo).
 export function ProductosPublicos({ productos, empresaSlug }: { productos: ProductoItem[]; empresaSlug: string }) {
-  const CARRITO = (flags as any)['carrito-pedidos-ui'] === true;
 
   const grid = (
     <div className="min-h-screen bg-background font-sans">
@@ -87,13 +82,11 @@ export function ProductosPublicos({ productos, empresaSlug }: { productos: Produ
                       <span className="text-[10px] uppercase font-bold text-[var(--body-subtle)] tracking-wider">Precio</span>
                       <div className="text-2xl font-black text-[var(--primary)] leading-none">{formatCLP(p.precio)}</div>
                     </div>
-                    {CARRITO && (
-                      <div className="mt-3">
-                        <BotonAgregarPedido
-                          item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio, precio_mayor: p.precio_mayor, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
-                        />
-                      </div>
-                    )}
+                    <div className="mt-3">
+                      <BotonAgregarPedido
+                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio, precio_mayor: p.precio_mayor, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -105,8 +98,6 @@ export function ProductosPublicos({ productos, empresaSlug }: { productos: Produ
       <CatalogFooter />
     </div>
   );
-
-  if (!CARRITO) return grid;
 
   return (
     <CarritoProvider origen="productos">

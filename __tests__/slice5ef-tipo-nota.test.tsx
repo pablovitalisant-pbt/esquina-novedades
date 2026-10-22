@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react';
 import { PrenotasPage } from '@/app/(app)/notas-venta/client_page';
 import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'notas-venta-modalidad': true, 'notas-venta-whatsapp-pdf': false }));
+jest.mock('@/config/feature-flags.json', () => ({ 'notas-venta-modalidad': true }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 

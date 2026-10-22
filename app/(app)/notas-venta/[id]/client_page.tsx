@@ -720,31 +720,9 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
   // Slice: enviar PDF por WhatsApp en un click. Si el navegador soporta Web
   // Share con archivos (canShare), se arma un File PDF y se abre el selector
   // nativo del SO; el usuario elige WhatsApp y el PDF va adjunto. Sin soporte
-  // (p.ej. Firefox) → fallback: descarga + aviso. Detrás de feature flag.
+  // (p.ej. Firefox) → fallback: descarga + aviso.
   const compartirWhatsApp = async () => {
     if (!prenota?.items?.length) return;
-    if (!(flags as any)['notas-venta-whatsapp-pdf']) {
-      // Flag off → comportamiento legacy (mensaje de texto por wa.me).
-      const total = prenota.items.reduce(
-        (sum: number, i: any) => sum + Number(i.subtotal), 0
-      );
-      const lineas = prenota.items.map((i: any) => {
-        const cant = esCaja(i) ? `${i.cajas} cajas` : `${i.unidades} uds`;
-        return `• ${i.codigo} — ${i.descripcion || ''} (${cant} x ${formatCLP(Number(i.precio))}) ${formatCLP(Number(i.subtotal))}`;
-      }).join('\n');
-      const mensaje = [
-        `*${prenota.titulo}*`,
-        (prenota.nombre_cliente || prenota.cliente_nombre) ? `Cliente: ${prenota.nombre_cliente || prenota.cliente_nombre}` : null,
-        ``,
-        lineas,
-        ``,
-        `*Total: ${formatCLP(total)}*`,
-      ].filter(l => l !== null).join('\n');
-      const url = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
-      window.open(url, '_blank');
-      return;
-    }
-
     setEnviandoWhatsapp(true);
     try {
       const doc = await construirDocPDF();

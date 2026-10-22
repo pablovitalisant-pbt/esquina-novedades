@@ -71,9 +71,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { nombre, telefono, direccion, notas } = body;
-    // UUID opcional — lo manda BackendConnector (Slice 13b) con el id local
-    // de PowerSync, para que local = servidor sin duplicados. Flujo online
-    // sin id → gen_random_uuid().
+    // UUID opcional; sin id → gen_random_uuid().
     const id = body?.id ?? null;
 
     if (!nombre || !nombre.trim()) {

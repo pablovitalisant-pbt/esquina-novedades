@@ -36,7 +36,6 @@ const DEAD_FLAGS = [
 
 // 14 flags verificados VIVO (leídos en source) — NO deben borrarse.
 const LIVE_FLAGS = [
-  'despachos-ia',
   'registro_notas_bodega_ui',
   // cliente-stars-visible se borra junto con ClienteStars (componente muerto).
 ];
@@ -76,11 +75,6 @@ describe('Slice 1 audit ponytail — deletes seguros', () => {
   });
 
   describe('Frontera — NO se tocan (guards)', () => {
-    test('sharp se mantiene en dependencies (requerido por next/image)', () => {
-      const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
-      expect(pkg.dependencies.sharp).toBeTruthy();
-    });
-
     test('slice5-deps-smoke.test.ts se mantiene intacto', () => {
       expect(fs.existsSync(path.join(ROOT, '__tests__/slice5-deps-smoke.test.ts'))).toBe(true);
     });

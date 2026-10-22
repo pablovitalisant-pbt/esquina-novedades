@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
-import flags from '@/config/feature-flags.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -15,26 +12,7 @@ import { toast } from 'sonner';
 // La escritura de usuarios (hash bcrypt server-side) nunca puede ser offline.
 const OFFLINE_WRITE_MSG = 'La gestión de usuarios requiere conexión a internet. Conectate para crear, editar o eliminar usuarios.';
 
-// UsuariosClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → comportamiento actual sin cambios.
-// SOLO LECTURA offline: la escritura (crear/editar/eliminar) siempre requiere
-// conexión (hash bcrypt server-side), se bloquea con mensaje claro.
 export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
-  const OFFLINE_READ = (flags as any)["usuarios-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <UsuariosContent currentUserId={currentUserId} />
-      </PowerSyncProvider>
-    );
-  }
-  return <UsuariosContent currentUserId={currentUserId} />;
-}
-
-function UsuariosContent({ currentUserId }: { currentUserId: number }) {
-  const OFFLINE_READ = (flags as any)["usuarios-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,29 +31,6 @@ function UsuariosContent({ currentUserId }: { currentUserId: number }) {
   const fetchUsuarios = async () => {
     setLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/admin/usuarios. Se mapea
-        // id a Number (el id de PowerSync es texto; sin esto currentUserId ===
-        // u.id compararía number contra string y siempre daría false en el
-        // camino offline — bug silencioso) y empresas a [1] (single-tenant).
-        const rows = (await db.getAll(
-          `SELECT id, rut, nombre, rol, activo, created_at FROM usuarios ORDER BY nombre ASC`
-        )) as any[];
-        if (rows && rows.length > 0) {
-          setUsuarios(rows.map((r) => ({ ...r, id: Number(r.id), empresas: [1] })));
-          return;
-        }
-        // La tabla local está vacía (sync roto o aún no bajó). Si hay API
-        // disponible, usarla en vez de mostrar una lista en blanco — no se
-        // condiciona a navigator.onLine porque "internet on con sync vacío"
-        // es exactamente el caso a cubrir.
-        const res = await fetch('/api/admin/usuarios');
-        if (res.ok) {
-          const { data } = await res.json();
-          setUsuarios(data || []);
-        }
-        return;
-      }
       const res = await fetch('/api/admin/usuarios');
       if (res.ok) {
         const { data } = await res.json();

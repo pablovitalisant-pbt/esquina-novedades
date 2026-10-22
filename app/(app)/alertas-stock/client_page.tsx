@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { usePowerSync } from "@powersync/react";
-import { PowerSyncProvider } from "@/lib/powersync/PowerSyncProvider";
-import flags from "@/config/feature-flags.json";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
@@ -34,24 +31,7 @@ function badgeVariant(v: "success" | "warning" | "danger"): string {
   return "bg-[var(--destructive)]/10100 text-[var(--destructive)] border-[var(--destructive)]/30 dark:bg-[var(--destructive)]/10 dark:text-[var(--destructive)] dark:border-[var(--destructive)]/30";
 }
 
-// AlertasStockClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → comportamiento actual sin cambios.
 export function AlertasStockClient() {
-  const OFFLINE_READ = (flags as any)["alertas-stock-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <AlertasStockContent />
-      </PowerSyncProvider>
-    );
-  }
-  return <AlertasStockContent />;
-}
-
-function AlertasStockContent() {
-  const OFFLINE_READ = (flags as any)["alertas-stock-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   const { refreshStockBajo } = useAlertas();
 
   const [productos, setProductos] = useState<AlertaProducto[]>([]);
@@ -63,25 +43,6 @@ function AlertasStockContent() {
     setLoading(true);
     setError(null);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/alertas-stock/lista.
-        // Sin empresa_id (single-tenant). producto_id local es el id de
-        // PowerSync (SERIAL string) → se convierte a number para la lógica.
-        const rows = (await db.getAll(
-          `SELECT p.id AS producto_id, p.codigo, p.detalle, p.imagen_url,
-             COALESCE(ub.saldo, p.saldo, 0) AS saldo, p.stock_minimo,
-             (p.stock_minimo - COALESCE(ub.saldo, p.saldo, 0)) AS deficit
-           FROM productos p
-           LEFT JOIN ubicaciones_bodega ub ON ub.codigo = p.codigo
-           WHERE p.stock_minimo IS NOT NULL
-             AND COALESCE(ub.saldo, p.saldo, 0) < p.stock_minimo
-             AND p.no_reponer = 0
-             AND NOT EXISTS (SELECT 1 FROM alertas_stock_bajo a WHERE a.producto_id = p.id)
-           ORDER BY deficit DESC`
-        )) as any[];
-        setProductos((rows || []).map((r) => ({ ...r, producto_id: Number(r.producto_id) })));
-        return;
-      }
       const res = await fetch("/api/alertas-stock/lista");
       if (!res.ok) {
         if (res.status === 401) {
@@ -100,7 +61,7 @@ function AlertasStockContent() {
     } finally {
       setLoading(false);
     }
-  }, [db, OFFLINE_READ]);
+  }, []);
 
   useEffect(() => {
     fetchAlertas();
@@ -109,22 +70,6 @@ function AlertasStockContent() {
   const handleAccion = async (productoId: number, accion: "ignorar" | "no_reponer") => {
     setSavingId(productoId);
     try {
-      if (OFFLINE_READ && db) {
-        // Escritura local (flag on). Sync por uploadData():
-        // - 'ignorar' → INSERT idempotente en alertas_stock_bajo (ON CONFLICT
-        //   DO NOTHING server-side).
-        // - 'no_reponer' → UPDATE productos.no_reponer (whitelist ahora lo
-        //   acepta, Slice 15).
-        if (accion === "ignorar") {
-          await db.execute(`INSERT INTO alertas_stock_bajo (producto_id) VALUES (?)`, [productoId]);
-        } else {
-          await db.execute(`UPDATE productos SET no_reponer = 1 WHERE id = ?`, [productoId]);
-        }
-        setProductos((prev) => prev.filter((p) => p.producto_id !== productoId));
-        refreshStockBajo();
-        toast.success(accion === "ignorar" ? "Producto silenciado" : "Marcado como no reponer");
-        return;
-      }
       const res = await fetch(`/api/alertas-stock/${productoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

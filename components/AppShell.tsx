@@ -7,19 +7,13 @@ import { BottomNav } from './BottomNav';
 import { AlertasBell } from './AlertasBell';
 import { SessionProvider } from 'next-auth/react';
 import { AlertasProvider } from '@/contexts/AlertasContext';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
-import flags from '@/config/feature-flags.json';
 
 export function AppShell({ children, session }: { children: React.ReactNode, session: any }) {
   const rol = (session?.user as any)?.rol as string;
   const isAdmin = rol === 'admin';
-  // Badge + dropdown offline: si el flag está en true, PowerSync se monta desde
-  // el arranque para que AlertasContext (badge) y AlertasBell (dropdown) lean
-  // local. Debe envolver a AlertasProvider porque éste llama a usePowerSync().
-  // Con el flag en false no se monta → comportamiento actual sin cambios.
-  const BADGE_OFFLINE = (flags as any)["alertas-badge-offline"];
 
-  const app = (
+  return (
+    <SessionProvider session={session}>
     <AlertasProvider>
       <div className="min-h-screen bg-[var(--background)] flex flex-col pt-16 md:pt-16 pb-16 md:pb-0">
         <TopNav />
@@ -37,11 +31,6 @@ export function AppShell({ children, session }: { children: React.ReactNode, ses
         <BottomNav />
       </div>
     </AlertasProvider>
-  );
-
-  return (
-    <SessionProvider session={session}>
-      {BADGE_OFFLINE ? <PowerSyncProvider>{app}</PowerSyncProvider> : app}
     </SessionProvider>
   );
 }

@@ -9,22 +9,6 @@ import { CatalogoAdminClient } from './client_page';
 
 // useEmpresaId eliminado (PRD §9.17) — componente usa const empresaId = 1
 
-// Mockear la cadena PowerSync: evita importar @powersync/web (Worker no
-// definido en jsdom). Flag off por defecto → rama online.
-var dbMock: any;
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => dbMock,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
-jest.mock('@/config/feature-flags.json', () => ({
-  get 'catalogo-admin-offline-lectura'() {
-    return (globalThis as any).__catalogoAdminOffline === true;
-  },
-}));
-
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));
@@ -78,8 +62,6 @@ function mockFetch(overrides: Record<string, any> = {}) {
 }
 
 beforeEach(() => {
-  (globalThis as any).__catalogoAdminOffline = false;
-  dbMock = { getAll: jest.fn().mockResolvedValue([]), onChangeWithCallback: jest.fn(() => () => {}) };
   global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
@@ -169,25 +151,23 @@ describe('Modal de edición — guardar cambios', () => {
   });
 });
 
-// ─── Slice 18: lectura offline + bloqueo de escritura ───
-const OFF_CAT = { id: 'cat-1', titulo: 'Catálogo A', descripcion: 'Desc', slug: 'catalogo-a', activo: '1', user_id: 1, created_at: '2026-08-01' };
+// ─── Carga por fetch + bloqueo de escritura sin conexión ───
+const OFF_CAT = { id: 'cat-1', titulo: 'Catálogo A', descripcion: 'Desc', slug: 'catalogo-a', activo: true, user_id: 1, created_at: '2026-08-01' };
+const mockLista = () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [OFF_CAT] }) });
+};
 
-describe('catalogo/admin — offline (Slice 18)', () => {
-  it('flag en true: fetchCatalogos local mapea activo a boolean real', async () => {
-    (globalThis as any).__catalogoAdminOffline = true;
-    global.fetch = jest.fn(); // reset: aislar de tests online previos
-    dbMock.getAll.mockResolvedValue([OFF_CAT]);
+describe('catalogo/admin — carga por fetch y escritura sin conexión', () => {
+  it('carga la lista con fetch a /api/catalogos exactamente 1 vez', async () => {
+    mockLista();
     render(<CatalogoAdminClient session={{ user: { id: 1, rol: 'admin' } }} />);
     await waitFor(() => screen.getByText('Catálogo A'));
-    expect(dbMock.getAll).toHaveBeenCalled();
-    // el path offline NO llama al endpoint de lista
     const lista = (global.fetch as jest.Mock).mock.calls.filter(([url]: [string]) => String(url).includes('/api/catalogos?'));
-    expect(lista.length).toBe(0);
+    expect(lista.length).toBe(1);
   });
 
-  it('flag en true + offline: eliminar muestra mensaje claro y NO hace fetch', async () => {
-    (globalThis as any).__catalogoAdminOffline = true;
-    dbMock.getAll.mockResolvedValue([OFF_CAT]);
+  it('sin conexión: eliminar muestra mensaje claro y NO hace fetch', async () => {
+    mockLista();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     global.confirm = jest.fn(() => true) as any;
 
@@ -204,9 +184,8 @@ describe('catalogo/admin — offline (Slice 18)', () => {
     expect(del.length).toBe(0);
   });
 
-  it('flag en true + offline: editar muestra mensaje claro y NO llama a public/[slug]', async () => {
-    (globalThis as any).__catalogoAdminOffline = true;
-    dbMock.getAll.mockResolvedValue([OFF_CAT]);
+  it('sin conexión: editar muestra mensaje claro y NO llama a public/[slug]', async () => {
+    mockLista();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
 
     render(<CatalogoAdminClient session={{ user: { id: 1, rol: 'admin' } }} />);

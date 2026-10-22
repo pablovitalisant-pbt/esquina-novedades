@@ -3,10 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, AlertTriangle } from 'lucide-react';
-import { usePowerSync } from '@powersync/react';
 import { useAlertas } from '@/contexts/AlertasContext';
 import { Badge } from './ui/badge';
-import flags from '@/config/feature-flags.json';
 
 interface StockBajoItem {
   producto_id: number;
@@ -21,9 +19,6 @@ interface StockBajoItem {
 export function AlertasBell() {
   const { stockBajoCount } = useAlertas();
   const router = useRouter();
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const OFFLINE_READ = (flags as any)["alertas-badge-offline"];
-  const db = usePowerSync();
   const [open, setOpen] = useState(false);
   const [lista, setLista] = useState<StockBajoItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,33 +54,6 @@ export function AlertasBell() {
     fetchingRef.current = true;
     setLoading(true);
 
-    if (OFFLINE_READ && db) {
-      // Lista local (flag on): replica GET /api/alertas-stock/lista. Sin
-      // empresa_id (single-tenant). p.cantcaja incluido porque el dropdown
-      // calcula cajas. producto_id local (SERIAL string) → number.
-      db.getAll(
-        `SELECT p.id AS producto_id, p.codigo, p.detalle,
-           COALESCE(ub.saldo, p.saldo, 0) AS saldo, p.stock_minimo, p.cantcaja,
-           (p.stock_minimo - COALESCE(ub.saldo, p.saldo, 0)) AS deficit
-         FROM productos p
-         LEFT JOIN ubicaciones_bodega ub ON ub.codigo = p.codigo
-         WHERE p.stock_minimo IS NOT NULL
-           AND COALESCE(ub.saldo, p.saldo, 0) < p.stock_minimo
-           AND p.no_reponer = 0
-           AND NOT EXISTS (SELECT 1 FROM alertas_stock_bajo a WHERE a.producto_id = p.id)
-         ORDER BY deficit DESC`
-      )
-        .then((rows: any[]) => {
-          setLista((rows || []).map((r) => ({ ...r, producto_id: Number(r.producto_id) })));
-        })
-        .catch(() => {})
-        .finally(() => {
-          setLoading(false);
-          fetchingRef.current = false;
-        });
-      return;
-    }
-
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -102,7 +70,7 @@ export function AlertasBell() {
           fetchingRef.current = false;
         }
       });
-  }, [open, db, OFFLINE_READ]);
+  }, [open]);
 
   return (
     <div ref={panelRef} className="relative">

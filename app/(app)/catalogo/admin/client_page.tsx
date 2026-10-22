@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
-import flags from '@/config/feature-flags.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -30,26 +27,8 @@ export function filtrarCatalogos(catalogos: any[], busqueda: string) {
 }
 const QRCodeSVG = dynamic(() => import('qrcode.react').then(mod => mod.QRCodeSVG), { ssr: false });
 
-// CatalogoAdminClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → comportamiento actual sin cambios.
-// SOLO LECTURA offline: crear/editar/eliminar catálogo requieren conexión
-// (slug de URL server-side, edición recalcula productos en el servidor).
+// crear/editar/eliminar catálogo requieren conexión (slug server-side).
 export function CatalogoAdminClient({ session }: { session: any }) {
-  const OFFLINE_READ = (flags as any)["catalogo-admin-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <CatalogoAdminContent session={session} />
-      </PowerSyncProvider>
-    );
-  }
-  return <CatalogoAdminContent session={session} />;
-}
-
-function CatalogoAdminContent({ session }: { session: any }) {
-  const OFFLINE_READ = (flags as any)["catalogo-admin-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   const activeEmpresaId = 1; // single-tenant — Bazar Naty
   const [catalogos, setCatalogos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,16 +49,6 @@ function CatalogoAdminContent({ session }: { session: any }) {
   const fetchCatalogos = async () => {
     setLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/catalogos. Se mapea activo
-        // a boolean real y user_id a number (mismo tipo que el path online;
-        // no se "arregla" acá el bug de comparación de user_id, se preserva).
-        const rows = (await db.getAll(
-          `SELECT id, titulo, descripcion, slug, activo, user_id, created_at FROM catalogos ORDER BY created_at DESC`
-        )) as any[];
-        setCatalogos((rows || []).map((r) => ({ ...r, activo: !!Number(r.activo), user_id: Number(r.user_id) })));
-        return;
-      }
       const res = await fetch(`/api/catalogos?empresa=${activeEmpresaId}`);
       if (res.ok) {
         const { data } = await res.json();
@@ -95,22 +64,6 @@ function CatalogoAdminContent({ session }: { session: any }) {
   useEffect(() => {
     fetchCatalogos();
   }, []);
-
-  // Watcher (BUG-059): con el flag on, la lista se refresca sola al sincronizar
-  // un catálogo nuevo. Red de seguridad para el caso en que el primer fetch
-  // (disparado por onCreated de CrearCatalogoDialog) llegue vacío porque el sync
-  // aún no llegó. Ref para llamar siempre al fetchCatalogos vigente sin
-  // re-suscribir en cada render (fetchCatalogos no está memoizada).
-  const fetchCatalogosRef = useRef(fetchCatalogos);
-  fetchCatalogosRef.current = fetchCatalogos;
-  useEffect(() => {
-    if (!(OFFLINE_READ && db)) return;
-    const dispose = db.onChangeWithCallback(
-      { onChange: () => { fetchCatalogosRef.current(); } },
-      { tables: ['catalogos'] }
-    );
-    return () => dispose();
-  }, [OFFLINE_READ, db]);
 
   const downloadQR = (slug: string) => {
     const svgEl = document.querySelector(`[data-qr="${slug}"] svg`) as SVGElement;

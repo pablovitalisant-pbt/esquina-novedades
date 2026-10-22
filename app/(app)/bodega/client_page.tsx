@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
 import flags from '@/config/feature-flags.json';
 import { UbicacionBodegaAgrupada } from '@/types';
 import { BodegaCard } from '@/components/BodegaCard';
@@ -16,49 +14,7 @@ import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
 import { cn } from '@/lib/utils';
 
-// Mapea la fila local (SQLite) al mismo shape UbicacionBodegaAgrupada que
-// consume BodegaCard. La query local no expone empresa_id (single-tenant);
-// se fija en 1. Los campos que la query trae de más (ubicacion_id, es_nuevo)
-// no forman parte del shape y se descartan.
-function mapRowToAgrupada(r: any): UbicacionBodegaAgrupada {
-  return {
-    codigo: r.codigo,
-    detalle: r.detalle,
-    producto_imagen_url: r.producto_imagen_url,
-    empresa_id: 1,
-    saldo: r.saldo,
-    cantcaja: r.cantcaja,
-    umed: r.umed,
-    fisico: r.fisico,
-    diferencia: r.diferencia,
-    fisico_cajas: r.fisico_cajas,
-    fisico_unidades: r.fisico_unidades,
-    ubicacion: r.ubicacion,
-    observaciones: r.observaciones,
-  };
-}
-
-// BodegaClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → no se abre la conexión de
-// sync y el comportamiento actual (fetch a /api/ubicaciones) no cambia.
 export function BodegaClient({ session }: any) {
-  const OFFLINE_READ = (flags as any)['bodega-offline-lectura'];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <BodegaContent session={session} offline />
-      </PowerSyncProvider>
-    );
-  }
-  return <BodegaContent session={session} offline={false} />;
-}
-
-function BodegaContent({ session, offline }: { session: any; offline?: boolean }) {
-  // usePowerSync() devuelve null cuando NO hay provider (createContext(null)).
-  // Como el provider solo se monta con el flag en true, `db` es null cuando
-  // offline=false → el DB nunca se inicializa y no se abre la conexión.
-  const db = usePowerSync();
-
   const { shareImage } = useShareImage();
   const activeEmpresaId = 1; // single-tenant — Bazar Naty
   const [ubicaciones, setUbicaciones] = useState<UbicacionBodegaAgrupada[]>([]);
@@ -98,37 +54,17 @@ function BodegaContent({ session, offline }: { session: any; offline?: boolean }
       }
       setLoading(true);
       try {
-        if (offline && db) {
-          // Lectura local desde SQLite sincronizado por PowerSync (flag on).
-          // Replica el LEFT JOIN de app/api/ubicaciones/route.ts, sin el
-          // filtro de empresa_id (single-tenant, ya excluido del schema).
-          const term = search.toLowerCase();
-          const pattern = `%${term}%`;
-          const rows = await db.getAll(
-            `SELECT p.codigo, p.detalle, p.imagen_url as producto_imagen_url, p.saldo, p.cantcaja, p.umed, p.es_nuevo,
-                    u.id as ubicacion_id, u.ubicacion, u.fisico, u.fisico_cajas, u.fisico_unidades, u.diferencia, u.observaciones
-             FROM productos p
-             LEFT JOIN ubicaciones_bodega u ON u.codigo = p.codigo
-             WHERE (? = '' OR lower(p.codigo) LIKE ? OR lower(p.detalle) LIKE ?)
-               AND (? = 0 OR p.saldo > 0)
-               AND (? = 0 OR p.es_nuevo = 1)
-             ORDER BY p.codigo ASC LIMIT 100`,
-            [term, pattern, pattern, soloStock ? 1 : 0, soloNuevo ? 1 : 0]
-          );
-          setUbicaciones((rows || []).map(mapRowToAgrupada));
-        } else {
-          const queryParams = new URLSearchParams({
-            empresa: activeEmpresaId.toString(),
-            ...(search && { search }),
-            ...(soloStock && { soloStock: 'true' }),
-            ...(soloNuevo && { soloNuevo: 'true' }),
-          });
+        const queryParams = new URLSearchParams({
+          empresa: activeEmpresaId.toString(),
+          ...(search && { search }),
+          ...(soloStock && { soloStock: 'true' }),
+          ...(soloNuevo && { soloNuevo: 'true' }),
+        });
 
-          const res = await fetch(`/api/ubicaciones?${queryParams.toString()}`);
-          if (res.ok) {
-            const { data } = await res.json();
-            setUbicaciones(data || []);
-          }
+        const res = await fetch(`/api/ubicaciones?${queryParams.toString()}`);
+        if (res.ok) {
+          const { data } = await res.json();
+          setUbicaciones(data || []);
         }
       } catch (error) {
         console.error(error);
@@ -251,7 +187,6 @@ function BodegaContent({ session, offline }: { session: any; offline?: boolean }
                 <UbicacionEditor
                   ubicacion={selectedUbi}
                   onSaved={handleUbicacionSaved}
-                  offline={offline}
                   session={session}
                 />
                 </div>
@@ -264,11 +199,7 @@ function BodegaContent({ session, offline }: { session: any; offline?: boolean }
   );
 }
 
-function UbicacionEditor({ ubicacion, onSaved, offline, session }: { ubicacion: UbicacionBodegaAgrupada; onSaved: (updated: UbicacionBodegaAgrupada) => void; offline?: boolean; session: any }) {
-  // usePowerSync() devuelve null cuando no hay provider (flag off) → el branch
-  // offline queda inactivo y el fetch original sigue intacto.
-  const db = usePowerSync();
-
+function UbicacionEditor({ ubicacion, onSaved, session }: { ubicacion: UbicacionBodegaAgrupada; onSaved: (updated: UbicacionBodegaAgrupada) => void; session: any }) {
   const [ubicacionStr, setUbicacionStr] = useState(ubicacion.ubicacion || '');
   const [fisicoCajas, setFisicoCajas] = useState(() => ubicacion.fisico_cajas != null ? ubicacion.fisico_cajas.toString() : '');
   const [fisicoUnidades, setFisicoUnidades] = useState(() => ubicacion.fisico_unidades != null && ubicacion.fisico_unidades > 0 ? ubicacion.fisico_unidades.toString() : '');
@@ -278,8 +209,7 @@ function UbicacionEditor({ ubicacion, onSaved, offline, session }: { ubicacion: 
 
   // Conciliación de stock: flag maestro + admin-only. Para vendedor/bodeguero
   // el botón no se muestra (no solo deshabilitado). El fetch de conciliación
-  // SIEMPRE va al backend (POST /api/bodega/conciliaciones), nunca por la rama
-  // offline de PowerSync — es admin-only y online.
+  // SIEMPRE va al backend (POST /api/bodega/conciliaciones) — es admin-only y online.
   const conciliacionFlag = (flags as any)['bodega-conciliacion-stock'];
   const isAdmin = (session?.user as any)?.rol === 'admin';
   const showConciliacion = conciliacionFlag && isAdmin;
@@ -327,37 +257,15 @@ function UbicacionEditor({ ubicacion, onSaved, offline, session }: { ubicacion: 
         observaciones: obs,
       };
 
-      if (offline && db) {
-        // Escritura local (flag on): se actualiza SQLite al instante y la
-        // subida al backend la hace uploadData() al reconectar. Como el
-        // backfill garantiza que todo producto tiene fila, es siempre UPDATE.
-        await db.execute(
-          `UPDATE ubicaciones_bodega
-           SET ubicacion = ?, fisico = ?, fisico_cajas = ?, fisico_unidades = ?, diferencia = ?, observaciones = ?
-           WHERE codigo = ?`,
-          [ubicacionStr, fisicoTotal, cajas, unidades, diferencia, obs, ubicacion.codigo]
-        );
-        onSaved({
-          ...ubicacion,
-          ubicacion: payload.ubicacion,
-          fisico: fisicoTotal,
-          fisico_cajas: cajas,
-          fisico_unidades: unidades,
-          diferencia,
-          observaciones: payload.observaciones,
-        });
-        toast.success('Ubicación guardada');
-      } else {
-        const res = await fetch(`/api/ubicaciones/codigo/${ubicacion.codigo}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error('Error guardando');
-        const { data } = await res.json();
-        onSaved({ ...ubicacion, ...data, ubicacion: payload.ubicacion, observaciones: payload.observaciones });
-        toast.success('Ubicación guardada');
-      }
+      const res = await fetch(`/api/ubicaciones/codigo/${ubicacion.codigo}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Error guardando');
+      const { data } = await res.json();
+      onSaved({ ...ubicacion, ...data, ubicacion: payload.ubicacion, observaciones: payload.observaciones });
+      toast.success('Ubicación guardada');
     } catch {
       toast.error('No se pudo guardar');
     } finally {

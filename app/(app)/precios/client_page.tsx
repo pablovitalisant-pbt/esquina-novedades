@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
 import flags from '@/config/feature-flags.json';
 import { Producto, UserSession } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
@@ -18,27 +16,9 @@ interface PreciosClientProps {
   session: UserSession;
 }
 
-// PreciosClient decide si montar PowerSync según el flag. Con el flag en false
-// (default) NO se monta el provider → no se abre la conexión de sync y el
-// comportamiento actual (fetch a /api/productos) no cambia.
 export function PreciosClient({ session }: PreciosClientProps) {
-  const OFFLINE_READ = (flags as any)['precios-offline-lectura'];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <PreciosContent session={session} />
-      </PowerSyncProvider>
-    );
-  }
-  return <PreciosContent session={session} />;
-}
-
-function PreciosContent({ session }: PreciosClientProps) {
-  const OFFLINE_READ = (flags as any)['precios-offline-lectura'];
   const PRECIO_VENTA = (flags as any)['precios-precio-venta-card'] === true;
   const COMPARTIR_PRECIO = (flags as any)['drawer-compartir-precio'] === true;
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,24 +71,17 @@ function PreciosContent({ session }: PreciosClientProps) {
   useEffect(() => { localStorage.setItem('ocultar_precios', ocultarPrecios.toString()); }, [ocultarPrecios]);
 
   // Dólar del día para el equivalente en AR$ — lo usan card y drawer.
-  // Lectura dual (mismo patrón que fetchProducts y que caja-config): offline
-  // lee caja_config desde SQLite local (cero red), online usa /api/caja/config.
   useEffect(() => {
     (async () => {
       try {
-        if (OFFLINE_READ && db) {
-          const row = await db.get(`SELECT valor FROM caja_config WHERE clave = 'dolar_dia'`);
-          setDolarDia(parseFloat((row as any)?.valor || '0'));
-        } else {
-          const res = await fetch('/api/caja/config');
-          const configData = await res.json();
-          setDolarDia(parseFloat(configData?.data?.valor || '0'));
-        }
+        const res = await fetch('/api/caja/config');
+        const configData = await res.json();
+        setDolarDia(parseFloat(configData?.data?.valor || '0'));
       } catch {
         // sin dólar configurado / sin conexión → no se muestra la línea AR$
       }
     })();
-  }, [OFFLINE_READ, db]);
+  }, []);
 
   // Fetch logic
   useEffect(() => {
@@ -120,50 +93,16 @@ function PreciosContent({ session }: PreciosClientProps) {
         return;
       }
       try {
-        if (OFFLINE_READ && db) {
-          // Lectura local (flag on): replica el GROUP BY de GET /api/productos.
-          // SQLite no tiene BOOL_OR → se usa MAX(es_nuevo) sobre el entero 0/1.
-          // Sin filtro de empresa_id (single-tenant, deuda heredada de la API).
-          const pattern = `%${debouncedSearch.toLowerCase()}%`;
-          const rows = await db.getAll(
-            `SELECT
-               p.codigo,
-               MAX(p.id) as id,
-               MAX(p.detalle) as detalle,
-               SUM(p.saldo) as saldo,
-               MAX(p.prcventa) as prcventa,
-               MAX(p.prcminimo) as prcminimo,
-               MAX(p.costo) as costo,
-               MAX(p.margen_pct) as margen_pct,
-               MAX(p.umed) as umed,
-               MAX(p.imagen_url) as imagen_url,
-               MAX(p.es_nuevo) as es_nuevo,
-               MAX(p.cantcaja) as cantcaja,
-               MAX(p.pesocaja) as pesocaja,
-               MAX(p.cubicaja) as cubicaja,
-               MAX(p.stock_minimo) as stock_minimo,
-               MAX(p.categoria) as categoria
-             FROM productos p
-             WHERE (LOWER(p.codigo) LIKE ? OR LOWER(p.detalle) LIKE ?)
-             GROUP BY p.codigo
-             HAVING (? = 0 OR SUM(p.saldo) > 0)
-                AND (? = 0 OR MAX(p.es_nuevo) = 1)
-             ORDER BY p.codigo ASC LIMIT 200`,
-            [pattern, pattern, soloStock ? 1 : 0, soloNuevo ? 1 : 0]
-          );
-          setProductos((rows || []) as Producto[]);
-        } else {
-          const queryParams = new URLSearchParams({
-            ...(debouncedSearch && { search: debouncedSearch }),
-            ...(soloStock && { soloStock: 'true' }),
-            ...(soloNuevo && { soloNuevo: 'true' }),
-          });
+        const queryParams = new URLSearchParams({
+          ...(debouncedSearch && { search: debouncedSearch }),
+          ...(soloStock && { soloStock: 'true' }),
+          ...(soloNuevo && { soloNuevo: 'true' }),
+        });
 
-          const res = await fetch(`/api/productos?${queryParams.toString()}`);
-          if (res.ok) {
-            const { data } = await res.json();
-            setProductos(data || []);
-          }
+        const res = await fetch(`/api/productos?${queryParams.toString()}`);
+        if (res.ok) {
+          const { data } = await res.json();
+          setProductos(data || []);
         }
       } catch (error) {
         console.error(error);

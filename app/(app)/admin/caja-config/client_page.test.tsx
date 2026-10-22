@@ -4,20 +4,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CajaConfigClient } from './client_page';
 
-var dbMock: any;
-
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => dbMock,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
-jest.mock('@/config/feature-flags.json', () => ({
-  get 'caja-config-offline-lectura'() {
-    return (globalThis as any).__cajaConfigOffline === true;
-  },
-}));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('lucide-react', () => new Proxy({}, { get: () => () => null }));
 jest.mock('@/components/ui/button', () => ({ Button: ({ children, ...p }: any) => require('react').createElement('button', p, children) }));
@@ -38,31 +24,26 @@ global.fetch = fetchMock as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (globalThis as any).__cajaConfigOffline = false;
-  dbMock = { get: jest.fn(), getAll: jest.fn(), execute: jest.fn().mockResolvedValue(undefined) };
-  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () => ({
+      data: url === '/api/caja/cuentas'
+        ? [{ id: 3, nombre: 'Caja chica', moneda: 'USD', activa: true, orden: 1, created_at: null }]
+        : [],
+    }),
+  }));
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
 
-describe('app/(app)/admin/caja-config — caja-config-offline-lectura (regresión)', () => {
-  it('flag en true: carga local mapea activa a boolean (no 0/1)', async () => {
-    (globalThis as any).__cajaConfigOffline = true;
-    dbMock.get.mockResolvedValue({ valor: '980', updated_at: null, updated_por: '' });
-    dbMock.getAll.mockImplementation(async (sql: string) => {
-      if (String(sql).includes('FROM caja_cuentas')) return [{ id: '3', nombre: 'Caja chica', moneda: 'USD', activa: '1', orden: 1, created_at: null }];
-      return [];
-    });
+describe('app/(app)/admin/caja-config — carga por API y guard sin conexión', () => {
+  it('carga con 3 fetch y muestra la cuenta activa', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
-    // la cuenta se renderiza con activa = !!Number('1') = true → "Activa"
     await screen.findByText('Caja chica');
-    // toggle: activa true → la cuenta se muestra activa
     expect(screen.getByText('Activa')).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it('flag en true + offline: crear cuenta nueva muestra mensaje claro y NO hace fetch ni db.execute', async () => {
-    (globalThis as any).__cajaConfigOffline = true;
-    dbMock.getAll.mockResolvedValue([]);
+  it('sin conexión: crear cuenta nueva muestra mensaje claro y NO hace POST', async () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     render(<CajaConfigClient currentUserNombre="Admin" />);
 
@@ -74,7 +55,6 @@ describe('app/(app)/admin/caja-config — caja-config-offline-lectura (regresió
     await waitFor(() => expect(require('sonner').toast.error).toHaveBeenCalled());
     const msg = (require('sonner').toast.error as jest.Mock).mock.calls[0][0] as string;
     expect(msg).toContain('Crear una cuenta nueva requiere conexión');
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(dbMock.execute).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some((c: any[]) => c[1]?.method === 'POST')).toBe(false);
   });
 });

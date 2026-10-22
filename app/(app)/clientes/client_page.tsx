@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
-import flags from '@/config/feature-flags.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -19,24 +16,7 @@ interface Cliente {
   saldo_favor: number; // Slice 3c — disponible del ledger de saldo a favor
 }
 
-// ClientesPage decide si montar PowerSync según el flag. Con el flag en false
-// (default) NO se monta el provider → comportamiento actual sin cambios.
 export function ClientesPage() {
-  const OFFLINE_READ = (flags as any)["clientes-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <ClientesContent />
-      </PowerSyncProvider>
-    );
-  }
-  return <ClientesContent />;
-}
-
-function ClientesContent() {
-  const OFFLINE_READ = (flags as any)["clientes-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,28 +33,6 @@ function ClientesContent() {
   const fetchClientes = useCallback(async () => {
     setLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/clientes. SQLite LIKE es
-        // case-insensitive para ASCII (≈ ILIKE) — no cubre acentos/no-ASCII,
-        // diferencia documentada, no solucionada en este slice.
-        const rows = (await db.getAll(
-          `SELECT id, nombre, telefono, direccion, notas, created_at FROM clientes
-           WHERE (? = '' OR nombre LIKE '%' || ? || '%')
-           ORDER BY nombre ASC LIMIT 50`,
-          [search, search]
-        )) as any[];
-        setClientes((rows || []).map((r) => ({
-          ...r,
-          id: String(r.id),
-          // Slice 3c: la réplica local de clientes (PowerSync) no sincroniza
-          // el ledger clientes_saldo_favor_movimientos, así que el saldo a
-          // favor no está disponible offline. Se mapea 0 explícito (nunca
-          // undefined) para que el render no truene. Mismo riesgo latente
-          // que notas-venta (PRD §10). Flag off en producción.
-          saldo_favor: 0,
-        })));
-        return;
-      }
       const url = search ? `/api/clientes?q=${encodeURIComponent(search)}` : '/api/clientes';
       const res = await fetch(url);
       if (res.ok) {
@@ -83,7 +41,7 @@ function ClientesContent() {
       }
     } catch (e) { console.error('[clientes] fetchClientes:', e); }
     finally { setLoading(false); }
-  }, [search, db, OFFLINE_READ]);
+  }, [search]);
 
   useEffect(() => { fetchClientes(); }, [fetchClientes]);
 
@@ -95,28 +53,6 @@ function ClientesContent() {
     if (!nombre.trim()) { toast.error('El nombre es requerido'); return; }
     setSaving(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Escritura local (flag on). Sync por uploadData(). id UUID del cliente
-        // en el INSERT (local = servidor, sin duplicados).
-        const data = { nombre: nombre.trim(), telefono: telefono.trim() || null, direccion: direccion.trim() || null, notas: notas.trim() || null };
-        if (editing) {
-          await db.execute(
-            `UPDATE clientes SET nombre = ?, telefono = ?, direccion = ?, notas = ? WHERE id = ?`,
-            [data.nombre, data.telefono, data.direccion, data.notas, editing.id]
-          );
-          toast.success('Cliente actualizado');
-        } else {
-          const id = crypto.randomUUID();
-          await db.execute(
-            `INSERT INTO clientes (id, nombre, telefono, direccion, notas, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, data.nombre, data.telefono, data.direccion, data.notas, new Date().toISOString()]
-          );
-          toast.success('Cliente creado');
-        }
-        resetForm();
-        fetchClientes();
-        return;
-      }
       if (editing) {
         await fetch(`/api/clientes/${editing.id}`, {
           method: 'PATCH',
@@ -144,37 +80,6 @@ function ClientesContent() {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este cliente?')) return;
     try {
-      if (OFFLINE_READ && db) {
-        // Replica el chequeo de dos pasos del endpoint online (posible ahora
-        // gracias a Slice 14, que permite que una nota llegue a 'anulada'
-        // offline). No se replica la cascada de borrado multi-tabla local:
-        // DELETE /api/clientes/[id] la hace server-side al sync.
-        // 1) ¿notas activas?
-        const notas = (await db.getAll(
-          `SELECT estado FROM prenotas WHERE cliente_id = ?`,
-          [id]
-        )) as any[];
-        if (notas.some((n) => n.estado !== 'anulada')) {
-          toast.error('No se puede eliminar: el cliente tiene notas de venta asociadas');
-          return;
-        }
-        // 2) ¿movimientos de caja asociados a las notas (aunque anuladas)?
-        const mov = (await db.getAll(
-          `SELECT 1 FROM caja_movimiento_notas
-           WHERE prenota_id IN (SELECT id FROM prenotas WHERE cliente_id = ?)
-           LIMIT 1`,
-          [id]
-        )) as any[];
-        if (mov.length > 0) {
-          toast.error('No se puede eliminar: existen movimientos de caja asociados a notas anuladas de este cliente');
-          return;
-        }
-        // 3) Pasa ambos → DELETE local.
-        await db.execute(`DELETE FROM clientes WHERE id = ?`, [id]);
-        toast.success('Cliente eliminado');
-        fetchClientes();
-        return;
-      }
       const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
       if (res.status === 409) {
         toast.error('No se puede eliminar: el cliente tiene notas de venta asociadas');

@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePowerSync } from "@powersync/react";
-import { PowerSyncProvider } from "@/lib/powersync/PowerSyncProvider";
-import flags from "@/config/feature-flags.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,57 +41,15 @@ interface SaldoInicial {
   observaciones: string | null;
 }
 
-// CajaConfigClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → carga online por fetch.
 export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: string }) {
-  const OFFLINE_READ = (flags as any)["caja-config-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <CajaConfigContent currentUserNombre={currentUserNombre} />
-      </PowerSyncProvider>
-    );
-  }
-  return <CajaConfigContent currentUserNombre={currentUserNombre} />;
-}
-
-function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string }) {
-  const OFFLINE_READ = (flags as any)["caja-config-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
-
   // ─── Dólar del día ──────────────────────────────────────
   const [dolarDia, setDolarDia] = useState("");
   const [dolarSaving, setDolarSaving] = useState(false);
   const [dolarInfo, setDolarInfo] = useState<ConfigData>({ dolar_dia: 0, updated_at: null, updated_por: "" });
 
-  // ─── Carga inicial (online: 3 fetch; offline: 3 queries locales) ───
+  // ─── Carga inicial (3 fetch) ───
   useEffect(() => {
     (async () => {
-      if (OFFLINE_READ && db) {
-        try {
-          const dolarRow = await db.get(`SELECT valor, updated_at, updated_por FROM caja_config WHERE clave = 'dolar_dia'`);
-          if (dolarRow) {
-            const v = parseFloat((dolarRow as any).valor);
-            if (v > 0) setDolarDia(String(v));
-            setDolarInfo({ dolar_dia: v, updated_at: (dolarRow as any).updated_at ?? null, updated_por: (dolarRow as any).updated_por ?? "" });
-          }
-          const cuentasRows = (await db.getAll(
-            `SELECT id, nombre, moneda, activa, orden, created_at FROM caja_cuentas ORDER BY orden ASC, id ASC`
-          )) as any[];
-          // activa/id llegan como texto desde PowerSync → convertir
-          setCuentas((cuentasRows || []).map((r) => ({ ...r, id: Number(r.id), activa: !!Number(r.activa) })));
-          const saldosRows = (await db.getAll(
-            `SELECT si.id, si.cuenta_id, si.fecha, si.saldo, si.observaciones, si.created_at,
-               cc.nombre AS cuenta_nombre, cc.moneda AS cuenta_moneda
-             FROM caja_saldos_iniciales si
-             JOIN caja_cuentas cc ON cc.id = si.cuenta_id
-             ORDER BY cc.orden ASC`
-          )) as any[];
-          setSaldos((saldosRows || []).map((r) => ({ ...r, id: Number(r.id), cuenta_id: Number(r.cuenta_id) })));
-        } catch { /* mantener vacío */ }
-        return;
-      }
       try {
         const [cfgRes, cuentasRes, saldosRes] = await Promise.all([
           fetch("/api/caja/config"),
@@ -117,7 +72,7 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
         }
       } catch { /* mantener vacío */ }
     })();
-  }, [db, OFFLINE_READ]);
+  }, []);
 
   const handleSaveDolar = async () => {
     const num = parseFloat(dolarDia);
@@ -126,19 +81,6 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
       return;
     }
     setDolarSaving(true);
-    if (OFFLINE_READ && db) {
-      // Escritura local (flag on): upsert por clave fija, la fila ya existe
-      // localmente por sync. Sync por uploadData(). Si la fila no existe aún
-      // localmente (borde), el UPDATE afecta 0 filas — mismo criterio que 11b.
-      await db.execute(
-        `UPDATE caja_config SET valor = ?, updated_at = ?, updated_por = ? WHERE clave = 'dolar_dia'`,
-        [String(num), new Date().toISOString(), currentUserNombre]
-      );
-      setDolarInfo({ dolar_dia: num, updated_at: new Date().toISOString(), updated_por: currentUserNombre });
-      toast.success(`Dólar actualizado a $${num} (se sincronizará)`);
-      setDolarSaving(false);
-      return;
-    }
     const res = await fetch("/api/caja/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -214,21 +156,6 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
       observaciones: saldoFormObs.trim() || null,
     };
 
-    if (editingSaldo && OFFLINE_READ && db) {
-      // Edición offline de saldo existente. UPDATE con los 4 campos SIEMPRE,
-      // incluido cuenta_id aunque no cambie — obligatorio para que opData traiga
-      // cuenta_id (el POST de sync lo requiere).
-      await db.execute(
-        `UPDATE caja_saldos_iniciales SET cuenta_id = ?, fecha = ?, saldo = ?, observaciones = ? WHERE id = ?`,
-        [body.cuenta_id, body.fecha, body.saldo, body.observaciones, editingSaldo.id]
-      );
-      setSaldos((prev) => prev.map((s) => (s.id === editingSaldo.id ? { ...s, ...body } : s)));
-      toast.success("Saldo inicial actualizado");
-      setSaldoModalOpen(false);
-      setSaldoFormSaving(false);
-      return;
-    }
-
     const res = await fetch("/api/caja/saldos-iniciales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -256,13 +183,6 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
 
   const handleDeleteSaldo = async (id: number) => {
     if (!confirm("¿Eliminar este saldo inicial?")) return;
-    if (OFFLINE_READ && db) {
-      // Eliminación offline de saldo existente (la creación está bloqueada).
-      await db.execute(`DELETE FROM caja_saldos_iniciales WHERE id = ?`, [id]);
-      setSaldos((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Saldo inicial eliminado");
-      return;
-    }
     const res = await fetch(`/api/caja/saldos-iniciales/${id}`, { method: "DELETE" });
     if (res.ok) {
       setSaldos((prev) => prev.filter((s) => s.id !== id));
@@ -308,19 +228,6 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
       orden: parseInt(formOrden, 10) || 0,
     };
 
-    if (editingCuenta && OFFLINE_READ && db) {
-      // Edición offline de cuenta existente (la creación está bloqueada arriba).
-      await db.execute(
-        `UPDATE caja_cuentas SET nombre = ?, moneda = ?, orden = ? WHERE id = ?`,
-        [body.nombre, body.moneda, body.orden, editingCuenta.id]
-      );
-      setCuentas((prev) => prev.map((c) => (c.id === editingCuenta.id ? { ...c, ...body } : c)));
-      toast.success("Cuenta actualizada");
-      setModalOpen(false);
-      setFormSaving(false);
-      return;
-    }
-
     const url = editingCuenta
       ? `/api/caja/cuentas/${editingCuenta.id}`
       : "/api/caja/cuentas";
@@ -352,15 +259,6 @@ function CajaConfigContent({ currentUserNombre }: { currentUserNombre: string })
   };
 
   const handleToggleActiva = async (cuenta: Cuenta) => {
-    if (OFFLINE_READ && db) {
-      // Activar/desactivar offline (cuenta existente) — UPDATE local, sync por
-      // uploadData(). Si el sync da 409 (R4: tiene movimientos), se reporta
-      // como conflicto.
-      await db.execute(`UPDATE caja_cuentas SET activa = ? WHERE id = ?`, [cuenta.activa ? 0 : 1, cuenta.id]);
-      setCuentas((prev) => prev.map((c) => (c.id === cuenta.id ? { ...c, activa: !cuenta.activa } : c)));
-      toast.success(`Cuenta "${cuenta.nombre}" ${cuenta.activa ? "desactivada" : "reactivada"}`);
-      return;
-    }
     if (cuenta.activa) {
       // Desactivar
       const res = await fetch(`/api/caja/cuentas/${cuenta.id}`, {

@@ -6,22 +6,12 @@
  * 3. Sin console.error durante el render (sin referencias huérfanas a estados eliminados)
  *
  * Actualizado en Slice 17: la carga inicial pasó de props SSR a fetch en
- * useEffect (online) / SQLite local (offline). Se renderiza con la firma nueva
+ * useEffect (online). Se renderiza con la firma nueva
  * (currentUserNombre) y se mockea fetch para la carga online.
  */
 
 import { render, screen } from '@testing-library/react';
 import { CajaConfigClient } from '@/app/(app)/admin/caja-config/client_page';
-
-// Mockear la cadena PowerSync: evita importar @powersync/web (referencia Worker
-// a nivel de módulo, no definido en jsdom). Flag off por defecto → rama online.
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => null,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
 
 // Mock sonner
 jest.mock('sonner', () => ({

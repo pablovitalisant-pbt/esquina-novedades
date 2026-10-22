@@ -5,17 +5,7 @@ import { UbicacionBodegaAgrupada } from '@/types';
 
 // useEmpresaId eliminado (PRD §9.17) — componente usa const empresaId = 1
 
-// Este test cubre el flujo ONLINE (PUT por fetch). Se mockea la cadena
-// PowerSync para (a) no importar @powersync/web (referencia `Worker` a nivel
-// de módulo, no definido en jsdom — rompía el orden de módulos) y (b) dejar
-// inactivo el branch offline (usePowerSync() = null → fetch intacto).
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => null,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
+// Este test cubre el flujo online (PUT por fetch).
 
 jest.mock('sonner', () => ({
   toast: {

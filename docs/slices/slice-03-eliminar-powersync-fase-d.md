@@ -18,3 +18,17 @@ Se conservan guards `navigator.onLine` y `OFFLINE_WRITE_MSG` (D2). `lib/powersyn
 - `npx tsc --noEmit`: 129 errores (baseline 129, sin aumento).
 
 **Diff (numstat, solo archivos que permanecen):** 45 líneas añadidas / 352 borradas en archivos existentes; + 22 en el test nuevo.
+
+## Corte 3.3 + 3.4 + 3.5 (clientes, precios, bodega, admin/caja-config)
+
+**Archivos modificados:** `app/(app)/{clientes,precios,bodega,admin/caja-config}/client_page.tsx` y sus 4 `client_page.test.tsx` co-ubicados; `__tests__/precios-eliminar-producto-ui.test.tsx`, `__tests__/bodega-client_page.test.tsx`, `__tests__/caja-config-client_page.test.tsx`; `__tests__/slice-03-sin-powersync.test.ts` (+11 entradas en `MIGRADOS`).
+
+**Cambios:** se quitan imports `@powersync/*`, wrappers que montaban el provider (el componente exportado renderiza directo), ramas `OFFLINE_READ && db` y `mapRowToAgrupada` (bodega, solo offline). Se conservan guards `navigator.onLine` (caja-config, bodega conciliación) y los flags no-offline (`precios-precio-venta-card`, `drawer-compartir-precio`, `bodega-conciliacion-stock`). `lib/powersync` y `feature-flags.json` no se tocan.
+
+**Tests:**
+- Fase B: T1 en ROJO (11 nuevos fallan por el patrón prohibido; 9 anteriores verdes).
+- Los tests se reescriben sin mocks de PowerSync/flags offline: carga por `fetch` (URL y número de llamadas), `DELETE` clientes 409, `PUT` bodega, guard sin conexión en caja-config.
+- Fase D: `npx jest` sobre T1 + los 7 tests del corte + `slice20-precios`, `slice22-bodega`, `slice8-clientes`, `slice18b-clientes`, `precios-card-badge`, `bodega-ubicaciones` → 16 suites, 94 tests, verde.
+- `npx tsc --noEmit`: 129 errores (baseline 129, sin aumento).
+
+**Diff (numstat, archivos que permanecen):** 83 líneas añadidas / 628 borradas (límite D8: añadidas ≤ 200).

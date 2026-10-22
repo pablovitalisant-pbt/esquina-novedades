@@ -16,13 +16,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PreciosClient } from '@/app/(app)/precios/client_page';
 import { Producto } from '@/types';
 
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => null,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
 jest.mock('@/config/feature-flags.json', () => ({}));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/hooks/useShareImage', () => ({ useShareImage: () => ({ shareImage: jest.fn() }) }));

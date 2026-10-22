@@ -4,25 +4,10 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BodegaClient } from './client_page';
 
-// dbMock se lee por referencia en tiempo de render (no TDZ en factories hoisted).
-var dbMock: any;
 var toastMock: any;
 
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => dbMock,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
-
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
-
-// Flags mutables: los getters leen globalThis en tiempo de render (BodegaClient
-// y UbicacionEditor leen los flags dentro del componente, después de beforeEach).
+// Flags mutables: los getters leen globalThis en tiempo de render.
 jest.mock('@/config/feature-flags.json', () => ({
-  get 'bodega-offline-lectura'() {
-    return (globalThis as any).__bodegaOffline === true;
-  },
   get 'bodega-conciliacion-stock'() {
     return (globalThis as any).__bodegaConciliacion === true;
   },
@@ -56,13 +41,8 @@ global.fetch = fetchMock as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (globalThis as any).__bodegaOffline = false;
   (globalThis as any).__bodegaConciliacion = true;
   toastMock = { success: jest.fn(), error: jest.fn() };
-  dbMock = {
-    getAll: jest.fn().mockResolvedValue([]),
-    execute: jest.fn().mockResolvedValue(undefined),
-  };
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
   // jsdom arranca online por defecto; asegurarse por si un test anterior lo cambió.
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
@@ -90,9 +70,8 @@ async function typeSearch(term: string) {
   fireEvent.change(input, { target: { value: term } });
 }
 
-// Abre el drawer con una sesión dada y un producto cargado (flag offline off → fetch).
+// Abre el drawer con una sesión dada y un producto cargado.
 async function openDrawerAs(session: any) {
-  dbMock.getAll.mockResolvedValue([UBI]);
   fetchMock.mockImplementation(async (input: RequestInfo, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.url;
     if (url.startsWith('/api/ubicaciones?')) {
@@ -111,50 +90,15 @@ async function openDrawerAs(session: any) {
   fireEvent.click(screen.getByText('P001')); // abre el drawer
 }
 
-describe('app/(app)/bodega — bodega-offline-lectura (regresión)', () => {
-  it('flag en false (default): usa fetch a /api/ubicaciones, NO getAll local', async () => {
+describe('app/(app)/bodega — carga y guardado por API', () => {
+  it('busca con fetch a /api/ubicaciones', async () => {
     await typeSearch('GL81203');
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toContain('/api/ubicaciones');
-    expect(dbMock.getAll).not.toHaveBeenCalled();
   });
 
-  it('flag en true: usa la query local vía getAll y NO llama a /api/ubicaciones', async () => {
-    (globalThis as any).__bodegaOffline = true;
-    await typeSearch('GL81203');
-    await waitFor(() => expect(dbMock.getAll).toHaveBeenCalled());
-    const sql = dbMock.getAll.mock.calls[0][0] as string;
-    expect(sql).toContain('FROM productos p');
-    expect(sql).toContain('LEFT JOIN ubicaciones_bodega u');
-    expect(sql.toLowerCase()).toContain('lower(p.codigo)');
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('flag en true: guardar usa db.execute (UPDATE local), NO el fetch PUT', async () => {
-    (globalThis as any).__bodegaOffline = true;
-    dbMock.getAll.mockResolvedValue([UBI]);
-
-    await typeSearch('P0');
-    await screen.findByText('P001');
-    fireEvent.click(screen.getByText('P001')); // abre el drawer
-
-    // setear cajas = 3, unidades = 2 en el formulario
-    const spinbuttons = await screen.findAllByRole('spinbutton');
-    fireEvent.change(spinbuttons[0], { target: { value: '3' } });
-    fireEvent.change(spinbuttons[1], { target: { value: '2' } });
-
-    fireEvent.click(screen.getByText('Guardar ubicación'));
-    await waitFor(() => expect(dbMock.execute).toHaveBeenCalled());
-
-    const sql = dbMock.execute.mock.calls[0][0] as string;
-    expect(sql).toContain('UPDATE ubicaciones_bodega');
-    expect(sql).toContain('WHERE codigo = ?');
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('flag en false: guardar sigue usando el fetch PUT a /api/ubicaciones/codigo', async () => {
-    dbMock.getAll.mockResolvedValue([UBI]);
+  it('guardar usa el fetch PUT a /api/ubicaciones/codigo', async () => {
     fetchMock.mockImplementation(async (input: RequestInfo, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.url;
       if (url.startsWith('/api/ubicaciones?')) {
@@ -175,7 +119,6 @@ describe('app/(app)/bodega — bodega-offline-lectura (regresión)', () => {
       const put = fetchMock.mock.calls.find((c: any[]) => c[1]?.method === 'PUT');
       expect(put).toBeDefined();
     });
-    expect(dbMock.execute).not.toHaveBeenCalled();
   });
 });
 

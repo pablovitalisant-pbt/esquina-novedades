@@ -12,6 +12,17 @@ const MIGRADOS = [
   'app/(app)/alertas-stock/client_page.test.tsx',
   'app/(app)/admin/usuarios/client_page.test.tsx',
   'app/(app)/catalogo/admin/client_page.test.tsx',
+  'app/(app)/clientes/client_page.tsx',
+  'app/(app)/precios/client_page.tsx',
+  'app/(app)/bodega/client_page.tsx',
+  'app/(app)/admin/caja-config/client_page.tsx',
+  'app/(app)/clientes/client_page.test.tsx',
+  'app/(app)/precios/client_page.test.tsx',
+  'app/(app)/bodega/client_page.test.tsx',
+  'app/(app)/admin/caja-config/client_page.test.tsx',
+  '__tests__/precios-eliminar-producto-ui.test.tsx',
+  '__tests__/bodega-client_page.test.tsx',
+  '__tests__/caja-config-client_page.test.tsx',
 ];
 const PROHIBIDO = /@powersync|lib\/powersync|usePowerSync|OFFLINE_READ|wa-sqlite|offline-lectura|alertas-badge-offline/;
 

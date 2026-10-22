@@ -37,4 +37,5 @@ export const MIGRATION_ORDER: string[] = [
   '038_productos_activo.sql',
   '039_registro_notas_bodega_app_audit_log.sql',
   '040_productos_precio_mayor.sql',
+  '041_prenota_items_modalidad_subtotal.sql',
 ];

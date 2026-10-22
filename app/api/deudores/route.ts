@@ -24,7 +24,7 @@ export async function GET() {
       p.nombre_cliente,
       c.nombre AS cliente_nombre,
       c.telefono AS cliente_telefono,
-      COALESCE((SELECT SUM(pi.unidades * pi.precio) FROM public.prenota_items pi WHERE pi.prenota_id = p.id), 0) as total,
+      COALESCE((SELECT SUM(pi.subtotal) FROM public.prenota_items pi WHERE pi.prenota_id = p.id), 0) as total,
       COALESCE((SELECT SUM(cmn.monto_aplicado) FROM public.caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id), 0) as total_pagado,
       COALESCE((SELECT SUM(monto) FROM public.clientes_saldo_favor_movimientos
                 WHERE aplicado_prenota_id = p.id AND tipo = 'debito'), 0) as saldo_favor_aplicado

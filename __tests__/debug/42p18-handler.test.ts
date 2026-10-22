@@ -71,6 +71,11 @@ beforeAll(async () => {
   // Auto-skip si la migración 035 no está aplicada en la base conectada.
   const t = await sql`SELECT to_regclass('public.clientes_saldo_favor_movimientos') AS x`.catch(() => [{ x: null }]);
   if (!t[0]?.x) { skipAll = true; console.warn('SKIP: clientes_saldo_favor_movimientos no existe (migración 035) en la base de test.'); return; }
+  // Slice 5a: pagar suma pi.subtotal (migración 041).
+  const cols = await sql`SELECT COUNT(*)::int AS n FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='prenota_items'
+      AND column_name IN ('modalidad','subtotal')`.catch(() => [{ n: 0 }]);
+  if ((cols[0]?.n ?? 0) < 2) { skipAll = true; console.warn('SKIP: prenota_items.modalidad/subtotal no existen (migración 041) en la base de test.'); return; }
   const admins = await sql`SELECT id, nombre FROM public.usuarios WHERE rol='admin' LIMIT 1`;
   if (!admins[0]) throw new Error('sin admin');
   mockSession = { user: { id: String(admins[0].id), rol: 'admin', nombre: admins[0].nombre } };

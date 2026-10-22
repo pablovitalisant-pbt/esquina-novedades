@@ -12,3 +12,16 @@
 - Fase B: 5 rojos por la razon correcta (UI inexistente); los negativos (flag off, null, ocultarPrecios) ya en verde.
 - Fase D: 80/83 suites verdes (725/730 tests). Fallan `productos-crear-smoke` y `productos-stock-minimo-ui` (labels de PreciosClient, ya reportados en 4a+4b) y `notas-venta-stock-frontend` (`useParams` sin mock): no tocados por el corte; sin baseline verificado (stash no permitido).
 - tsc: 3 errores fuera de tests (sin cambio).
+
+## Corte 5a+5b — subtotal generado + items por modalidad
+- 5a — Schema y totales servidor:
+  - `migrations/041_prenota_items_modalidad_subtotal.sql` (nuevo, idempotente): `modalidad TEXT NOT NULL DEFAULT 'unidad' CHECK ('unidad','caja')` y `subtotal NUMERIC(14,2) GENERATED ALWAYS AS (CASE WHEN modalidad='caja' THEN cajas*precio ELSE unidades*precio END) STORED`.
+  - `scripts/migrations-order.ts` (041 al final), `__tests__/slice-00-schema.test.ts` y `__tests__/api/productos-precio-mayor.test.ts` (ultima = 041).
+  - 8 SQL `SUM(pi.unidades * pi.precio)` -> `SUM(pi.subtotal)`: notas-venta/route, deudores, [id]/pagar, [id]/aplicar-saldo-favor, caja/{nota-busqueda, notas/[kcodcli2], resumen/[kcodcli2], movimientos/[id]/notas}. JS servidor `[id]/route.ts` GET -> `Number(i.subtotal ?? 0)`.
+- 5b — API de items + propagacion H1:
+  - `items/route.ts` POST: `modalidad` (default `unidad`, otro -> 400). En `caja` exige `cajas` entero >= 1 y producto con `precio_mayor` entero > 0 y `cantcaja >= 1`; deriva `unidades = cajas * cantcaja` (ignora body) y el stock se descuenta con ese valor. INSERT incluye `modalidad`. Idempotencia por `id` intacta.
+  - `items/[itemId]/route.ts` PATCH: `modalidad` inmutable (cambio -> 400); en `caja` ignora `body.unidades`, deriva `cajas * (unidades/cajas)` con la razon congelada (`cajas=0` -> 422) y valida `cajas` entero >= 1.
+  - `productos/[id]/route.ts` PUT (H1): `prcventa` propaga solo a items `modalidad='unidad'`; `precio_mayor` (no null) solo a `modalidad='caja'`; mismo guard de notas activas sin pagos.
+- Tests: nuevo `__tests__/api/slice5ab-modalidad.test.ts` (14). Ajustados: `slice-00-schema`, `productos-precio-mayor`, `prenotas` (fixture con `subtotal` + mocks de saldo a favor) y `debug/42p18-handler` (auto-skip mientras falten `modalidad`/`subtotal` en la DB de test, mismo patron que 035).
+- Verificacion: 12 suites relacionadas verdes (206 tests). `npx tsc --noEmit`: 3 errores fuera de tests (`.next/*` x2 + `app/page.tsx`, preexistentes; sin cambios).
+- Pendiente (Director Tecnico): aplicar 041 en Neon (`npm run migrate`, dos veces) y verificar `information_schema` antes de desplegar 5a/5b.

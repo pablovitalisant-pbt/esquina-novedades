@@ -61,7 +61,7 @@ export async function POST(
 
     // 2. Calcular total, total_pagado y saldo_pendiente
     const totalRows = await sql`
-      SELECT COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
+      SELECT COALESCE(SUM(pi.subtotal), 0) AS total
       FROM public.prenota_items pi
       WHERE pi.prenota_id = ${notaId}
     `;

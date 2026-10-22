@@ -29,10 +29,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     imagen_url,
     empresa_id,
     cajas,
-    unidades,
     precio,
     stock_referencia,
   } = body ?? {};
+  let unidades = body?.unidades;
+  const modalidad = body?.modalidad ?? 'unidad';
+  if (modalidad !== 'unidad' && modalidad !== 'caja') {
+    return NextResponse.json({ error: 'Modalidad inválida' }, { status: 400 });
+  }
 
   // Idempotencia: si este item ya fue insertado (reintento de PowerSync tras
   // una respuesta que no llegó limpia al cliente), devolver la fila existente
@@ -57,6 +61,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
   if (notaRows[0].estado !== 'activa') {
     return NextResponse.json({ error: 'No se puede modificar una nota anulada' }, { status: 422 });
+  }
+
+  // Caja: el servidor deriva unidades = cajas * cantcaja (ignora el body)
+  if (modalidad === 'caja') {
+    if (!Number.isInteger(cajas) || cajas < 1) {
+      return NextResponse.json({ error: 'Cajas inválidas' }, { status: 400 });
+    }
+    const prod = await sql`
+      SELECT cantcaja, precio_mayor FROM public.productos
+      WHERE codigo = ${codigo} AND empresa_id = ${empresa_id}
+    `;
+    const cantcaja = Number(prod[0]?.cantcaja);
+    if (prod.length === 0 || !(Number(prod[0].precio_mayor) > 0) || !Number.isInteger(cantcaja) || cantcaja < 1) {
+      return NextResponse.json({ error: 'Producto sin precio por caja' }, { status: 400 });
+    }
+    unidades = cajas * cantcaja;
   }
 
   // R4: Validar unidades
@@ -94,8 +114,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   `;
 
   const rows = await sql`
-    INSERT INTO public.prenota_items (id, prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, stock_referencia)
-    VALUES (COALESCE(${itemId ?? null}, gen_random_uuid()), ${id}, ${codigo}, ${descripcion}, ${imagen_url}, ${empresa_id}, ${cajas}, ${unidades}, ${precio}, ${stock_referencia})
+    INSERT INTO public.prenota_items (id, prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, stock_referencia, modalidad)
+    VALUES (COALESCE(${itemId ?? null}, gen_random_uuid()), ${id}, ${codigo}, ${descripcion}, ${imagen_url}, ${empresa_id}, ${cajas}, ${unidades}, ${precio}, ${stock_referencia}, ${modalidad})
     RETURNING *
   `;
 

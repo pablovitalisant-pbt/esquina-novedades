@@ -158,21 +158,27 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       prenotaChanges.push(`imagen_url = $${pIdx++}`);
       prenotaParams.push(clientImagenUrl);
     }
-    if (clientPrcVenta !== undefined) {
-      prenotaChanges.push(`precio = $${pIdx++}`);
-      prenotaParams.push(clientPrcVenta);
-    }
-    if (prenotaChanges.length > 0) {
-      prenotaParams.push(codigo);
-      queries.push(sql.query(`UPDATE prenota_items SET ${prenotaChanges.join(", ")}
-        WHERE codigo = $${pIdx}
-          AND prenota_id IN (
+    const guard = `AND prenota_id IN (
             SELECT p.id FROM prenotas p
             WHERE p.estado = 'activa'
               AND NOT EXISTS (
                 SELECT 1 FROM caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id
               )
-          )`, prenotaParams));
+          )`;
+    if (prenotaChanges.length > 0) {
+      prenotaParams.push(codigo);
+      queries.push(sql.query(`UPDATE prenota_items SET ${prenotaChanges.join(", ")}
+        WHERE codigo = $${pIdx}
+          ${guard}`, prenotaParams));
+    }
+    // H1: prcventa solo a items 'unidad'; precio_mayor solo a items 'caja'
+    if (clientPrcVenta !== undefined) {
+      queries.push(sql.query(`UPDATE prenota_items SET precio = $1
+        WHERE codigo = $2 AND modalidad = 'unidad' ${guard}`, [clientPrcVenta, codigo]));
+    }
+    if (changes.precio_mayor != null) {
+      queries.push(sql.query(`UPDATE prenota_items SET precio = $1
+        WHERE codigo = $2 AND modalidad = 'caja' ${guard}`, [changes.precio_mayor, codigo]));
     }
 
     const [productResult] = await sql.transaction(queries);

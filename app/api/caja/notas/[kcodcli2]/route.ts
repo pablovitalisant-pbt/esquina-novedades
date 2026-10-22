@@ -31,7 +31,7 @@ export async function GET(
       SELECT
         p.id,
         p.created_at::text AS fecha,
-        COALESCE(SUM(pi.unidades * pi.precio), 0) AS total,
+        COALESCE(SUM(pi.subtotal), 0) AS total,
         COALESCE((
           SELECT SUM(cmn.monto_aplicado)
           FROM caja_movimiento_notas cmn

@@ -34,7 +34,7 @@ export async function GET(
       SELECT
         p.id,
         p.created_at::text AS fecha,
-        COALESCE(SUM(pi.unidades * pi.precio), 0) AS total,
+        COALESCE(SUM(pi.subtotal), 0) AS total,
         cmn.id AS pago_id,
         cmn.monto_aplicado AS pago_monto_aplicado,
         cmn.movimiento_id AS pago_mov_id,

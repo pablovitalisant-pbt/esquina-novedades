@@ -98,6 +98,6 @@ describe('Migracion 040', () => {
   });
   it('queda al final de MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('040_productos_precio_mayor.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('041_prenota_items_modalidad_subtotal.sql');
   });
 });

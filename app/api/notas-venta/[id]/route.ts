@@ -51,7 +51,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
   // Calcular total, total_pagado y saldo_pendiente (para UI de pago)
   const total = (items as any[]).reduce(
-    (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio),
+    (sum: number, i: any) => sum + Number(i.subtotal ?? 0),
     0
   );
   const pagadoRows = await sql`

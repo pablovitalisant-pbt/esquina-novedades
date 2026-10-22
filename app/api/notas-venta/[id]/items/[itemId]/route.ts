@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
   const itemId = (await params).itemId;
 
   const body = await request.json();
-  const cantidadNueva = body?.unidades !== undefined ? Number(body.unidades) : undefined;
+  let cantidadNueva = body?.unidades !== undefined ? Number(body.unidades) : undefined;
   const cajas = body?.cajas ?? null;
   const precio = body?.precio ?? null;
 
@@ -64,13 +64,32 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
   // Leer item actual para calcular delta y para conservar los campos que un
   // PATCH parcial no trae (BUG-053): cajas y precio entran en el fallback del UPDATE.
   const itemRows = await sql`
-    SELECT unidades, cajas, precio, codigo, empresa_id FROM public.prenota_items WHERE id = ${itemId}
+    SELECT unidades, cajas, precio, codigo, empresa_id, modalidad FROM public.prenota_items WHERE id = ${itemId}
   `;
   if (itemRows.length === 0) {
     return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
   }
   const item = itemRows[0];
   const cantidadAnterior = Number(item.unidades);
+
+  // Modalidad inmutable; en caja las unidades las deriva el servidor con la
+  // razon unidades/cajas congelada al vender (ignora body.unidades).
+  const modalidad = item.modalidad ?? 'unidad';
+  if (body?.modalidad !== undefined && body.modalidad !== modalidad) {
+    return NextResponse.json({ error: 'La modalidad no se puede cambiar' }, { status: 400 });
+  }
+  if (modalidad === 'caja') {
+    cantidadNueva = undefined;
+    if (cajas !== null) {
+      if (!Number.isInteger(cajas) || cajas < 1) {
+        return NextResponse.json({ error: 'Cajas inválidas' }, { status: 400 });
+      }
+      if (!(Number(item.cajas) > 0)) {
+        return NextResponse.json({ error: 'Item sin cajas registradas' }, { status: 422 });
+      }
+      cantidadNueva = Math.round(cajas * (cantidadAnterior / Number(item.cajas)));
+    }
+  }
 
   const delta = calcularDelta(cantidadAnterior, cantidadNueva);
 

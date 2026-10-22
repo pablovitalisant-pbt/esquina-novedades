@@ -102,7 +102,8 @@ describe('GET /api/notas-venta/[id]', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
       .mockResolvedValueOnce([{ id: 10, titulo: 'PRE-NOTA JUAN', kcodclie: 100, nombre_cliente: 'JUAN PEREZ' }])
-      .mockResolvedValueOnce([{ id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150 }])
+      .mockResolvedValueOnce([{ id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00' }])
+      .mockResolvedValueOnce([{ total: 0 }])
       .mockResolvedValueOnce([{ total: 0 }]);
 
     const req = new NextRequest('http://localhost/api/notas-venta/10');
@@ -116,11 +117,13 @@ describe('GET /api/notas-venta/[id]', () => {
       kcodclie: 100,
       nombre_cliente: 'JUAN PEREZ',
       items: [
-        { id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150 },
+        { id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00' },
       ],
       total: 1800,
       total_pagado: 0,
+      saldo_favor_aplicado: 0,
       saldo_pendiente: 1800,
+      cliente_saldo_favor: 0,
     });
   });
 });

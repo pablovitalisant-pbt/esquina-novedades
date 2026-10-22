@@ -80,7 +80,7 @@ export async function POST(
       const notaRows = await sql`
         SELECT
           p.id,
-          COALESCE(SUM(pi.unidades * pi.precio), 0) AS total
+          COALESCE(SUM(pi.subtotal), 0) AS total
         FROM public.prenotas p
         LEFT JOIN public.prenota_items pi ON pi.prenota_id = p.id
         WHERE p.id = ${prenotaId} AND p.cliente_id = ${kcodcli2}

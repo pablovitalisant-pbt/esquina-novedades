@@ -55,8 +55,8 @@ credenciales de prueba MP + clave secreta webhook.
 
 ## Próximo paso
 
-Slice 0 del PRD §9: Neon + verificación del schema desde DB vacía + seed.
+Slice 0 completado (pendiente commit). Ver docs/slices/slice-00-neon-schema-fase-d.md.
 
 ## Contador de slices desde el último ponytail audit
 
-0
+1

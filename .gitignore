@@ -50,6 +50,7 @@ ol/
 .env.vercel-export
 .env.vercel-clean
 .env*
+!.env.example
 
 # Serwist
 public/sw*

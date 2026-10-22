@@ -224,3 +224,4 @@ Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |
 |-----------------|--------|--------------------------|
 | (se completa durante el desarrollo) | | |
+| scripts/migrations-order.ts | Toda migración nueva debe agregarse al final de MIGRATION_ORDER (el test lo exige) | No reordenar ni editar migraciones aplicadas |

@@ -99,13 +99,14 @@ describe('5b — POST items modalidad', () => {
     sql
       .mockResolvedValueOnce([{ estado: 'activa' }])
       .mockResolvedValueOnce([{ cantcaja: 12, precio_mayor: 10000 }])
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }])
       .mockResolvedValueOnce([{ saldo: 100 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 'a' }])
       .mockResolvedValueOnce([]);
     expect((await POST(mk(CAJA), ctx)).status).toBe(200);
-    expect(sql.mock.calls[2][1]).toBe(36);
-    const insert = sql.mock.calls[4];
+    expect(sql.mock.calls[3][1]).toBe(36);
+    const insert = sql.mock.calls[5];
     expect(insert[0].join('')).toContain('modalidad');
     expect(insert.slice(1)).toContain(36);
     expect(insert.slice(1)).toContain('caja');
@@ -115,6 +116,7 @@ describe('5b — POST items modalidad', () => {
     sql
       .mockResolvedValueOnce([{ estado: 'activa' }])
       .mockResolvedValueOnce([{ cantcaja: 12, precio_mayor: 10000 }])
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ saldo: 5 }]);
     const res = await POST(mk(CAJA), ctx);

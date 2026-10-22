@@ -29,9 +29,11 @@ beforeAll(async () => {
 
 function mockFlujo(nuevoId: string | null) {
   // Orden de las queries del POST:
-  // 0) nota activa   1) UPDATE stock  2) UPDATE ubicaciones  3) INSERT  4) UPDATE prenotas updated_at
+  // 0) nota activa  1) liberación perezosa (8c)  2) UPDATE stock
+  // 3) UPDATE ubicaciones  4) INSERT  5) UPDATE prenotas updated_at
   sqlMock
     .mockResolvedValueOnce([{ estado: 'activa' }] as any)
+    .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }] as any)
     .mockResolvedValueOnce([{ saldo: 5 }] as any)
     .mockResolvedValueOnce([] as any)
     .mockResolvedValueOnce([{ id: nuevoId ?? 'gen-uuid', codigo: 'A-001', prenota_id: 40 }] as any)
@@ -61,21 +63,21 @@ describe('app/api/notas-venta/[id]/items POST — id UUID opcional (Slice 10a)',
     mockFlujo(null);
     const res = await post(baseBody);
     expect(res.status).toBe(200); // la ruta no setea status 201 (comportamiento existente)
-    const insertCall = sqlMock.mock.calls[3][0];
+    const insertCall = sqlMock.mock.calls[4][0];
     const q = String(insertCall);
     expect(q).toContain('INSERT INTO public.prenota_items (id, prenota_id');
     expect(q).toContain('COALESCE(');
     expect(q).toContain('gen_random_uuid()');
     // param 0 = id (null), param 1 = prenota_id (40)
-    expect(sqlMock.mock.calls[3][1]).toBeNull();
-    expect(sqlMock.mock.calls[3][2]).toBe(40);
+    expect(sqlMock.mock.calls[4][1]).toBeNull();
+    expect(sqlMock.mock.calls[4][2]).toBe(40);
   });
 
   it('con id (UUID) en el body: INSERT usa ese id vía COALESCE', async () => {
     mockFlujo('uuid-local-abc');
     const res = await post({ ...baseBody, id: 'uuid-local-abc' });
     expect(res.status).toBe(200);
-    const insertCall = sqlMock.mock.calls[3];
+    const insertCall = sqlMock.mock.calls[4];
     // param 0 = id (uuid-local-abc), param 1 = prenota_id (40)
     expect(insertCall[1]).toBe('uuid-local-abc');
     expect(insertCall[2]).toBe(40);

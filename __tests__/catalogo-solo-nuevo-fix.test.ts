@@ -41,6 +41,7 @@ describe('GET /api/catalogos/public/[slug] — solo_nuevo con prefijo 101', () =
   test('usa prefijo 101, año mas alto y folio mas alto — no fecha_ingreso', async () => {
     // getLatestIngresoRealCodigos: anio → folio → codigo (3 queries)
     sql
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }])                // liberación perezosa (8c)
       .mockResolvedValueOnce([CATALOGO_BASE])                               // catalog
       .mockResolvedValueOnce(PRODUCTOS)                                      // productos
       .mockResolvedValueOnce([{ anio: '26' }])                               // anio
@@ -60,6 +61,7 @@ describe('GET /api/catalogos/public/[slug] — solo_nuevo con prefijo 101', () =
 
   test('ignora prefijo 103 aunque tenga folio mayor', async () => {
     sql
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }]) // liberación perezosa (8c)
       .mockResolvedValueOnce([CATALOGO_BASE])   // catalog
       .mockResolvedValueOnce(PRODUCTOS)          // productos
       .mockResolvedValueOnce([])                 // anio (vacío → early return)
@@ -74,6 +76,7 @@ describe('GET /api/catalogos/public/[slug] — solo_nuevo con prefijo 101', () =
 
   test('sin ingresos reales retorna vacío', async () => {
     sql
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }]) // liberación perezosa (8c)
       .mockResolvedValueOnce([CATALOGO_BASE])   // catalog
       .mockResolvedValueOnce(PRODUCTOS)          // productos
       .mockResolvedValueOnce([])                 // anio (vacío → early return)
@@ -83,6 +86,20 @@ describe('GET /api/catalogos/public/[slug] — solo_nuevo con prefijo 101', () =
     const body = await res.json();
 
     expect(body.data.productos).toHaveLength(0);
+  });
+
+  test('si la liberación de reservas falla, el catálogo sigue respondiendo', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    sql
+      .mockRejectedValueOnce(new Error('db caida'))                         // liberación (8c)
+      .mockResolvedValueOnce([{ ...CATALOGO_BASE, solo_nuevo: false }])     // catalog
+      .mockResolvedValueOnce(PRODUCTOS)                                      // productos
+      .mockResolvedValueOnce([]);                                            // overrides
+
+    const res = await GET(makeReq('test'), { params: { slug: 'test' } });
+    expect(res.status).toBe(200);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
   });
 });
 

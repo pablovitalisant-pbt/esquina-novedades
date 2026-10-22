@@ -192,6 +192,7 @@ describe('POST /api/notas-venta/[id]/items', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
     sql
       .mockResolvedValueOnce([{ estado: 'activa' }])         // checkNotaActiva
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }]) // liberación perezosa (8c)
       .mockResolvedValueOnce([{ saldo: 100 }])                // UPDATE stock
       .mockResolvedValueOnce([])                               // UPDATE ub_bodega
       .mockResolvedValueOnce([                                 // INSERT item

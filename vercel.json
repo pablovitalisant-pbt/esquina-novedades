@@ -3,6 +3,10 @@
     {
       "path": "/api/admin/inversion-mercaderia/snapshot",
       "schedule": "55 2 * * *"
+    },
+    {
+      "path": "/api/cron/liberar-reservas",
+      "schedule": "17 4 * * *"
     }
   ]
 }

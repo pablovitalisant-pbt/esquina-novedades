@@ -26,14 +26,16 @@ const makeReq = (body: any) => new NextRequest('http://localhost', {
 
 const BASE_BODY = { codigo: 'PROD-01', descripcion: 'Producto test', empresa_id: 1, cajas: 2, unidades: 20, precio: 10 };
 
-// Secuencia de SQL calls en handler real:
+// Secuencia de SQL calls en handler real (Slice 8c suma la liberación perezosa):
 // 1. SELECT estado FROM prenotas
-// 2. UPDATE productos RETURNING saldo
-// 3. UPDATE ubicaciones_bodega (solo happy path)
-// 4. INSERT INTO prenota_items RETURNING *
-// 5. UPDATE prenotas SET updated_at
+// 2. CTE liberarReservasVencidas()
+// 3. UPDATE productos RETURNING saldo
+// 4. UPDATE ubicaciones_bodega (solo happy path)
+// 5. INSERT INTO prenota_items RETURNING *
+// 6. UPDATE prenotas SET updated_at
 
 const MOCK_ACTIVA = [{ estado: 'activa' }];
+const MOCK_LIBERA = [{ liberados: 0, unidades: 0 }];
 const MOCK_STOCK_OK = [{ saldo: 80 }];
 const MOCK_INSERT_OK = [{ id: 1, codigo: 'PROD-01', unidades: 20 }];
 
@@ -56,21 +58,23 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
   it('nota activa + stock suficiente → 200, UPDATE e INSERT ejecutados', async () => {
     sql
       .mockResolvedValueOnce(MOCK_ACTIVA)    // 1. estado
-      .mockResolvedValueOnce(MOCK_STOCK_OK)  // 2. UPDATE stock
-      .mockResolvedValueOnce([])              // 3. UPDATE ub_bodega
-      .mockResolvedValueOnce(MOCK_INSERT_OK) // 4. INSERT item
-      .mockResolvedValueOnce([]);              // 5. UPDATE prenotas
+      .mockResolvedValueOnce(MOCK_LIBERA)    // 2. liberación perezosa
+      .mockResolvedValueOnce(MOCK_STOCK_OK)  // 3. UPDATE stock
+      .mockResolvedValueOnce([])              // 4. UPDATE ub_bodega
+      .mockResolvedValueOnce(MOCK_INSERT_OK) // 5. INSERT item
+      .mockResolvedValueOnce([]);              // 6. UPDATE prenotas
 
     const res = await POST_ITEM(makeReq(BASE_BODY), { params: Promise.resolve({ id: '1' }) });
     expect(res.status).toBe(200);
 
     // Verificar template structure
-    const updateCall = sql.mock.calls[1][0].join('');
+    expect(sql.mock.calls[1][0].join('')).toMatch(/WITH\s+vencidos/i);
+    const updateCall = sql.mock.calls[2][0].join('');
     expect(updateCall).toMatch(/UPDATE.*productos.*saldo\s*=\s*saldo\s*-/i);
     expect(updateCall).toMatch(/WHERE.*codigo/i);
     // Verificar valor interpolado real (no solo template)
-    expect(sql.mock.calls[1][1]).toBe(20);   // cantidadTotal = unidades
-    expect(sql.mock.calls[1][4]).toBe(20);   // mismo valor en saldo >=
+    expect(sql.mock.calls[2][1]).toBe(20);   // cantidadTotal = unidades
+    expect(sql.mock.calls[2][4]).toBe(20);   // mismo valor en saldo >=
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -109,8 +113,9 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
   it('stock insuficiente → 400, disponible y solicitado en respuesta', async () => {
     sql
       .mockResolvedValueOnce(MOCK_ACTIVA)   // 1. estado
-      .mockResolvedValueOnce([])             // 2. UPDATE 0 filas
-      .mockResolvedValueOnce([{ saldo: 5 }]); // 3. fallback SELECT
+      .mockResolvedValueOnce(MOCK_LIBERA)   // 2. liberación perezosa
+      .mockResolvedValueOnce([])             // 3. UPDATE 0 filas
+      .mockResolvedValueOnce([{ saldo: 5 }]); // 4. fallback SELECT
 
     const res = await POST_ITEM(makeReq(BASE_BODY), { params: Promise.resolve({ id: '1' }) });
     expect(res.status).toBe(400);
@@ -127,6 +132,7 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
     // Request 1: stock suficiente
     sql
       .mockResolvedValueOnce(MOCK_ACTIVA)
+      .mockResolvedValueOnce(MOCK_LIBERA)      // liberación
       .mockResolvedValueOnce(MOCK_STOCK_OK)
       .mockResolvedValueOnce([])               // ub_bodega
       .mockResolvedValueOnce(MOCK_INSERT_OK)   // INSERT
@@ -138,6 +144,7 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
     // Request 2: saldo restante 10, unidades 20 → insuficiente
     sql
       .mockResolvedValueOnce(MOCK_ACTIVA)      // estado
+      .mockResolvedValueOnce(MOCK_LIBERA)      // liberación
       .mockResolvedValueOnce([])                // UPDATE 0 filas
       .mockResolvedValueOnce([{ saldo: 10 }]);  // fallback SELECT
 
@@ -151,6 +158,7 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
   it('R3: UPDATE ubicaciones_bodega, no INSERT', async () => {
     sql
       .mockResolvedValueOnce(MOCK_ACTIVA)
+      .mockResolvedValueOnce(MOCK_LIBERA)      // liberación
       .mockResolvedValueOnce(MOCK_STOCK_OK)
       .mockResolvedValueOnce([])               // ub_bodega
       .mockResolvedValueOnce(MOCK_INSERT_OK)
@@ -159,16 +167,27 @@ describe('POST /api/notas-venta/[id]/items — reserva de stock', () => {
     const res = await POST_ITEM(makeReq(BASE_BODY), { params: Promise.resolve({ id: '1' }) });
     expect(res.status).toBe(200);
 
-    const ubCall = sql.mock.calls[2][0].join('');
+    const ubCall = sql.mock.calls[3][0].join('');
     expect(ubCall).toMatch(/UPDATE.*ubicaciones_bodega/i);
     expect(ubCall).not.toMatch(/INSERT/i);
     expect(ubCall).toMatch(/saldo\s*=\s*saldo\s*-/i);
-    expect(sql.mock.calls[2][1]).toBe(20);   // mismo delta propagado
+    expect(sql.mock.calls[3][1]).toBe(20);   // mismo delta propagado
   });
 
   // ═══════════════════════════════════════════════════════════════
   // Auth (safety net)
   // ═══════════════════════════════════════════════════════════════
+  it('si la liberación falla, el POST falla y no descuenta stock', async () => {
+    sql
+      .mockResolvedValueOnce(MOCK_ACTIVA)
+      .mockRejectedValueOnce(new Error('db caida'));
+
+    await expect(POST_ITEM(makeReq(BASE_BODY), { params: Promise.resolve({ id: '1' }) }))
+      .rejects.toThrow('db caida');
+    expect(sql.mock.calls.some((c: any[]) =>
+      c[0].join('').includes('UPDATE public.productos'))).toBe(false);
+  });
+
   it('sin sesion → 401', async () => {
     getServerSession.mockResolvedValue(null);
     const res = await POST_ITEM(makeReq(BASE_BODY), { params: Promise.resolve({ id: '1' }) });

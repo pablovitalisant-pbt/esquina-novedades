@@ -190,3 +190,28 @@
 - Fase D (`npx jest` sobre el corte + co-ubicados/relacionados: `pedidos`, `pedidos-precios-server`, `pedidos-convertir`, `pedidos-id`, `liberar-reservas`, `slice-03-sin-powersync`): **7 suites, 114 tests, verde**. Además, los 19 suites restantes que mencionan `config/feature-flags.json`: verde tras ajustar el conteo de flags (142 tests).
 - `npx tsc --noEmit`: sin errores nuevos en los archivos del corte; se mantienen los preexistentes (1 no-test `app/page.tsx` + 2 de `.next/types`, total 113 con tests). Suite completa: la corre el Director Técnico.
 - Simplificación deliberada: el detalle del 409 se construye releyendo `saldo` tras el rollback (no la lectura previa, que puede estar obsoleta por concurrencia). No se agrega endpoint nuevo ni cola de reintentos.
+
+## Sub-slice 8c — liberación perezosa + cron + vercel.json
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §3, §5.4, §6.1 y §8.
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `app/api/cron/liberar-reservas/route.ts` | nuevo | `GET` con `Authorization: Bearer $CRON_SECRET` comparado con `timingSafeEqual`; 401 si falta/no coincide y 500 si `CRON_SECRET` no está configurada. Responde `{ data: { liberados, unidades } }`. |
+| `app/api/notas-venta/[id]/items/route.ts` | modificado | `liberarReservasVencidas()` inmediatamente antes del UPDATE de stock. En escritura el error se propaga (contrato §8: no reservar sobre stock sucio). |
+| `app/api/catalogos/public/[slug]/route.ts`, `app/catalogo/[slug]/page.tsx`, `app/productos/page.tsx` | modificados | Liberación al inicio de cada lectura pública, dentro de `try/catch`: loguea y continúa. |
+| `vercel.json` | modificado | Cron diario `/api/cron/liberar-reservas` (`17 4 * * *`; Hobby admite 1/día). |
+| `.env.example` | modificado | `CRON_SECRET=`. |
+| `__tests__/api/cron-liberar-reservas.test.ts` | nuevo | Sin header → 401, token incorrecto → 401, token correcto → 200 con `{ liberados, unidades }`, secreto ausente → 500. |
+| `__tests__/api/notas-venta-items-post-stock.test.ts` | modificado | La secuencia SQL suma la liberación; índices corridos. Caso nuevo: si la liberación falla, el POST falla y no descuenta stock. |
+| `app/api/notas-venta/[id]/items/route.test.ts` | modificado | Ídem (co-ubicado). |
+| `__tests__/api/prenotas.test.ts`, `__tests__/api/slice5ab-modalidad.test.ts`, `__tests__/catalogo-solo-nuevo-fix.test.ts`, `__tests__/slice-landing-v2.test.tsx` | modificados | Impacto lateral: mocks/índices por la query de liberación. En `catalogo-solo-nuevo-fix` se agrega el caso "si la liberación falla, el catálogo sigue respondiendo". |
+
+### Resultados
+
+- Fase B: rojo por la razón correcta (ruta cron inexistente; las lecturas públicas no llamaban a la liberación; el POST no liberaba antes del stock).
+- Fase D (`npx jest` sobre el corte + co-ubicados `app/api/notas-venta/[id]/items/route.test.ts` y `app/api/catalogos/public/[slug]/route.test.ts` + relacionados que importan/mencionan los archivos tocados): **14 suites, 216 tests, verde**. `catalogo-precio-override.test.ts` es un test de integración con DB real que falla en su `beforeAll` por la rama de test vacía (`SELECT id FROM usuarios` → 0 filas); no depende de este corte.
+- `npx tsc --noEmit`: sin errores nuevos fuera de tests (se mantienen los preexistentes de `.next/types` y `app/page.tsx`).
+- Decisión: liberación segura (log + continuar) solo en lecturas; en `POST items` se propaga (contrato §8). Sin guard de flag en el lib: con `tienda-pago-online=false` no existen pedidos `pendiente_pago` reservados, y la CTE no toca filas. Suite completa: la corre el Director Técnico.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
+import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 
 import type { RouteContext } from '@/types';
 
@@ -84,6 +85,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   if (!Number.isFinite(cantidadTotal) || cantidadTotal <= 0) {
     return NextResponse.json({ error: 'Cantidad inválida' }, { status: 400 });
   }
+
+  // Slice 8c: liberar reservas vencidas antes de competir por el stock.
+  // En escritura el error se propaga (contrato §8): no reservar sobre stock sucio.
+  await liberarReservasVencidas();
 
   // R1/R6: Descontar stock atómicamente — UPDATE con WHERE saldo >= cantidad
   const updateRows = await sql`

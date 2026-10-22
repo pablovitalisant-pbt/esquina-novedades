@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import { filterProducts, type CatalogoProducto } from "@/app/api/catalogos/public/[slug]/filter-products";
 import { getLatestIngresoRealCodigos } from "@/utils/catalogo-ingreso";
 import { precioCatalogoBase } from "@/lib/precio-catalogo";
+import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,13 @@ function parseCSVField(value: unknown): string[] {
 
 export async function getCatalogData(slug: string) {
   try {
+    // Slice 8c: liberación perezosa; una falla no puede tumbar el catálogo.
+    try {
+      await liberarReservasVencidas();
+    } catch (error) {
+      console.error('liberarReservasVencidas (catalogo):', error);
+    }
+
     const cats = await sql`
       SELECT c.*, e.slug as empresa_slug
       FROM catalogos c

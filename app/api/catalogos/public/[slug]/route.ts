@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
 import { seleccionarProductosCatalogo } from "./seleccion";
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const { slug } = await params;
 
   try {
+    // Slice 8c: liberación perezosa; una falla no puede tumbar el catálogo.
+    try {
+      await liberarReservasVencidas();
+    } catch (error) {
+      console.error("liberarReservasVencidas (catalogo publico):", error);
+    }
+
     const cats = await sql`
       SELECT c.*, e.slug as empresa_slug
       FROM catalogos c

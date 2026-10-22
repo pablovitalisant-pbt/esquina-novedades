@@ -16,7 +16,7 @@ const DELETED_DIRS = [
   'app/api/caja/dolar-observado',
   'app/api/catalog-image',
   'app/api/conversion-sugerencias',
-  'app/api/cron',
+  // 'app/api/cron' reintroducido en Slice 8c (liberar-reservas), ya no es legado
   'components/catalog-image',
   'lib/services',
   'tests/lib',

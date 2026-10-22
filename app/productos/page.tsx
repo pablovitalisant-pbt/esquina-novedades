@@ -1,9 +1,17 @@
 import { sql } from '@/lib/db';
+import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { ProductosPublicos } from './client_page';
 
 export const dynamic = 'force-dynamic';
 
 async function getProductos() {
+  // Slice 8c: liberación perezosa; una falla no puede tumbar la tienda.
+  try {
+    await liberarReservasVencidas();
+  } catch (error) {
+    console.error('liberarReservasVencidas (productos):', error);
+  }
+
   const [empresa] = await sql`SELECT slug FROM empresas WHERE id = 1 LIMIT 1`;
   const empresaSlug: string = empresa?.slug ?? 'bazar-naty';
 

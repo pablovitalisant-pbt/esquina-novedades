@@ -221,14 +221,15 @@ describe('Test 6: /productos page', () => {
 
   test('renderiza lista completa sin límite (todos con saldo > 0)', async () => {
     mockSql
+      .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }]) // liberación perezosa (8c)
       .mockResolvedValueOnce([{ slug: 'bazar-naty' }])       // empresa_slug
       .mockResolvedValueOnce(PRODUCTOS_MOCK);                // productos
 
     const ProductosPage = (await import('@/app/productos/page')).default;
     await ProductosPage();
 
-    // Debe haber llamado sql dos veces (empresa_slug + productos), sin caja_config
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // 3 llamadas: liberación + empresa_slug + productos, sin caja_config
+    expect(mockSql).toHaveBeenCalledTimes(3);
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

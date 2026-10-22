@@ -23,6 +23,10 @@ const MIGRADOS = [
   '__tests__/precios-eliminar-producto-ui.test.tsx',
   '__tests__/bodega-client_page.test.tsx',
   '__tests__/caja-config-client_page.test.tsx',
+  'app/(app)/admin/categorias/client_page.tsx',
+  'app/(app)/notas-venta/client_page.tsx',
+  'app/(app)/notas-venta/client_page.test.tsx',
+  '__tests__/notas-venta-prefetch-hover.test.tsx',
 ];
 const PROHIBIDO = /@powersync|lib\/powersync|usePowerSync|OFFLINE_READ|wa-sqlite|offline-lectura|alertas-badge-offline/;
 

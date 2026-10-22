@@ -21,13 +21,6 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push, prefetch }),
   useParams: () => ({}),
 }));
-jest.mock('@powersync/react', () => ({
-  usePowerSync: () => null,
-  PowerSyncContext: { Provider: ({ children }: any) => children },
-}));
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({
-  PowerSyncProvider: ({ children }: any) => children,
-}));
 jest.mock('@/config/feature-flags.json', () => ({
   get 'notas-venta-prefetch-hover'() {
     return (globalThis as any).__prefetchHover === true;

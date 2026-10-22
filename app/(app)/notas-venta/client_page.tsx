@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
 import flags from '@/config/feature-flags.json';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,28 +22,10 @@ type Prenota = {
   estado?: string;
 };
 
-// PrenotasPage decide si montar PowerSync según el flag. Con el flag en false
-// (default) NO se monta el provider → no se abre la conexión de sync y el
-// comportamiento actual (fetch a /api/notas-venta) no cambia.
 export function PrenotasPage({ session }: { session: any }) {
-  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <PrenotasContent session={session} />
-      </PowerSyncProvider>
-    );
-  }
-  return <PrenotasContent session={session} />;
-}
-
-function PrenotasContent({ session }: { session: any }) {
   const router = useRouter();
   const rol = (session?.user as any)?.rol;
-  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
   const PREFETCH_HOVER = flags['notas-venta-prefetch-hover'] === true;
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
 
   const [prenotas, setPrenotas] = useState<Prenota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,40 +36,15 @@ function PrenotasContent({ session }: { session: any }) {
   const fetchPrenotas = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/notas-venta tal cual,
-        // incluida la asimetría total_pagado (SUM sin restar reembolsos) —
-        // no se corrige en este slice.
-        const rows = await db.getAll(
-          `SELECT p.*,
-             COALESCE((SELECT SUM(pi.unidades * pi.precio) FROM prenota_items pi WHERE pi.prenota_id = p.id), 0) as total,
-             COALESCE((SELECT SUM(cmn.monto_aplicado) FROM caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id), 0) as total_pagado
-           FROM prenotas p
-           WHERE p.estado != 'anulada'
-           ORDER BY p.estado ASC, p.updated_at DESC`,
-          []
-        );
-        const data = (rows || []).map((r: any) => ({
-          ...r,
-          total: Number(r.total),
-          total_pagado: Number(r.total_pagado),
-          saldo_pendiente: Number(Number(r.total) - Number(r.total_pagado)),
-        }));
+      const res = await fetch('/api/notas-venta');
+      if (res.ok) {
+        const { data } = await res.json();
         const sorted = (data || []).sort((a: Prenota, b: Prenota) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setPrenotas(sorted);
       } else {
-        const res = await fetch('/api/notas-venta');
-        if (res.ok) {
-          const { data } = await res.json();
-          const sorted = (data || []).sort((a: Prenota, b: Prenota) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          setPrenotas(sorted);
-        } else {
-          toast.error('Error cargando notas de venta');
-        }
+        toast.error('Error cargando notas de venta');
       }
     } catch {
       toast.error('Error cargando nota de ventas');
@@ -132,9 +87,7 @@ function PrenotasContent({ session }: { session: any }) {
   useEffect(() => cancelHoverPrefetch, []);
 
   // Tipo de cambio para mostrar equivalentes en ARS (patrón PagarNotaDialog).
-  // En modo offline no hay red: el dolar no se pide y la línea ARS no se muestra.
   useEffect(() => {
-    if (OFFLINE_READ) return;
     (async () => {
       try {
         const res = await fetch('/api/caja/config');
@@ -144,7 +97,7 @@ function PrenotasContent({ session }: { session: any }) {
         setDolarDia(0);
       }
     })();
-  }, [OFFLINE_READ]);
+  }, []);
 
   const handleCrear = async () => {
     setCreating(true);
@@ -155,25 +108,6 @@ function PrenotasContent({ session }: { session: any }) {
         return;
       }
       const data = await res.json();
-
-      if (OFFLINE_READ && db) {
-        // Espejo local inmediato: la página de detalle siempre lee de SQLite
-        // local (aun online), y el sync-down de PowerSync no es instantáneo.
-        // Sin este INSERT, fetchPrenota() no encuentra la fila recién creada
-        // hasta que el sync real la baje (race, bugfix de esta fecha).
-        // El op PUT de prenotas que esto genera NO tiene rama en
-        // BackendConnector (solo maneja PATCH) → no se re-sube a Postgres,
-        // que ya tiene la fila. Espejo sin efecto colateral.
-        await db.execute(
-          `INSERT OR REPLACE INTO prenotas (id, titulo, titulo_base, usuario_id, cliente_id, nombre_cliente, estado, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            String(data.id), data.titulo, data.titulo_base, data.usuario_id,
-            data.cliente_id ?? null, data.nombre_cliente ?? null,
-            data.estado, data.created_at, data.updated_at,
-          ]
-        );
-      }
 
       router.push(`/notas-venta/${data.id}`);
     } catch {
@@ -186,34 +120,6 @@ function PrenotasContent({ session }: { session: any }) {
   const handleEliminar = async (id: number) => {
     if (!confirm('¿Anular esta nota de venta?')) return;
     try {
-      if (OFFLINE_READ && db) {
-        // Anular offline (Slice 14): solo se muta prenotas.estado localmente;
-        // la restauración de stock la hace el DELETE del servidor al sync.
-        // Primero chequeo local de pago (replica el SELECT del endpoint).
-        const row = await db.get(
-          `SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
-           FROM caja_movimiento_notas cmn
-           JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
-           WHERE cmn.prenota_id = ?`,
-          [id]
-        );
-        const total = Number((row as any)?.total ?? 0);
-        if (total > 0) {
-          // Mismo bloqueo que el 409 del servidor (nota con pago registrado).
-          toast.error(`Esta nota de venta tiene un pago registrado de $${total.toFixed(2)}`, {
-            action: { label: 'Ir a reembolsar', onClick: () => router.push(`/notas-venta/${id}`) },
-            duration: 8000,
-          });
-          return;
-        }
-        await db.execute(
-          `UPDATE prenotas SET estado = 'anulada', updated_at = ? WHERE id = ? AND estado = 'activa'`,
-          [new Date().toISOString(), id]
-        );
-        setPrenotas(prev => prev.filter(p => p.id !== id));
-        toast.success('Nota anulada');
-        return;
-      }
       const res = await fetch(`/api/notas-venta/${id}`, { method: 'DELETE' });
       if (res.status === 409) {
         const body = await res.json();

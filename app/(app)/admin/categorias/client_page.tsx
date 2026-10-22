@@ -1,9 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
-import flags from '@/config/feature-flags.json';
 import {
   DndContext,
   DragOverlay,
@@ -205,32 +202,11 @@ function DragOverlayCard({ producto, count }: { producto: Producto; count?: numb
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-// CategoriasClient decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → comportamiento actual sin cambios.
 export function CategoriasClient({
   categorias: initialCategorias,
 }: {
   categorias: Categoria[];
 }) {
-  const OFFLINE_READ = (flags as any)["categorias-offline-lectura"];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <CategoriasContent categorias={initialCategorias} />
-      </PowerSyncProvider>
-    );
-  }
-  return <CategoriasContent categorias={initialCategorias} />;
-}
-
-function CategoriasContent({
-  categorias: initialCategorias,
-}: {
-  categorias: Categoria[];
-}) {
-  const OFFLINE_READ = (flags as any)["categorias-offline-lectura"];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
   const activeEmpresaId = 1; // single-tenant — Bazar Naty
   const [creandoCatalogoParaCategoria, setCreandoCatalogoParaCategoria] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>(initialCategorias);
@@ -278,77 +254,11 @@ function CategoriasContent({
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Fetch categorías (local-read reactivo — patrón Caja Mayor BUG-055/056)
-  // ---------------------------------------------------------------------------
-  const fetchCategorias = useCallback(async () => {
-    if (!(OFFLINE_READ && db)) return;
-    const rows = (await db.getAll(
-      `SELECT c.id, c.nombre, c.created_at,
-         (SELECT COUNT(DISTINCT p.codigo) FROM productos p WHERE p.categoria = c.nombre) AS total_productos
-       FROM categorias c
-       ORDER BY c.nombre ASC`
-    )) as any[];
-    setCategorias((rows || []).map((r) => ({ id: r.id, nombre: r.nombre, total_productos: Number(r.total_productos) })));
-  }, [db, OFFLINE_READ]);
-
-  // Watcher reactivo: cuando la sync cambia categorias/productos en background,
-  // re-lee la tabla local — no depende de un refresh manual. productos se incluye
-  // porque total_productos depende de productos.categoria, no solo de categorias.
-  useEffect(() => {
-    if (!(OFFLINE_READ && db)) return;
-    const dispose = db.onChangeWithCallback(
-      { onChange: () => { fetchCategorias(); } },
-      { tables: ['categorias', 'productos'] }
-    );
-    return () => dispose();
-  }, [OFFLINE_READ, db, fetchCategorias]);
-
-  // Lectura inicial: si OFFLINE_READ && db, arrancar de la tabla local (no
-  // quedarse solo con initialCategorias, que puede venir desactualizado de un
-  // shell cacheado).
-  useEffect(() => { fetchCategorias(); }, [fetchCategorias]);
-
-  // ---------------------------------------------------------------------------
   // Fetch productos
   // ---------------------------------------------------------------------------
   const fetchProductos = useCallback(async (searchVal: string, offsetVal: number, append: boolean, categoriaFiltro: string) => {
     setIsLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/admin/productos-lista
-        // (3 filtros: categoría / sin categoría / todos, con y sin búsqueda)
-        // + LIMIT/OFFSET. Sin DISTINCT ON (single-tenant, PowerSync ya trae
-        // una fila por producto).
-        const limit = 50;
-        let where = '';
-        const params: any[] = [];
-        if (categoriaFiltro && categoriaFiltro !== '__sin__') {
-          where = 'WHERE p.categoria = ?';
-          params.push(categoriaFiltro);
-        } else if (categoriaFiltro === '__sin__') {
-          where = 'WHERE p.categoria IS NULL';
-        }
-        if (searchVal) {
-          const pat = `%${searchVal.toLowerCase()}%`;
-          const searchCond = '(LOWER(p.codigo) LIKE ? OR LOWER(p.detalle) LIKE ?)';
-          where = where ? `${where} AND ${searchCond}` : `WHERE ${searchCond}`;
-          params.push(pat, pat);
-        }
-        const baseSQL = `SELECT p.id, p.codigo, p.detalle, p.imagen_url, p.categoria FROM productos p ${where}`;
-        const rows = (await db.getAll(`${baseSQL} ORDER BY p.codigo ASC LIMIT ? OFFSET ?`, [...params, limit, offsetVal])) as any[];
-        const countRow = (await db.get(`SELECT COUNT(*) AS total FROM productos p ${where}`, params)) as any;
-        const total = Number(countRow?.total ?? 0);
-        // El id local de PowerSync para productos es el SERIAL como string →
-        // se convierte a number para que toda la lógica de React (selectedIds,
-        // PUT URL) funcione igual que online.
-        const localProductos: Producto[] = (rows || []).map((r) => ({ ...r, id: Number(r.id) }));
-        setProductos(prev => append ? [...prev, ...localProductos] : localProductos);
-        setTotal(total);
-        setHasMore(offsetVal + (rows || []).length < total);
-        setOffset(offsetVal + (rows || []).length);
-        return;
-      }
-
       const params = new URLSearchParams({ limit: '50', offset: String(offsetVal) });
       if (searchVal) params.set('search', searchVal);
       params.set('categoriaFiltro', categoriaFiltro);
@@ -361,7 +271,7 @@ function CategoriasContent({
     } finally {
       setIsLoading(false);
     }
-  }, [db, OFFLINE_READ]);
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -464,23 +374,15 @@ function CategoriasContent({
       setIsGroupDrag(false);
 
       try {
-        if (OFFLINE_READ && db) {
-          // Escritura local (flag on): cada producto genera su propio op PATCH
-          // en la cola (uploadData los sube independientemente, no en lote).
-          await Promise.all(
-            ids.map((id) => db.execute(`UPDATE productos SET categoria = ? WHERE id = ?`, [nombre, id]))
-          );
-        } else {
-          await Promise.all(
-            ids.map(id =>
-              fetch(`/api/productos/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ categoria: nombre }),
-              })
-            )
-          );
-        }
+        await Promise.all(
+          ids.map(id =>
+            fetch(`/api/productos/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ categoria: nombre }),
+            })
+          )
+        );
       } catch {
         // Rollback
         setProductos(prev => [...productosSeleccionados, ...prev]);
@@ -512,15 +414,11 @@ function CategoriasContent({
       setActiveProduct(null);
 
       try {
-        if (OFFLINE_READ && db) {
-          await db.execute(`UPDATE productos SET categoria = ? WHERE id = ?`, [nombre, activeProduct.id]);
-        } else {
-          await fetch(`/api/productos/${activeProduct.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ categoria: nombre }),
-          });
-        }
+        await fetch(`/api/productos/${activeProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoria: nombre }),
+        });
       } catch {
         setProductos(prev =>
           categoriaFiltro === '__sin__'
@@ -544,20 +442,6 @@ function CategoriasContent({
   const handleCrearCategoria = async () => {
     const nombre = nuevaCategoriaInput.trim();
     if (!nombre) return;
-    if (OFFLINE_READ && db) {
-      // Escritura local (flag on): INSERT con id UUID del cliente → local =
-      // servidor (el DELETE offline no deja categorías huérfanas, motivo de
-      // la migración 029). Sync por uploadData().
-      const id = crypto.randomUUID();
-      await db.execute(
-        `INSERT INTO categorias (id, nombre, created_at) VALUES (?, ?, ?)`,
-        [id, nombre, new Date().toISOString()]
-      );
-      setCategorias(prev => [...prev, { id, nombre, total_productos: 0 }].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      setNuevaCategoriaInput('');
-      setShowNuevaCategoria(false);
-      return;
-    }
     const res = await fetch('/api/categorias', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -581,14 +465,6 @@ function CategoriasContent({
     if (!window.confirm(mensaje)) return;
     setDeletingId(id);
     try {
-      if (OFFLINE_READ && db) {
-        // Escritura local (flag on): DELETE por id local — como el id es el
-        // mismo que el servidor (UUID del cliente), al sincronizar el DELETE
-        // encuentra el id correcto (motivo de la migración 029).
-        await db.execute(`DELETE FROM categorias WHERE id = ?`, [id]);
-        setCategorias(prev => prev.filter(c => c.id !== id));
-        return;
-      }
       const res = await fetch(`/api/categorias/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setCategorias(prev => prev.filter(c => c.id !== id));

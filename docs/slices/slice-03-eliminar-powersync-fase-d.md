@@ -32,3 +32,15 @@ Se conservan guards `navigator.onLine` y `OFFLINE_WRITE_MSG` (D2). `lib/powersyn
 - `npx tsc --noEmit`: 129 errores (baseline 129, sin aumento).
 
 **Diff (numstat, archivos que permanecen):** 83 líneas añadidas / 628 borradas (límite D8: añadidas ≤ 200).
+
+## Corte 3.6 + 3.7 (admin/categorias, notas-venta lista)
+
+**Archivos modificados:** `app/(app)/admin/categorias/client_page.tsx`, `app/(app)/notas-venta/client_page.tsx`, `app/(app)/notas-venta/client_page.test.tsx`, `__tests__/notas-venta-prefetch-hover.test.tsx`, `__tests__/slice-03-sin-powersync.test.ts` (+4 entradas en `MIGRADOS`). **Borrado:** `__tests__/categorias-refresco-reactivo.test.tsx`.
+
+**Cambios:** se quitan imports `@powersync/*`, wrappers de provider, ramas `OFFLINE_READ && db` (lectura, escritura, anular) y `fetchCategorias` + watcher (sin reemplazo, según contrato). Se conserva el flag `notas-venta-prefetch-hover` (D1).
+
+**Tests:**
+- Fase B: T1 en ROJO (4 nuevos fallan por el patrón prohibido; 20 anteriores verdes).
+- `notas-venta/client_page.test.tsx` reescrito: carga por `fetch` y anular por `DELETE`.
+- Fase D: T1 + `notas-venta/client_page` + `notas-venta-prefetch-hover` + `notas-venta-compartidas-smoke` → 4 suites, 40 tests, verde.
+- `npx tsc --noEmit`: 129 errores (baseline 129, sin aumento).

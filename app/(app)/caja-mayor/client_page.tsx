@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { roundUpToHalf, formatMonto } from "@/docs/specs/caja-mayor.spec";
+import { formatCLP } from "@/lib/utils";
 import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
 
 import type { Cuenta } from '@/types';
@@ -21,13 +21,11 @@ interface ClienteOption {
 
 // El guard de rol lo hace el middleware (bodeguero no tiene acceso a /caja-mayor).
 export function CajaMayorClient({
-  dolarDia,
   cuentas,
   userName,
   userRol,
   userId,
 }: {
-  dolarDia: number;
   cuentas: Cuenta[];
   userName: string;
   userRol: string;
@@ -53,7 +51,6 @@ export function CajaMayorClient({
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [cliente, setCliente] = useState<ClienteOption | null>(null);
   const [empresa, setEmpresa] = useState<string>("");
-  const [moneda, setMoneda] = useState<"USD" | "ARS">("USD");
   const [monto, setMonto] = useState("");
   const [cuentaId, setCuentaId] = useState("");
   const [formaPago, setFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
@@ -61,25 +58,6 @@ export function CajaMayorClient({
   const [esCredito, setEsCredito] = useState(false);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
-
-  // Dólar del día vigente (inicia con prop del server, se refresca de la API)
-  const [dolarVigente, setDolarVigente] = useState(dolarDia);
-
-  useEffect(() => {
-    async function refrescarDolar() {
-      try {
-        const res = await fetch("/api/caja/config");
-        if (res.ok) {
-          const json = await res.json();
-          const valor = parseFloat(json.data.valor);
-          if (valor > 0) setDolarVigente(valor);
-        }
-      } catch {
-        // mantener dolarVigente actual
-      }
-    }
-    refrescarDolar();
-  }, [moneda]);
 
   // ─── Imputación manual ─────────────────────────────────
   const [imputacionManual, setImputacionManual] = useState(false);
@@ -106,7 +84,7 @@ export function CajaMayorClient({
   const [movimientos, setMovimientos] = useState<MovimientoOCierre[]>([]);
   const [movsLoading, setMovsLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
-  const [filtros, setFiltros] = useState({ moneda: "", cuenta_id: "", tipo: "", empresa: "", desde: "", hasta: "" });
+  const [filtros, setFiltros] = useState({ cuenta_id: "", tipo: "", empresa: "", desde: "", hasta: "" });
   const [saldos, setSaldos] = useState<SaldoCuenta[]>([]);
 
   // ─── Cierre de período ────────────────────────────────
@@ -123,7 +101,6 @@ export function CajaMayorClient({
   const [editClienteQuery, setEditClienteQuery] = useState("");
   const [editCliente, setEditCliente] = useState<ClienteOption | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<"bazar-naty" | "">("");
-  const [editMoneda, setEditMoneda] = useState<"USD" | "ARS">("USD");
   const [editMonto, setEditMonto] = useState("");
   const [editCuentaId, setEditCuentaId] = useState("");
   const [editFormaPago, setEditFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
@@ -142,7 +119,6 @@ export function CajaMayorClient({
     setMovsLoading(true);
 
     const params = new URLSearchParams({ page: String(page), limit: "50" });
-    if (filtros.moneda) params.set("moneda", filtros.moneda);
     if (filtros.cuenta_id) params.set("cuenta_id", filtros.cuenta_id);
     if (filtros.tipo) params.set("tipo", filtros.tipo);
     if (filtros.empresa) params.set("empresa", filtros.empresa);
@@ -194,18 +170,10 @@ export function CajaMayorClient({
   }, [resumen, filtroEstado]);
 
   // ─── Derived ─────────────────────────────────────────
-  const cuentasFiltradas = useMemo(
-    () => cuentas.filter((c) => c.moneda === moneda),
-    [cuentas, moneda]
-  );
-
-  const montoUSD = useMemo(() => {
+  const montoNum = useMemo(() => {
     const n = parseFloat(monto);
-    if (isNaN(n) || n <= 0) return null;
-    if (moneda === "USD") return n;
-    if (dolarVigente <= 0) return null;
-    return roundUpToHalf(n / dolarVigente);
-  }, [monto, moneda, dolarVigente]);
+    return isNaN(n) || n <= 0 ? null : n;
+  }, [monto]);
 
   const canSubmit =
     !saving &&
@@ -244,14 +212,10 @@ export function CajaMayorClient({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Auto-select first available cuenta when moneda changes
+  // Auto-select first available cuenta
   useEffect(() => {
-    if (cuentasFiltradas.length > 0) {
-      setCuentaId(String(cuentasFiltradas[0].id));
-    } else {
-      setCuentaId("");
-    }
-  }, [moneda, cuentasFiltradas]);
+    setCuentaId(cuentas.length > 0 ? String(cuentas[0].id) : "");
+  }, [cuentas]);
 
   const selectCliente = (c: ClienteOption) => {
     setCliente(c);
@@ -328,7 +292,6 @@ export function CajaMayorClient({
     setEditTipo(mov.tipo as "cobro" | "gasto");
     setEditFecha(mov.fecha);
     setEditMonto(String(mov.monto));
-    setEditMoneda(mov.moneda as "USD" | "ARS");
     setEditCuentaId(String(mov.cuenta_id));
     setEditFormaPago(mov.forma_pago as "efectivo" | "cheque" | "transferencia");
     setEditObs(mov.observaciones || "");
@@ -355,7 +318,6 @@ export function CajaMayorClient({
         cliente_id: editCliente?.cliente_id ? Number(editCliente.cliente_id) : null,
         nombre_cliente: editCliente?.nombre ?? null,
         cuenta_id: parseInt(editCuentaId, 10),
-        moneda: editMoneda,
         monto: parseFloat(editMonto),
         forma_pago: editFormaPago,
         observaciones: editObs.trim() || null,
@@ -424,7 +386,6 @@ export function CajaMayorClient({
       cliente_id: cliente?.cliente_id ?? null, // UUID (string) desde 13a
       nombre_cliente: cliente?.nombre ?? null,
       cuenta_id: parseInt(cuentaId, 10),
-      moneda,
       monto: parseFloat(monto),
       forma_pago: formaPago,
       observaciones: observaciones.trim() || null,
@@ -443,8 +404,8 @@ export function CajaMayorClient({
       const movimientoId = created.data?.id;
 
       // Imputación manual a nota específica
-      if (movimientoId && imputacionManual && notaSeleccionada && tipo === "cobro" && montoUSD) {
-        let remaining = montoUSD;
+      if (movimientoId && imputacionManual && notaSeleccionada && tipo === "cobro" && montoNum) {
+        let remaining = montoNum;
         const notasParaImputar: { empresa: string; prenota_id: number; monto_aplicado: number }[] = [];
 
         // Aplicar a la nota seleccionada
@@ -481,14 +442,13 @@ export function CajaMayorClient({
         }
       }
 
-      toast.success(`Movimiento registrado — ${tipo === "cobro" ? "Cobro" : "Gasto"} por $${formatMonto(parseFloat(monto), moneda)} ${moneda}`);
+      toast.success(`Movimiento registrado — ${tipo === "cobro" ? "Cobro" : "Gasto"} por ${formatCLP(parseFloat(monto))}`);
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2500);
       // Reset form (fecha persiste entre registros; solo se resetea al cerrar período)
       clearCliente();
       setMonto("");
       setObservaciones("");
-      if (moneda === "ARS") setMoneda("USD");
       setFormaPago("transferencia");
       fetchMovimientos(1);
       fetchSaldos();
@@ -566,7 +526,6 @@ export function CajaMayorClient({
     setExporting(true);
     try {
       const params = new URLSearchParams();
-      if (filtros.moneda) params.set("moneda", filtros.moneda);
       if (filtros.cuenta_id) params.set("cuenta_id", filtros.cuenta_id);
       if (filtros.tipo) params.set("tipo", filtros.tipo);
       if (filtros.empresa) params.set("empresa", filtros.empresa);
@@ -589,9 +548,8 @@ export function CajaMayorClient({
         { header: "Cliente", key: "Cliente", width: 30 },
         { header: "Org.", key: "Org.", width: 10 },
         { header: "Nota(s)", key: "Nota(s)", width: 13 },
-        { header: "ARS", key: "ARS", width: 16 },
+        { header: "Monto", key: "Monto", width: 16 },
         { header: "Cuenta", key: "Cuenta", width: 12 },
-        { header: "USD", key: "USD", width: 9 },
         { header: "Observación", key: "Observación", width: 32 },
         { header: "Crédito", key: "Crédito", width: 8 },
       ];
@@ -610,7 +568,7 @@ export function CajaMayorClient({
           // Title row — blue bg, gray bold text
           const titleRow = ws.addRow({
             Fecha: `CIERRE DE PERÍODO — ${c.fecha_desde} al ${c.fecha_hasta}`,
-            Tipo: "", Cliente: "", "Org.": "", "Nota(s)": "", ARS: "", Cuenta: "", USD: "", Observación: "", Crédito: "",
+            Tipo: "", Cliente: "", "Org.": "", "Nota(s)": "", Monto: "", Cuenta: "", Observación: "", Crédito: "",
           });
           titleRow.eachCell((cell) => {
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9DAF8" } };
@@ -621,10 +579,9 @@ export function CajaMayorClient({
           for (const r of activas) {
             const resumenRow = ws.addRow({
               Fecha: "", Tipo: "", Cliente: "", "Org.": "", "Nota(s)": r.cuenta_nombre,
-              ARS: r.moneda === "ARS" ? r.total_cobros : r.total_cobros,
-              Cuenta: r.moneda,
-              USD: r.total_gastos,
-              Observación: r.saldo_final,
+              Monto: r.saldo_final,
+              Cuenta: "",
+              Observación: `Depósito ${formatCLP(r.total_cobros)} · Gasto ${formatCLP(r.total_gastos)}`,
               Crédito: "",
             });
             resumenRow.eachCell((cell) => {
@@ -637,11 +594,10 @@ export function CajaMayorClient({
             Fecha: m.fecha,
             Tipo: m.tipo === "cobro" ? "Cobro" : m.tipo === "reembolso" ? "Reembolso" : "Gasto",
             Cliente: m.nombre_cliente || "",
-            "Org.": m.empresa ? "Bazar Naty" : "",
+            "Org.": m.empresa ? "La Esquina" : "",
             "Nota(s)": m.notas_imputadas?.join(", ") || "",
-            ARS: m.moneda === "ARS" ? m.monto : "",
+            Monto: m.monto,
             Cuenta: m.cuenta_nombre,
-            USD: m.moneda === "USD" ? (m.monto_usd ?? m.monto) : "",
             Observación: m.observaciones || "",
             Crédito: m.es_credito ? "Sí" : "No",
           });
@@ -700,13 +656,6 @@ export function CajaMayorClient({
         )}
       </div>
 
-      {/* Dollar banner */}
-      {dolarVigente > 0 && (
-        <div className="bg-[var(--primary)] dark:bg-[var(--primary)] border border-[var(--primary)]/30 dark:border-[var(--primary)]/30 rounded-lg px-4 py-2 text-sm text-primary-foreground">
-          💱 Dólar del día: <strong>${formatMonto(dolarVigente, "ARS")}</strong>
-        </div>
-      )}
-
       <div className="border rounded-card p-5 space-y-5">
         {/* ─── Tipo toggle ──────────────────────────── */}
         <div className="flex rounded-lg border p-1 bg-muted/50">
@@ -758,7 +707,7 @@ export function CajaMayorClient({
                       📄 Nota #{notaSeleccionada.id} — {cliente.nombre}
                     </div>
                     <div className="text-xs text-[var(--body)]">
-                      {notaSeleccionada.fecha} · {"Bazar Naty"} · Total: ${formatMonto(notaSeleccionada.total, "ARS")} · Pend: ${formatMonto(notaSeleccionada.saldo_pendiente, "USD")}
+                      {notaSeleccionada.fecha} · {"La Esquina"} · Total: {formatCLP(notaSeleccionada.total)} · Pend: {formatCLP(notaSeleccionada.saldo_pendiente)}
                     </div>
                   </div>
                   <Button variant="ghost" size="icon-sm" onClick={clearCliente}>
@@ -771,7 +720,7 @@ export function CajaMayorClient({
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{cliente.nombre}</div>
                     <div className="text-xs text-[var(--body)]">
-                      Bazar Naty · {cliente.total_compras} compras · última {cliente.ultima_compra}
+                      La Esquina · {cliente.total_compras} compras · última {cliente.ultima_compra}
                     </div>
                   </div>
                   <Button variant="ghost" size="icon-sm" onClick={clearCliente}>
@@ -810,7 +759,7 @@ export function CajaMayorClient({
                           </div>
                           <div className="text-xs text-[var(--body)] flex items-center gap-1 ml-7">
                             <Badge variant="outline" className="text-[10px] px-1 py-0">
-                              Bazar Naty
+                              La Esquina
                             </Badge>
                             <span>· {r.cliente.total_compras} compras · {r.cliente.ultima_compra}</span>
                           </div>
@@ -829,14 +778,14 @@ export function CajaMayorClient({
                               <span className="text-sm font-medium">#{r.nota.id}</span>
                             </div>
                             <Badge variant="outline" className="text-[10px] px-1 py-0">
-                              {"Bazar Naty"}
+                              {"La Esquina"}
                             </Badge>
                           </div>
                           <div className="text-xs text-[var(--body)] mt-0.5 ml-7">
-                            {r.nota.fecha} · {r.nota.nombre_cliente} · Total: ${formatMonto(r.nota.total, "ARS")}
+                            {r.nota.fecha} · {r.nota.nombre_cliente} · Total: {formatCLP(r.nota.total)}
                             {" · "}
                             <span className={r.nota.saldo_pendiente <= 0.005 ? "text-[var(--success)]600" : "text-[var(--destructive)] font-medium"}>
-                              Pend: ${formatMonto(r.nota.saldo_pendiente, "USD")}
+                              Pend: {formatCLP(r.nota.saldo_pendiente)}
                             </span>
                           </div>
                         </button>
@@ -888,21 +837,21 @@ export function CajaMayorClient({
                     <option value="">— Seleccionar nota —</option>
                     {notasPendientes.map((n) => (
                       <option key={`${n.origen}:${n.id}`} value={`${n.origen}:${n.id}`}>
-                        #{n.id} · {n.fecha} · ${formatMonto(n.total, "ARS")} · Pend: ${formatMonto(n.saldo_pendiente, "USD")}
+                        #{n.id} · {n.fecha} · {formatCLP(n.total)} · Pend: {formatCLP(n.saldo_pendiente)}
                       </option>
                     ))}
                   </select>
                 )}
 
                 {/* Preview de imputación */}
-                {notaSeleccionada && montoUSD !== null && (
+                {notaSeleccionada && montoNum !== null && (
                   <div className="bg-[var(--success)]50 dark:bg-[var(--success)] border border-[var(--success)]/30 dark:border-[var(--success)]/30 rounded-lg px-3 py-2 text-sm text-[var(--success)] dark:text-[var(--success)] mt-2">
-                    {montoUSD <= notaSeleccionada.saldo_pendiente ? (
-                      <>Se imputarán <strong>${formatMonto(montoUSD, "USD")} USD</strong> a la nota #{notaSeleccionada.id} (Bazar Naty).</>
+                    {montoNum <= notaSeleccionada.saldo_pendiente ? (
+                      <>Se imputarán <strong>{formatCLP(montoNum)}</strong> a la nota #{notaSeleccionada.id}.</>
                     ) : (
                       <div>
-                        <p>Se imputarán <strong>${formatMonto(notaSeleccionada.saldo_pendiente, "USD")} USD</strong> a la nota #{notaSeleccionada.id}.</p>
-                        <p className="mt-0.5">Excedente de <strong>${formatMonto(montoUSD - notaSeleccionada.saldo_pendiente, "USD")} USD</strong> → siguiente nota más antigua.</p>
+                        <p>Se imputarán <strong>{formatCLP(notaSeleccionada.saldo_pendiente)}</strong> a la nota #{notaSeleccionada.id}.</p>
+                        <p className="mt-0.5">Excedente de <strong>{formatCLP(montoNum - notaSeleccionada.saldo_pendiente)}</strong> → siguiente nota más antigua.</p>
                       </div>
                     )}
                   </div>
@@ -912,39 +861,18 @@ export function CajaMayorClient({
           </div>
         )}
 
-        {/* ─── Monto + Moneda ───────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2 space-y-1">
-            <label className="text-sm font-medium">Monto</label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
-              placeholder={moneda === "USD" ? "0.00" : "0"}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Moneda</label>
-            <select
-              value={moneda}
-              onChange={(e) => setMoneda(e.target.value as "USD" | "ARS")}
-              className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
-            >
-              <option value="USD">USD</option>
-              <option value="ARS">ARS</option>
-            </select>
-          </div>
+        {/* ─── Monto ───────────────────────────────── */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Monto</label>
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            placeholder="0"
+          />
         </div>
-
-        {/* ─── ARS → USD preview ────────────────────── */}
-        {moneda === "ARS" && montoUSD !== null && (
-          <div className="bg-[var(--warning)]/1050 dark:bg-[var(--warning)]/10 border border-[var(--warning)]/30 dark:border-[var(--warning)]/30 rounded-lg px-3 py-2 text-sm text-[var(--warning)] dark:text-[var(--warning)]">
-            ≈ <strong>{formatMonto(montoUSD, "USD")} USD</strong> (tasa: ${formatMonto(dolarVigente, "ARS")})
-            <span className="text-xs block mt-0.5">Redondeado al múltiplo de 0.5 más cercano hacia arriba</span>
-          </div>
-        )}
 
         {/* ─── Cuenta bancaria ──────────────────────── */}
         <div className="space-y-1">
@@ -954,12 +882,12 @@ export function CajaMayorClient({
             onChange={(e) => setCuentaId(e.target.value)}
             className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
           >
-            {cuentasFiltradas.length === 0 ? (
-              <option value="">No hay cuentas en {moneda}</option>
+            {cuentas.length === 0 ? (
+              <option value="">No hay cuentas</option>
             ) : (
-              cuentasFiltradas.map((c) => (
+              cuentas.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nombre} ({c.moneda})
+                  {c.nombre}
                 </option>
               ))
             )}
@@ -1031,9 +959,8 @@ export function CajaMayorClient({
           {saldos.map((s) => (
             <div key={`${s.cuenta_id}`} className="border rounded-lg p-3 text-center">
               <div className="text-xs text-[var(--body)] truncate">{s.cuenta_nombre}</div>
-              <div className="text-[10px] text-[var(--body-subtle)]">{s.moneda}</div>
               <div className={`text-sm font-bold mt-1 ${s.saldo_neto >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
-                {s.moneda === "ARS" ? "$" : ""}{formatMonto(s.saldo_neto, s.moneda)}
+                {formatCLP(s.saldo_neto)}
               </div>
             </div>
           ))}
@@ -1048,9 +975,6 @@ export function CajaMayorClient({
           {/* Exportar + filtros */}
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-2">
-              <select value={filtros.moneda} onChange={(e) => setFiltros((f) => ({ ...f, moneda: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
-                <option value="">Todas monedas</option><option value="USD">USD</option><option value="ARS">ARS</option>
-              </select>
               <select value={filtros.tipo} onChange={(e) => setFiltros((f) => ({ ...f, tipo: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
                 <option value="">Todos tipos</option><option value="cobro">Cobro</option><option value="gasto">Gasto</option><option value="reembolso">Reembolso</option>
               </select>
@@ -1058,7 +982,7 @@ export function CajaMayorClient({
               <Input type="date" value={filtros.hasta} onChange={(e) => setFiltros((f) => ({ ...f, hasta: e.target.value }))} className="h-8 w-[140px] text-xs" />
               <select value={filtros.cuenta_id} onChange={(e) => setFiltros((f) => ({ ...f, cuenta_id: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
                 <option value="">Todas cuentas</option>
-                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}
+                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             <Button
@@ -1088,9 +1012,8 @@ export function CajaMayorClient({
                     <th className="py-2 pr-2 font-medium">Cliente</th>
                     <th className="py-2 pr-2 font-medium w-[36px]">Emp.</th>
                     <th className="py-2 pr-2 font-medium">Nota(s)</th>
-                    <th className="py-2 pr-2 font-medium text-right w-[110px]">ARS</th>
+                    <th className="py-2 pr-2 font-medium text-right w-[110px]">Monto</th>
                     <th className="py-2 pr-2 font-medium">Cuenta</th>
-                    <th className="py-2 pr-2 font-medium text-right w-[90px]">USD</th>
                     <th className="py-2 pr-2 font-medium">Observación</th>
                     <th className="py-2 pr-2 font-medium w-[70px]">Forma pago</th>
                     <th className="py-2 pr-2 font-medium w-[50px]">Crédito</th>
@@ -1101,7 +1024,7 @@ export function CajaMayorClient({
                   {movimientos.map((item) =>
                     item.tipo_fila === "cierre" ? (
                       <tr key={`cierre-${item.data.id}`} className="bg-[var(--primary)] dark:bg-[var(--primary)]/40 border-b">
-                        <td colSpan={12} className="py-3 px-4">
+                        <td colSpan={11} className="py-3 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-[var(--primary)] dark:text-[var(--primary)] text-sm">
@@ -1153,40 +1076,18 @@ export function CajaMayorClient({
                             const activas = item.data.resumen.filter(
                               (c) => c.saldo_final !== 0 || c.total_cobros !== 0 || c.total_gastos !== 0
                             );
-                            const usd = activas.filter((c) => c.moneda === "USD");
-                            const clp = activas.filter((c) => c.moneda === "ARS");
-                            const TarjetaCuenta = ({ c }: { c: typeof activas[number] }) => (
-                              <div key={c.cuenta_id} className="text-xs bg-white/60 bg-[var(--muted)]800/60 rounded p-1.5">
-                                <div className="font-medium truncate">{c.cuenta_nombre}</div>
-                                <div>Depósito total: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.total_cobros, c.moneda)}</div>
-                                <div>Gasto total: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.total_gastos, c.moneda)}</div>
-                                <div className={c.saldo_final >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}>
-                                  Saldo: {c.moneda === "ARS" ? "$" : ""}{formatMonto(c.saldo_final, c.moneda)}
-                                </div>
-                              </div>
-                            );
                             return (
-                              <div className="flex flex-row gap-4 mt-2">
-                                {usd.length > 0 && (
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-semibold text-[var(--primary)] dark:text-[var(--primary)] mb-1.5 uppercase tracking-wide">
-                                      Dólares (USD)
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {usd.map((c) => <TarjetaCuenta key={c.cuenta_id} c={c} />)}
-                                    </div>
-                                  </div>
-                                )}
-                                {clp.length > 0 && (
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-semibold text-[var(--warning)] dark:text-[var(--warning)] mb-1.5 uppercase tracking-wide">
-                                      Pesos Argentinos (ARS)
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {clp.map((c) => <TarjetaCuenta key={c.cuenta_id} c={c} />)}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
+                                {activas.map((c) => (
+                                  <div key={c.cuenta_id} className="text-xs bg-white/60 bg-[var(--muted)]800/60 rounded p-1.5">
+                                    <div className="font-medium truncate">{c.cuenta_nombre}</div>
+                                    <div>Depósito total: {formatCLP(c.total_cobros)}</div>
+                                    <div>Gasto total: {formatCLP(c.total_gastos)}</div>
+                                    <div className={c.saldo_final >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}>
+                                      Saldo: {formatCLP(c.saldo_final)}
                                     </div>
                                   </div>
-                                )}
+                                ))}
                               </div>
                             );
                           })()}
@@ -1204,14 +1105,9 @@ export function CajaMayorClient({
                           {item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : "—"}
                         </td>
                         <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[110px] ${item.data.tipo === "cobro" ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
-                          {item.data.moneda === "ARS"
-                            ? `${item.data.tipo !== "cobro" ? "-" : ""}$${formatMonto(item.data.monto, "ARS")}`
-                            : "—"}
+                          {item.data.tipo !== "cobro" ? "-" : ""}{formatCLP(item.data.monto)}
                         </td>
                         <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.cuenta_nombre}>{item.data.cuenta_nombre}</td>
-                        <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[90px] ${item.data.tipo === "cobro" ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
-                          {item.data.tipo !== "cobro" ? "-" : ""}{formatMonto((item.data.monto_usd ?? item.data.monto), "USD")}
-                        </td>
                         <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[120px] truncate" title={item.data.observaciones || undefined}>
                           {item.data.observaciones || "—"}
                         </td>
@@ -1324,10 +1220,10 @@ export function CajaMayorClient({
                               <Badge variant="outline" className="text-[10px] px-1 py-0 min-w-[40px]">
                                 BN
                               </Badge>
-                              <span className="text-right min-w-[70px]">${formatMonto(n.total, "ARS")}</span>
-                              <span className="text-right min-w-[70px]">${formatMonto(n.total_pagado, "ARS")}</span>
+                              <span className="text-right min-w-[70px]">{formatCLP(n.total)}</span>
+                              <span className="text-right min-w-[70px]">{formatCLP(n.total_pagado)}</span>
                               <span className={`text-right min-w-[70px] font-semibold ${saldado ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
-                                ${formatMonto(n.saldo_pendiente, "USD")}
+                                {formatCLP(n.saldo_pendiente)}
                               </span>
                             </div>
 
@@ -1338,9 +1234,7 @@ export function CajaMayorClient({
                                   <div key={i} className="text-xs text-[var(--body)] mt-1">
                                     Mov #{p.movimiento_id} — {p.fecha} — {p.forma_pago}
                                     {" · "}
-                                    {p.moneda_original === "ARS"
-                                      ? `${formatMonto(p.monto_original, "ARS")} ARS → ${formatMonto(p.monto_usd, "USD")} USD (tasa: ${p.tipo_cambio})`
-                                      : `${formatMonto(p.monto_usd, "USD")} USD`}
+                                    {formatCLP(p.monto_usd)}
                                   </div>
                                 ))}
                               </div>
@@ -1360,10 +1254,10 @@ export function CajaMayorClient({
                 <tfoot>
                   <tr className="border-t-2 text-xs font-semibold">
                     <td className="py-2 pr-2" colSpan={3}>TOTALES</td>
-                    <td className="py-2 pr-2 text-right">${formatMonto(resumen.totales.total_vendido, "ARS")}</td>
-                    <td className="py-2 pr-2 text-right">${formatMonto(resumen.totales.total_pagado, "ARS")}</td>
+                    <td className="py-2 pr-2 text-right">{formatCLP(resumen.totales.total_vendido)}</td>
+                    <td className="py-2 pr-2 text-right">{formatCLP(resumen.totales.total_pagado)}</td>
                     <td className={`py-2 text-right ${resumen.totales.total_pendiente > 0 ? "text-[var(--destructive)] dark:text-[var(--destructive)]" : "text-[var(--success)]700 dark:text-[var(--success)]"}`}>
-                      ${formatMonto(resumen.totales.total_pendiente, "USD")}
+                      {formatCLP(resumen.totales.total_pendiente)}
                     </td>
                   </tr>
                 </tfoot>
@@ -1429,19 +1323,16 @@ export function CajaMayorClient({
             <div className="space-y-1">
               <label className="text-xs font-medium">Empresa</label>
               <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as "bazar-naty" | "")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
-                <option value="">—</option><option value="bazar-naty">Bazar Naty</option>
+                <option value="">—</option><option value="bazar-naty">La Esquina</option>
               </select>
             </div>
-            {/* Monto + Moneda */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-1"><label className="text-xs font-medium">Monto</label><Input type="number" min="0" step="0.01" value={editMonto} onChange={(e) => setEditMonto(e.target.value)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">Moneda</label><select value={editMoneda} onChange={(e) => setEditMoneda(e.target.value as "USD" | "ARS")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm"><option value="USD">USD</option><option value="ARS">ARS</option></select></div>
-            </div>
+            {/* Monto */}
+            <div className="space-y-1"><label className="text-xs font-medium">Monto</label><Input type="number" min="0" step="1" value={editMonto} onChange={(e) => setEditMonto(e.target.value)} /></div>
             {/* Cuenta */}
             <div className="space-y-1">
               <label className="text-xs font-medium">Cuenta bancaria</label>
               <select value={editCuentaId} onChange={(e) => setEditCuentaId(e.target.value)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
-                {cuentas.filter((c) => c.moneda === editMoneda).map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}
+                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             {/* Forma de pago */}

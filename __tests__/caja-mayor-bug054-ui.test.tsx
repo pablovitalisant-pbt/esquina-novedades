@@ -27,7 +27,7 @@ function setOnline(v: boolean) {
 
 function renderPage() {
   return render(
-    <CajaMayorClient dolarDia={0} cuentas={[]} userName="Test" userRol="admin" userId={1} />
+    <CajaMayorClient cuentas={[]} userName="Test" userRol="admin" userId={1} />
   );
 }
 

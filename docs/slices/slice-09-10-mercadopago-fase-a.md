@@ -321,8 +321,7 @@ RETURNING estado, stock_reservado, prenota_id, caja_movimiento_id
 | `approved` | `pagado_tardio` | no-op |
 | `approved` | `revision` | no-op |
 | `approved` | `pendiente` / `descartado` | `revision` (pago sobre pedido no online) |
-| `rejected` / `cancelled` | `pendiente_pago` + reserva | `rechazado` + devolver stock una vez |
-| `rejected` / `cancelled` | otro | no-op (log) |
+| `rejected` / `cancelled` | cualquiera | no-op (solo log). **Modificado por DT:** es un intento fallido; el comprador puede reintentar en la misma preferencia. El stock se libera solo por expiración (36 h) o fallo de preferencia (9c) |
 | `pending` / `in_process` / `authorized` | cualquiera | no-op |
 | `refunded` / `charged_back` | cualquiera | `revision` + motivo (fuera de alcance funcional) |
 | desconocido | cualquiera | no-op + log |

@@ -159,3 +159,9 @@ Fecha: 2026-10-22.
 **Resultado:** Fase B roja (módulo inexistente). Fase D: 18/18 verdes. `tsc`: 2 errores fuera de tests, ninguno en archivos nuevos.
 
 **Correccion 10c (carrera webhook doble):** si `convertirPedido` no da 201, `pagoAprobado` relee el estado; si ya es `convertido` sigue a `cobrar()` (idempotente) sin revision. `marcarRevision` excluye `convertido` del cambio de estado y en ese caso solo guarda `mp_revision_motivo`. +2 tests (doble ejecucion 409/relectura convertido; marcarRevision no saca de convertido): 20/20 verdes.
+
+## Sub-slice 10d — webhook firmado
+
+**Archivos:** `app/api/mercadopago/webhook/route.ts` (nuevo), `__tests__/api/mercadopago-webhook.test.ts` (nuevo, 14).
+**Tests:** firma ausente/ajena/ts fuera de ventana -> 401 sin tocar nada; secret ausente 500; type != payment 200; external_reference no UUID / pedido inexistente 200; approved convierte y cobra una vez, replay no duplica; monto distinto -> revision; rejected/cancelled -> 200 sin cambios (modificado por DT: intento fallido, no libera stock; solo expiración 36 h o fallo 9c) y secuencia rejected -> approved termina convertido (una conversión); pending/in_process sin cambios; Payment.get o DB fallan -> 500 sin loguear secret. Firma real (validador del SDK), `Payment.get` mockeado.
+**Resultado:** Fase B roja (ruta inexistente). Fase D: 14/14 verdes (tras ajuste DT); tests co-ubicados (pago-aprobado, rechazar) sin cambios (no se tocaron). `tsc`: sin errores nuevos fuera de tests.

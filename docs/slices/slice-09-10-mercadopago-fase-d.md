@@ -24,3 +24,34 @@ Fecha: 2026-10-22.
   → 5 suites, 92 tests, todos en verde.
 - ROJO verificado antes de implementar (044 inexistente y orden sin 044).
 - `npx tsc --noEmit`: sin errores nuevos fuera de tests (2 preexistentes).
+
+## Sub-slice 9b — Cliente/config MP + builder de preferencia
+
+Fecha: 2026-10-22.
+
+### Archivos
+
+- `lib/mercadopago/config.ts` (nuevo): `mpConfig()` (token + timeout 10 s,
+  error claro sin filtrar el token), `siteUrl()` (sin barra final, exige URL
+  absoluta), `TOLERANCIA_SEGUNDOS=300` y `elegirInitPoint()` — única función
+  que decide `sandbox_init_point` si el token empieza con `TEST-`, si no
+  `init_point`.
+- `lib/pedidos/preferencia.ts` (nuevo): `construirItemsPreferencia()` y
+  `construirPreferencia()` puras (CLP entero, despacho solo si costo > 0,
+  `external_reference`, `payer.email`, `notification_url`, 3 `back_urls`,
+  `auto_return='approved'`, `expires`, `expiration_date_to` desde
+  `pedidos.expira_en`).
+- `__tests__/api/mercadopago-preferencia.test.ts` (nuevo): 6 tests puros.
+
+Decisión de alcance: `crearPreferenciaPedido()` (llamada real al SDK) pasa a
+9c, junto al route que la usa; el corte 9b queda en builder puro, config e
+init point. Total del corte: 200 líneas exactas.
+
+### Resultado
+
+- ROJO verificado antes de implementar (módulos inexistentes).
+- `npx jest __tests__/api/mercadopago-preferencia.test.ts` → 1 suite,
+  6 tests en verde.
+- Sin tests co-ubicados ni otros tests que importen estos archivos (grep).
+- `npx tsc --noEmit`: 0 errores nuevos; se mantienen los preexistentes fuera
+  de tests (2 en este entorno: `.next/types` y `app/page.tsx`).

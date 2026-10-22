@@ -54,6 +54,14 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     (sum: number, i: any) => sum + Number(i.subtotal ?? 0),
     0
   );
+  // Tipo derivado (5f): sin items -> null; solo cajas -> mayor; solo unidades -> menor.
+  const tipo = (items as any[]).length === 0
+    ? null
+    : (items as any[]).every((i: any) => i.modalidad === 'caja')
+      ? 'mayor'
+      : (items as any[]).every((i: any) => i.modalidad !== 'caja')
+        ? 'menor'
+        : 'mixta';
   const pagadoRows = await sql`
     SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
     FROM caja_movimiento_notas cmn
@@ -87,6 +95,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   return NextResponse.json({
     ...prenota,
     items,
+    tipo,
     total,
     total_pagado: totalPagado,
     saldo_favor_aplicado: saldoFavorAplicado,

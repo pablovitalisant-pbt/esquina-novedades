@@ -120,6 +120,7 @@ describe('GET /api/notas-venta/[id]', () => {
         { id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00' },
       ],
       total: 1800,
+      tipo: 'menor',
       total_pagado: 0,
       saldo_favor_aplicado: 0,
       saldo_pendiente: 1800,

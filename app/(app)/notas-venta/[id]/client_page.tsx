@@ -417,6 +417,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
           cajas: 1,
           unidades: prod.cantcaja ?? 1,
           precio: prod.prcventa,
+          modalidad: 'unidad',
           stock_referencia: prod.saldo,
         }),
       });
@@ -803,7 +804,10 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
             {(() => {
               // 5f aún no expone `tipo` en todas las respuestas: se deriva localmente.
               const tipo = prenota?.tipo ?? derivarTipo(prenota?.items ?? []);
-              return tipo ? <p className="text-sm text-[var(--body-subtle)]">Tipo: {tipo}</p> : null;
+              if (!tipo) return null;
+              return (flags as any)['notas-venta-modalidad'] === true
+                ? <Badge variant="secondary">{tipo}</Badge>
+                : <p className="text-sm text-[var(--body-subtle)]">Tipo: {tipo}</p>;
             })()}
           </div>
           <div className="flex gap-2 flex-wrap justify-end">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
+import flags from '@/config/feature-flags.json';
 
 interface Props {
   open: boolean;
@@ -12,15 +13,19 @@ interface Props {
     imagen_url: string | null;
     empresa_id: number;
     prcventa: number;
+    precio_mayor?: number | null;
     cantcaja: number;
     saldo: number;
   };
 }
 
 export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
+  const MODALIDAD_UI = (flags as any)['notas-venta-modalidad'] === true;
+  const puedeCaja = producto.precio_mayor != null && producto.cantcaja > 0;
   const [prenotas, setPrenotas] = useState<any[]>([]);
   const [prenotaId, setPrenotaId] = useState<string>('nueva');
   const [cajas, setCajas] = useState(1);
+  const [modalidad, setModalidad] = useState<'unidad' | 'caja'>('unidad');
   const [precio, setPrecio] = useState(producto.prcventa);
   const [saving, setSaving] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
@@ -31,6 +36,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
 
   useEffect(() => {
     setPrecio(producto.prcventa);
+    setModalidad('unidad');
   }, [producto.prcventa]);
 
   useEffect(() => {
@@ -109,6 +115,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
           cajas,
           unidades: cajas * producto.cantcaja,
           precio,
+          modalidad,
           stock_referencia: producto.saldo,
         }),
       });
@@ -164,10 +171,30 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
             {prenotas.map(p => <option key={p.id} value={String(p.id)}>{p.titulo}</option>)}
           </select>
         </div>
+        {MODALIDAD_UI && (
+          <div className="flex gap-2">
+            {(['unidad', 'caja'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                disabled={m === 'caja' && !puedeCaja}
+                onClick={() => {
+                  setModalidad(m);
+                  setPrecio(m === 'caja' ? (producto.precio_mayor ?? producto.prcventa) : producto.prcventa);
+                }}
+                className={`flex-1 border rounded-lg px-4 py-2 text-sm capitalize disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-white' : 'hover:bg-[var(--muted)]'}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
         <div>
           <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Cajas</label>
           <input type="number" min={1} value={cajas} onChange={e => setCajas(Number(e.target.value))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
-          <p className="text-xs text-[var(--body)] mt-1">{cajas * producto.cantcaja} unidades</p>
+          {(!MODALIDAD_UI || modalidad === 'caja') && (
+            <p className="text-xs text-[var(--body)] mt-1">{cajas * producto.cantcaja} unidades</p>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Precio</label>

@@ -25,7 +25,7 @@ jest.mock('xlsx', () => ({ utils: { json_to_sheet: jest.fn(), book_new: jest.fn(
 jest.mock('jspdf', () => jest.fn(() => ({ internal: { pageSize: { getWidth: () => 200, getHeight: () => 280 } }, text: jest.fn(), save: jest.fn(), setFontSize: jest.fn(), addPage: jest.fn() })));
 jest.mock('jspdf-autotable', () => jest.fn());
 
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 
 global.fetch = jest.fn();
 
@@ -79,7 +79,7 @@ describe('R8a — AgregarANotaVentaModal fallo stock', () => {
 describe('R8b-d — PrenotaDetallePage manejo errores stock', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
     // Fetch inicial: GET /api/notas-venta/{id} — nota con items y cliente
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,

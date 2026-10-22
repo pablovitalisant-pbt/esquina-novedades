@@ -12,5 +12,6 @@
   "carrito-pedidos-ui": true,
   "pedidos-staff-ui": true,
   "inversion-mercaderia": true,
-  "precio-mayorista-ui": false
+  "precio-mayorista-ui": false,
+  "notas-venta-modalidad": false
 }

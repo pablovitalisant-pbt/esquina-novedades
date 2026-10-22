@@ -33,3 +33,12 @@
 - Fase D: 17 suites verdes, 201 tests verdes. Unica falla: `__tests__/notas-venta-stock-frontend.test.tsx` (3, preexistente: mock de `next/navigation` sin `useParams`; mismo baseline antes del corte).
 - Guard estatico `unidades*precio` en `app/components/lib`: 0 lineas. `npx tsc --noEmit`: 3 errores fuera de tests (sin cambio).
 - Tamano: 247 lineas anadidas + ~24 modificadas, por encima del limite de 200 (5c+5d fusionados); ambas partes quedaron verdes.
+
+## Corte 5e+5f — selector Unidad/Caja y tipo de nota (flag `notas-venta-modalidad`, false)
+- Archivos: `components/AgregarANotaVentaModal.tsx` (prop `precio_mayor`, selector Unidad/Caja tras flag, Caja deshabilitado si `precio_mayor == null || cantcaja <= 0`, precio default `prcventa`/`precio_mayor`, "N unidades" solo en caja, body con `modalidad`); `app/(app)/notas-venta/[id]/client_page.tsx` (alta rapida manda `modalidad:'unidad'`; header: badge `mayor|menor|mixta` con flag, texto `Tipo:` sin flag); `app/(app)/notas-venta/client_page.tsx` (`Prenota.tipo`, badge en fila tras flag); `app/api/notas-venta/route.ts` (subquery `CASE ... BOOL_AND(...) AS tipo`); `app/api/notas-venta/[id]/route.ts` (GET calcula `tipo` en JS desde `items`); `config/feature-flags.json` (`notas-venta-modalidad: false`).
+- Tests: nuevos `__tests__/slice5ef-modal-modalidad.test.tsx` (5), `__tests__/slice5ef-tipo-nota.test.tsx` (2), `__tests__/slice5ef-api-tipo.test.ts` (2). Ajustados: `__tests__/api/prenotas.test.ts` (respuesta GET incluye `tipo:'menor'`), `__tests__/slice-03-sin-powersync.test.ts` (conteo de flags 14 -> 15), `__tests__/notas-venta-stock-frontend.test.tsx` (mock `useParams` + `confirm`; falla preexistente de 5c/5d).
+- Fase B: 8 rojos por la razon correcta (sin selector, sin badge, sin `tipo` en API).
+- Fase D: 40 suites verdes, 362 tests verdes (incluye co-ubicados y todo test que importa/menciona los archivos tocados).
+- `npx tsc --noEmit`: 3 errores fuera de tests (sin cambio); errores de tests preexistentes.
+- Tamano: 62 lineas modificadas + 136 lineas de tests nuevos = 198 (bajo el limite de 200).
+

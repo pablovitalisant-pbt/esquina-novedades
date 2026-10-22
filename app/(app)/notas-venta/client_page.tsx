@@ -20,6 +20,7 @@ type Prenota = {
   total_pagado?: number;
   saldo_pendiente?: number;
   estado?: string;
+  tipo?: string | null;
 };
 
 export function PrenotasPage({ session }: { session: any }) {
@@ -176,6 +177,11 @@ export function PrenotasPage({ session }: { session: any }) {
                   {prenota.tipo_documento && (
                     <Badge variant="secondary" className="text-[10px]">
                       {prenota.tipo_documento}
+                    </Badge>
+                  )}
+                  {(flags as any)['notas-venta-modalidad'] === true && prenota.tipo && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {prenota.tipo}
                     </Badge>
                   )}
                 </div>

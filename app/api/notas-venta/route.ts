@@ -23,6 +23,13 @@ export async function GET() {
     SELECT
       p.*,
       COALESCE((SELECT SUM(pi.subtotal) FROM public.prenota_items pi WHERE pi.prenota_id = p.id), 0) as total,
+      (SELECT CASE
+                WHEN COUNT(*) = 0 THEN NULL
+                WHEN BOOL_AND(pi.modalidad = 'caja') THEN 'mayor'
+                WHEN BOOL_AND(pi.modalidad = 'unidad') THEN 'menor'
+                ELSE 'mixta'
+              END
+       FROM public.prenota_items pi WHERE pi.prenota_id = p.id) as tipo,
       COALESCE((SELECT SUM(cmn.monto_aplicado) FROM public.caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id), 0) as total_pagado,
       COALESCE((SELECT SUM(monto) FROM public.clientes_saldo_favor_movimientos
                 WHERE aplicado_prenota_id = p.id AND tipo = 'debito'), 0) as saldo_favor_aplicado

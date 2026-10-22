@@ -83,7 +83,7 @@ puede quedar en código pero no se ofrece en el selector de usuarios.
 ## 6. Restricciones técnicas
 
 Stack confirmado por Pablo (2026-10-22), igual a bazar-naty:
-- Next.js 14.2 (App Router) + TypeScript
+- Next.js 15.5 (App Router) + React 18 + TypeScript
 - Neon Postgres con `@neondatabase/serverless`
 - NextAuth 4
 - Tailwind + shadcn/ui, skill de diseño en `design-skill/`

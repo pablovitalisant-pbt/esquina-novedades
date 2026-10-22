@@ -7,7 +7,7 @@ Todo el alcance y las reglas de negocio están en `PRD.md`.
 
 ## Stack
 
-- Next.js 14.2 (App Router) + TypeScript
+- Next.js 15.5 (App Router) + React 18 + TypeScript
 - Neon Postgres (`@neondatabase/serverless`, cliente en `lib/db.ts`)
 - NextAuth 4
 - Tailwind CSS + shadcn/ui

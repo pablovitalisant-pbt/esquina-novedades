@@ -89,3 +89,8 @@ Pendientes:
 
 0 (ponytail audit 2026-10-22 hecho: docs/audits/ponytail-audit-2026-10-22.md; aplicado en slice L1 salvo registro de notas de bodega, que se conserva por decision de Pablo)
 
+## Seguridad y version (2026-10-22, tarde)
+- Next.js 14.2.35 -> 15.5.28 (React 18 se mantiene). next-auth 4.24.15. xlsx eliminado (exceljs). npm audit prod: 0 criticas, 1 alta (postcss interno de next, solo build), 3 moderadas.
+- Limpieza L1 aplicada (despachos-ia, flags muertos, sharp, shadcn). Registro de notas de bodega se conserva.
+- BUG-002: dotenv ahora devDependency explicita.
+

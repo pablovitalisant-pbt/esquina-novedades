@@ -2,15 +2,19 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 
-export type ContactoCarrito = { nombre: string; telefono: string };
+export type ContactoCarrito = { nombre: string; telefono: string; email?: string };
+
+export type Modalidad = 'unidad' | 'caja';
 
 export type ItemCarrito = {
   producto_id: number;
   codigo: string;
   detalle: string | null;
-  cantidad: number; // cantidad de CAJAS (no unidades)
-  precio_referencia: number | null; // precio por unidad
-  cantcaja: number; // unidades por caja, para precio/caja y equivalencia
+  cantidad: number; // cantidad de la modalidad (unidades o cajas)
+  modalidad: Modalidad;
+  precio: number | null; // precio de una unidad o de una caja según modalidad
+  precio_referencia: number | null; // legacy: precio por unidad (drawer hasta 7d)
+  cantcaja: number; // unidades por caja
 };
 
 type CarritoPersistido = {
@@ -26,8 +30,8 @@ type CarritoContextValue = {
   totalItems: number;
   setContacto: (c: ContactoCarrito) => void;
   agregarItem: (item: ItemCarrito) => void;
-  quitarItem: (producto_id: number) => void;
-  actualizarCantidad: (producto_id: number, cantidad: number) => void;
+  quitarItem: (producto_id: number, modalidad?: Modalidad) => void;
+  actualizarCantidad: (producto_id: number, cantidad: number, modalidad?: Modalidad) => void;
   limpiar: () => void;
 };
 
@@ -86,26 +90,40 @@ export function CarritoProvider({
 
   const agregarItem = useCallback((item: ItemCarrito) => {
     setItems((prev) => {
-      const existente = prev.find((i) => i.producto_id === item.producto_id);
+      // Dedupe por producto + modalidad: unidad y caja del mismo producto son líneas distintas.
+      const existente = prev.find(
+        (i) => i.producto_id === item.producto_id && i.modalidad === item.modalidad
+      );
       if (existente) {
         return prev.map((i) =>
-          i.producto_id === item.producto_id ? { ...i, cantidad: i.cantidad + item.cantidad } : i
+          i.producto_id === item.producto_id && i.modalidad === item.modalidad
+            ? { ...i, cantidad: i.cantidad + item.cantidad }
+            : i
         );
       }
       return [...prev, item];
     });
   }, []);
 
-  const quitarItem = useCallback((producto_id: number) => {
-    setItems((prev) => prev.filter((i) => i.producto_id !== producto_id));
+  const quitarItem = useCallback((producto_id: number, modalidad?: Modalidad) => {
+    setItems((prev) =>
+      prev.filter((i) =>
+        i.producto_id === producto_id ? modalidad != null && i.modalidad !== modalidad : true
+      )
+    );
   }, []);
 
-  const actualizarCantidad = useCallback((producto_id: number, cantidad: number) => {
-    setItems((prev) => {
-      if (cantidad < 1) return prev.filter((i) => i.producto_id !== producto_id);
-      return prev.map((i) => (i.producto_id === producto_id ? { ...i, cantidad } : i));
-    });
-  }, []);
+  const actualizarCantidad = useCallback(
+    (producto_id: number, cantidad: number, modalidad?: Modalidad) => {
+      setItems((prev) => {
+        const coincide = (i: ItemCarrito) =>
+          i.producto_id === producto_id && (modalidad == null || i.modalidad === modalidad);
+        if (cantidad < 1) return prev.filter((i) => !coincide(i));
+        return prev.map((i) => (coincide(i) ? { ...i, cantidad } : i));
+      });
+    },
+    []
+  );
 
   const limpiar = useCallback(() => {
     setItems([]);

@@ -81,7 +81,7 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
                   {CARRITO && (
                     <div className="mt-3">
                       <BotonAgregarPedido
-                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, cantidad: 1, precio_referencia: p.precio_catalogo, cantcaja: p.cantcaja }}
+                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
                       />
                     </div>
                   )}

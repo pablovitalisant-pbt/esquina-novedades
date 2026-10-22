@@ -18,6 +18,7 @@ interface ProductoItem {
   cantcaja: number;
   umed: string;
   precio: number;
+  precio_mayor: number | null;
   saldo: number;
   es_nuevo: boolean;
 }
@@ -89,7 +90,7 @@ export function ProductosPublicos({ productos, empresaSlug }: { productos: Produ
                     {CARRITO && (
                       <div className="mt-3">
                         <BotonAgregarPedido
-                          item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, cantidad: 1, precio_referencia: p.precio, cantcaja: p.cantcaja }}
+                          item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio, precio_mayor: p.precio_mayor, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
                         />
                       </div>
                     )}

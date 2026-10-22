@@ -16,6 +16,7 @@ async function getProductos() {
       MAX(cantcaja) as cantcaja,
       MAX(umed) as umed,
       MAX(prcventa) as precio,
+      MAX(precio_mayor) as precio_mayor,
       SUM(saldo) as saldo,
       BOOL_OR(es_nuevo) as es_nuevo
     FROM productos
@@ -29,6 +30,7 @@ async function getProductos() {
     ...r,
     saldo: parseInt(r.saldo),
     precio: parseFloat(r.precio),
+    precio_mayor: r.precio_mayor == null ? null : parseFloat(r.precio_mayor),
     cantcaja: parseInt(r.cantcaja),
     es_nuevo: Boolean(r.es_nuevo),
   }));

@@ -43,3 +43,28 @@
 - Relacionados/co-ubicados: `productos-softdelete-impacto-lateral`, `slice-audit-ponytail-yagni`, `slice2a-clp` → verde. `catalogo-precio-override` no corre en este entorno: su `beforeAll` requiere filas en `catalogos` de la BD de integración y falla antes de importar código del corte (preexistente, no causado por 7b).
 - `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
 - POST `/api/pedidos` aún no consume este módulo (corresponde a 7e). Suite completa: la corre el Director Técnico.
+
+## Sub-slice 7c — Carrito mixto y selector de modalidad
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §1, §7 (fila 7c) y §9 (tests UI 30–32).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `contexts/CarritoContext.tsx` | modificado | `Modalidad`; `ItemCarrito` con `modalidad` y `precio` (precio de la modalidad); `ContactoCarrito.email?`; dedupe por `producto_id + modalidad`; `quitarItem`/`actualizarCantidad` aceptan modalidad (sin ella conservan el comportamiento legacy para el drawer de 7d). |
+| `components/SelectorModalidad.tsx` | nuevo | Control unidad/caja con precio de cada modalidad, stock y packing. Caja deshabilitada salvo `precio_mayor > 0 && cantcaja > 0`. |
+| `components/BotonAgregarPedido.tsx` | modificado | Recibe `precio`, `precio_mayor`, `cantcaja`, `stock`; compone el selector, construye el ítem según modalidad y conserva el gate de nombre/teléfono. |
+| `app/productos/page.tsx` | modificado | Selecciona `MAX(precio_mayor)` y lo normaliza a número/null. |
+| `app/productos/client_page.tsx` | modificado | Pasa `precio_mayor`, `stock` y `umed` al botón. |
+| `app/catalogo/[slug]/page.tsx` | modificado | Selecciona `MAX(p.precio_mayor)` en ambas ramas de query y lo expone al cliente. |
+| `app/catalogo/[slug]/client_page.tsx` | modificado | Pasa `precio_catalogo` como precio unidad, `precio_mayor`, `stock` y `umed`. |
+| `__tests__/tienda-modalidad.test.tsx` | nuevo | 10 casos: dedupe por producto+modalidad, aislamiento de cantidades, quitar/actualizar por modalidad, selector con/sin caja disponible, botón unidad/caja, gate vigente y wiring de ambas páginas. |
+| `__tests__/carrito.test.tsx` | modificado | Ítems de prueba con `modalidad`/`precio`; sin cambios de expectativas. |
+
+### Resultados
+
+- Fase B: `npx jest __tests__/tienda-modalidad.test.tsx` → rojo por módulo `SelectorModalidad` inexistente; tras implementar, verde.
+- Fase D (`npx jest` sobre el corte + co-ubicados/relacionados `carrito`, `catalogo-print`, `catalog-footer`, `slice2a-clp`, `pedidos-precios-server`, `ProductCard`): **7 suites, 64 tests, verde**.
+- `npx tsc --noEmit`: **3 errores fuera de tests**, igual que el baseline (`.next/types` ×2 y `app/page.tsx`), sin errores nuevos.
+- `CarritoDrawer` sigue mostrando el precio legacy (`precio_referencia`); su adaptación a modalidad/subtotal corresponde a 7d.

@@ -62,6 +62,7 @@ export async function getCatalogData(slug: string) {
             MAX(p.cantcaja) as cantcaja,
             MAX(p.umed) as umed,
             MAX(p.costo) as costo,
+            MAX(p.precio_mayor) as precio_mayor,
             SUM(p.saldo) as saldo,
             BOOL_OR(p.es_nuevo) as es_nuevo
           FROM productos p
@@ -80,6 +81,7 @@ export async function getCatalogData(slug: string) {
             MAX(p.cantcaja) as cantcaja,
             MAX(p.umed) as umed,
             MAX(p.costo) as costo,
+            MAX(p.precio_mayor) as precio_mayor,
             SUM(p.saldo) as saldo,
             BOOL_OR(p.es_nuevo) as es_nuevo
           FROM productos p
@@ -120,6 +122,7 @@ export async function getCatalogData(slug: string) {
         saldo: parseInt(p.saldo),
         costo: parseFloat(p.costo),
         cantcaja: parseInt(p.cantcaja),
+        precio_mayor: p.precio_mayor == null ? null : parseFloat(p.precio_mayor),
         precio_catalogo: precioOverride ?? precioBase,
         precio_override: precioOverride,
       };

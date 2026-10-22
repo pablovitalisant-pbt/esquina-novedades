@@ -20,8 +20,8 @@ jest.mock('sonner', () => ({
 
 const KEY = 'bazarnaty:pedido';
 
-const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, precio_referencia: 5, cantcaja: 6 };
-const ITEM_B: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 2, precio_referencia: 9, cantcaja: 12 };
+const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, modalidad: 'caja', precio: 30, precio_referencia: 5, cantcaja: 6 };
+const ITEM_B: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 2, modalidad: 'caja', precio: 108, precio_referencia: 9, cantcaja: 12 };
 
 function TotalProbe() {
   const { totalItems, items } = useCarrito();
@@ -283,7 +283,7 @@ describe('Total de la compra en el Drawer', () => {
   it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
     const SIN_PRECIO: ItemCarrito = {
-      producto_id: 3, codigo: 'C', detalle: 'Sin precio', cantidad: 1, precio_referencia: null, cantcaja: 6,
+      producto_id: 3, codigo: 'C', detalle: 'Sin precio', cantidad: 1, modalidad: 'caja', precio: null, precio_referencia: null, cantcaja: 6,
     };
 
     render(

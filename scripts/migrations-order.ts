@@ -40,4 +40,5 @@ export const MIGRATION_ORDER: string[] = [
   '041_prenota_items_modalidad_subtotal.sql',
   '042_opciones_entrega_checkout.sql',
   '043_pedidos_reserva.sql',
+  '044_mercadopago.sql',
 ];

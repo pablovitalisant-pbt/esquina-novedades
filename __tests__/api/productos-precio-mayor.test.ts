@@ -98,6 +98,6 @@ describe('Migracion 040', () => {
   });
   it('se agrega al final de MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('043_pedidos_reserva.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('044_mercadopago.sql');
   });
 });

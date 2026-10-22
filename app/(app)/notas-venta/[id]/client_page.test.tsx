@@ -3,6 +3,7 @@ import { PrenotaDetallePage } from './client_page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useParams: () => ({ id: '1' }),
 }));
 
 jest.mock('sonner', () => ({
@@ -214,7 +215,7 @@ describe('PrenotaDetallePage — cifras ARS equivalentes (slice)', () => {
     estado: 'activa',
     saldo_pendiente: 25,
     total_pagado: 0,
-    items: [{ id: 1, unidades: 2, precio: 10, codigo: 'A' }],
+    items: [{ id: 1, unidades: 2, precio: 10, subtotal: '20.00', codigo: 'A' }],
   };
 
   function mockFetchConDolar(dolarValor: string | null, configFalla?: boolean) {
@@ -233,17 +234,8 @@ describe('PrenotaDetallePage — cifras ARS equivalentes (slice)', () => {
     }) as any;
   }
 
-  it('SMOKE: con dolar_dia > 0, muestra la línea ARS bajo el Total nota de venta y bajo Pagado/Pendiente', async () => {
-    global.fetch = mockFetchConDolar('1200');
-    render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
-
-    await waitFor(() => expect(screen.getByText('Total nota de venta:')).toBeInTheDocument());
-
-    // Total = 2 * 10 = $20.00 → ≈ AR$ 24,000.00
-    // aparece en el Total nota de venta y en la fila de la tabla de ítems (mismo monto)
-    const lineasArs = screen.getAllByText(/≈ AR\$ 24,000\.00/);
-    expect(lineasArs.length).toBeGreaterThanOrEqual(2);
-  });
+  // El smoke viejo esperaba línea ARS (eliminada en slice 2: CLP única moneda).
+  // Los dos tests siguientes cubren el comportamiento actual: sin línea ARS.
 
   it('RIESGO 3: fetch de config falla → no rompe y NO muestra línea ARS', async () => {
     global.fetch = mockFetchConDolar(null, true);

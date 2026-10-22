@@ -71,7 +71,7 @@ function mockFetchConImagenes(opcion: 'ok' | 'falla' | 'sin-imagen', dolar: stri
           items: [{
             id: 1, codigo: 'A', descripcion: 'Item A',
             imagen_url: opcion === 'sin-imagen' ? null : 'https://res.cloudinary.com/x/img.png',
-            cajas: 1, unidades: 2, precio: 10,
+            cajas: 1, unidades: 2, precio: 10, subtotal: '20.00',
           }],
         }),
       });
@@ -200,11 +200,13 @@ describe('exportarPDF — montos en CLP', () => {
     expect(body.length).toBe(1);
     // Alineamiento con head de 7 columnas: celda 0 (Imagen) vacía, se dibuja
     // aparte vía didDrawCell. Ver BUGS.md.
-    expect(body[0]).toHaveLength(7);
+    expect(body[0]).toHaveLength(8);
     expect(body[0][0]).toBe('');
     // Precio y Total en CLP entero, sin USD ni línea ARS.
     expect(body[0][5]).toBe('$10');
     expect(body[0][6]).toBe('$20');
+    // 5d: columna Modalidad al final.
+    expect(body[0][7]).toBe('Unidad');
   });
 
   // R2: Total, Pagado y Pendiente del resumen en CLP.
@@ -276,7 +278,9 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     expect(head[3]).toBe('Cantidad de Cajas');
     // Columna Imagen (index 0) NO cambia de posición ni de nombre
     expect(head[0]).toBe('Imagen');
-    expect(head).toHaveLength(7);
+    expect(head[3]).toBe('Cantidad de Cajas');
+    expect(head).toHaveLength(8);
+    expect(head[7]).toBe('Modalidad');
   });
 
   // R4: BUG-039 — la columna Imagen (index 0) se mantiene sincronizada:
@@ -288,7 +292,7 @@ describe('exportarPDF — rediseño visual (slice)', () => {
 
     const body = lastAutoTableConfig.body as any[];
     expect(body[0][0]).toBe('');
-    expect(lastAutoTableConfig.columnStyles[0].cellWidth).toBe(20);
+    expect(lastAutoTableConfig.columnStyles[0].cellWidth).toBe(18);
     expect(typeof lastAutoTableConfig.didDrawCell).toBe('function');
     // La columna Imagen está en la posición 0 (no reordenada)
     expect(lastAutoTableConfig.head[0][0]).toBe('Imagen');
@@ -358,9 +362,9 @@ describe('exportarPDF — fila de totales (foot: Cantidad de Cajas + Unidades)',
     expect(foot).toHaveLength(1);                       // una sola fila de totales
 
     const celdas = foot[0];
-    // 7 columnas en total: TOTALES(colSpan 3) + cajas + unidades + vacía(colSpan 2)
+    // 8 columnas en total: TOTALES(colSpan 3) + cajas + unidades + vacía(colSpan 2) + Modalidad
     const anchoTotal = celdas.reduce((acc: number, c: any) => acc + (c.colSpan || 1), 0);
-    expect(anchoTotal).toBe(7);
+    expect(anchoTotal).toBe(8);
 
     // Label alineado a la derecha en la primera celda fusionada
     expect(celdas[0].content).toBe('TOTALES NETOS');

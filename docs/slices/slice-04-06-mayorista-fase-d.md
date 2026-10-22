@@ -25,3 +25,11 @@
 - Tests: nuevo `__tests__/api/slice5ab-modalidad.test.ts` (14). Ajustados: `slice-00-schema`, `productos-precio-mayor`, `prenotas` (fixture con `subtotal` + mocks de saldo a favor) y `debug/42p18-handler` (auto-skip mientras falten `modalidad`/`subtotal` en la DB de test, mismo patron que 035).
 - Verificacion: 12 suites relacionadas verdes (206 tests). `npx tsc --noEmit`: 3 errores fuera de tests (`.next/*` x2 + `app/page.tsx`, preexistentes; sin cambios).
 - Pendiente (Director Tecnico): aplicar 041 en Neon (`npm run migrate`, dos veces) y verificar `information_schema` antes de desplegar 5a/5b.
+
+## Corte 5c+5d — detalle de nota: subtotal, modalidad, guard H4, exports
+- Archivos: `app/(app)/notas-venta/[id]/client_page.tsx` (6 totales a `Number(item.subtotal)`; columna Modalidad y sufijo `/u`/`/caja`; edicion caja con `unidades` solo lectura y PATCH sin `unidades`; guard H4 `cajas=0`; Excel/PDF con Modalidad y subtotal; WhatsApp legacy cajas/uds + subtotal; linea `Tipo:` derivada localmente).
+- Tests: nuevo `__tests__/slice5cd-detalle-modalidad.test.tsx` (9). Ajustados: `app/(app)/notas-venta/[id]/client_page.test.tsx` (mock `useParams` + se quito el smoke ARS obsoleto de slice 2), `__tests__/notas-venta-exportar-pdf.test.tsx` (fixture `subtotal`, 8 columnas, Modalidad), `__tests__/notas-venta-auto-focus.test.tsx` (header Precio + subtotal).
+- Fase B: 8 rojos por la razon correcta (modalidad/subtotal/exportes ausentes); el PATCH de item unidad ya pasaba (regresion).
+- Fase D: 17 suites verdes, 201 tests verdes. Unica falla: `__tests__/notas-venta-stock-frontend.test.tsx` (3, preexistente: mock de `next/navigation` sin `useParams`; mismo baseline antes del corte).
+- Guard estatico `unidades*precio` en `app/components/lib`: 0 lineas. `npx tsc --noEmit`: 3 errores fuera de tests (sin cambio).
+- Tamano: 247 lineas anadidas + ~24 modificadas, por encima del limite de 200 (5c+5d fusionados); ambas partes quedaron verdes.

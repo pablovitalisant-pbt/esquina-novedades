@@ -26,6 +26,16 @@ function blobToDataURL(blob: Blob): Promise<string> {
   });
 }
 
+// Modalidad/tipo: filas legacy sin `modalidad` se tratan como 'unidad' (default 041).
+const esCaja = (item: any) => item.modalidad === 'caja';
+
+function derivarTipo(items: any[]): string | null {
+  if (items.length === 0) return null;
+  if (items.every(esCaja)) return 'mayor';
+  if (items.every(i => !esCaja(i))) return 'menor';
+  return 'mixta';
+}
+
 function PrenotaItemsTable({
   items,
   onEliminar,
@@ -72,13 +82,13 @@ function PrenotaItemsTable({
     }
   }, [editingId]);
 
-  const handleGuardar = async (itemId: string) => {
+  const handleGuardar = async (item: any) => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/notas-venta/${prenotaId}/items/${itemId}`, {
+      const res = await fetch(`/api/notas-venta/${prenotaId}/items/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
+        body: JSON.stringify(esCaja(item) ? { cajas: editCajas, precio: editPrecio } : { cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -104,9 +114,10 @@ function PrenotaItemsTable({
               <th className="text-left px-4 py-3 font-medium">Código</th>
               <th className="text-left px-4 py-3 font-medium">Imagen</th>
               <th className="text-left px-4 py-3 font-medium">Descripción</th>
+              <th className="text-left px-4 py-3 font-medium">Modalidad</th>
               <th className="text-right px-4 py-3 font-medium">Cajas</th>
               <th className="text-right px-4 py-3 font-medium">Unidades</th>
-              <th className="text-right px-4 py-3 font-medium">Precio unitario</th>
+              <th className="text-right px-4 py-3 font-medium">Precio</th>
               <th className="text-right px-4 py-3 font-medium">Total</th>
               <th className="text-right px-4 py-3 font-medium">Acciones</th>
             </tr>
@@ -128,13 +139,14 @@ function PrenotaItemsTable({
                 <td className="px-4 py-3">
                   <div className="font-medium">{item.descripcion}</div>
                 </td>
+                <td className="px-4 py-3">{esCaja(item) ? 'Caja' : 'Unidad'}</td>
                 <td className="px-4 py-3 text-right">{item.cajas}</td>
                 <td className="px-4 py-3 text-right">{item.unidades}</td>
                 <td className="px-4 py-3 text-right">
-                  {formatCLP(Number(item.precio))}
+                  {formatCLP(Number(item.precio))}{esCaja(item) ? ' /caja' : ' /u'}
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-[var(--heading)]">
-                  {formatCLP(Number(item.unidades) * Number(item.precio))}
+                  {formatCLP(Number(item.subtotal))}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {editingId === item.id ? (
@@ -150,24 +162,32 @@ function PrenotaItemsTable({
                           onChange={e => {
                             const nuevasCajas = Number(e.target.value);
                             setEditCajas(nuevasCajas);
-                            setEditUnidades(Math.round(nuevasCajas * (item.unidades / item.cajas)));
+                            // H4: con cajas=0 no hay razón válida; se conservan las unidades.
+                            const previas = item.cajas;
+                            setEditUnidades(
+                              previas > 0 ? Math.round(nuevasCajas * (item.unidades / item.cajas)) : Number(item.unidades)
+                            );
                           }}
                           className="border rounded px-2 py-1 text-sm w-full"
                         />
                       </div>
                       <div className="flex flex-col gap-1 w-full">
                         <label className="text-xs text-[var(--body-subtle)]">Unidades</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={editUnidades}
-                          onFocus={e => e.target.select()}
-                          onChange={e => setEditUnidades(Number(e.target.value))}
-                          className="border rounded px-2 py-1 text-sm w-full"
-                        />
+                        {esCaja(item) ? (
+                          <div className="text-sm text-[var(--body-subtle)] py-1">{editUnidades} unidades</div>
+                        ) : (
+                          <input
+                            type="number"
+                            min={1}
+                            value={editUnidades}
+                            onFocus={e => e.target.select()}
+                            onChange={e => setEditUnidades(Number(e.target.value))}
+                            className="border rounded px-2 py-1 text-sm w-full"
+                          />
+                        )}
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Precio</label>
+                        <label className="text-xs text-[var(--body-subtle)]">{esCaja(item) ? 'Precio por caja' : 'Precio'}</label>
                         <input
                           type="number"
                           min={0}
@@ -181,8 +201,8 @@ function PrenotaItemsTable({
                       <Button
                         size="sm"
                         className="text-xs w-full" variant="brand"
-                        onClick={() => handleGuardar(item.id)}
-                        disabled={saving}
+                        onClick={() => handleGuardar(item)}
+                        disabled={saving || (esCaja(item) && editCajas < 1)}
                       >
                         {saving ? 'Guardando...' : 'Guardar'}
                       </Button>
@@ -447,10 +467,11 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     const toRows = (items: any[]) => items.map(i => ({
       'Código': i.codigo,
       'Descripción': i.descripcion,
+      'Modalidad': esCaja(i) ? 'Caja' : 'Unidad',
       'Cajas': Number(i.cajas),
       'Unidades': Number(i.unidades),
       'Precio': Number(i.precio),
-      'Total':Number(i.unidades) * Number(i.precio),
+      'Total': Number(i.subtotal),
     }));
 
     const wb = XLSX.utils.book_new();
@@ -561,7 +582,8 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
         Number(i.cajas),
         Number(i.unidades),
         formatCLP(Number(i.precio)),
-        formatCLP(Number(i.precio) * Number(i.unidades)),
+        formatCLP(Number(i.subtotal)),
+        esCaja(i) ? 'Caja' : 'Unidad',
       ];
     });
 
@@ -570,12 +592,13 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
 
     autoTable(doc, {
       startY,
-      head: [['Imagen', 'Código', 'Descripción', 'Cantidad de Cajas', 'Unidades', 'Precio\nUnitario', 'Total']],
+      head: [['Imagen', 'Código', 'Descripción', 'Cantidad de Cajas', 'Unidades', 'Precio', 'Total', 'Modalidad']],
       body: rows,
       foot: [[
         { content: 'TOTALES NETOS', colSpan: 3, styles: { halign: 'right' } },
         { content: `${totalCajas} cajas`, styles: { halign: 'right' } },
         { content: `${totalUnidadesSum} unidades`, colSpan: 2, styles: { halign: 'right' } },
+        { content: '', colSpan: 1 },
         { content: '', colSpan: 1 },
       ]],
       showFoot: 'lastPage', // fix duplicación: el foot solo se pinta en la última página
@@ -589,13 +612,14 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
       headStyles: { fillColor: [31, 41, 55], textColor: 255, fontSize: 9, fontStyle: 'bold' }, // dark + blanco
       alternateRowStyles: { fillColor: [243, 244, 246] },       // zebra (neutral-tertiary light)
       columnStyles: {
-        0: { cellWidth: 20 },            // Imagen — ancho fijo (BUG-039)
-        1: { cellWidth: 24, halign: 'left' },
-        2: { cellWidth: 37, halign: 'left' },   // Descripción (-3)
-        3: { cellWidth: 22, halign: 'right' }, // Cantidad de Cajas (header más largo)
-        4: { cellWidth: 21, halign: 'right' }, // Unidades (+3, ya no corta "Unidades")
-        5: { cellWidth: 26, halign: 'right' },
-        6: { cellWidth: 32, halign: 'right' },
+        0: { cellWidth: 18 },            // Imagen — ancho fijo (BUG-039)
+        1: { cellWidth: 22, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
+        3: { cellWidth: 21, halign: 'right' }, // Cantidad de Cajas
+        4: { cellWidth: 20, halign: 'right' }, // Unidades
+        5: { cellWidth: 24, halign: 'right' },
+        6: { cellWidth: 28, halign: 'right' },
+        7: { cellWidth: 19, halign: 'right' }, // Modalidad
       },
       didDrawCell: (data: any) => {
         // Columna 0 = Imagen: dibujar si hay base64 cacheado
@@ -616,7 +640,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
 
     // ─── Totales: caja "Total" resaltada --accent + Pagado/Pendiente ───
     const total = prenota.items.reduce(
-      (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
+      (sum: number, i: any) => sum + Number(i.subtotal), 0
     );
     const totalStr = `Total: ${formatCLP(total)}`;
     const pagado = Number(prenota.total_pagado);
@@ -703,11 +727,12 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     if (!(flags as any)['notas-venta-whatsapp-pdf']) {
       // Flag off → comportamiento legacy (mensaje de texto por wa.me).
       const total = prenota.items.reduce(
-        (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
+        (sum: number, i: any) => sum + Number(i.subtotal), 0
       );
-      const lineas = prenota.items.map((i: any) =>
-        `• ${i.codigo} — ${i.descripcion || ''} (${i.cajas} cajas / ${i.unidades} uds) ${formatCLP(Number(i.precio))}`
-      ).join('\n');
+      const lineas = prenota.items.map((i: any) => {
+        const cant = esCaja(i) ? `${i.cajas} cajas` : `${i.unidades} uds`;
+        return `• ${i.codigo} — ${i.descripcion || ''} (${cant} x ${formatCLP(Number(i.precio))}) ${formatCLP(Number(i.subtotal))}`;
+      }).join('\n');
       const mensaje = [
         `*${prenota.titulo}*`,
         (prenota.nombre_cliente || prenota.cliente_nombre) ? `Cliente: ${prenota.nombre_cliente || prenota.cliente_nombre}` : null,
@@ -775,6 +800,11 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{prenota?.titulo || 'Nota de Venta'}</h1>
+            {(() => {
+              // 5f aún no expone `tipo` en todas las respuestas: se deriva localmente.
+              const tipo = prenota?.tipo ?? derivarTipo(prenota?.items ?? []);
+              return tipo ? <p className="text-sm text-[var(--body-subtle)]">Tipo: {tipo}</p> : null;
+            })()}
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
             <Button
@@ -914,7 +944,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
         <>
           {(() => {
             const total = prenota.items.reduce(
-              (sum: number, item: any) => sum + Number(item.unidades) * Number(item.precio),
+              (sum: number, item: any) => sum + Number(item.subtotal),
               0
             );
             return (

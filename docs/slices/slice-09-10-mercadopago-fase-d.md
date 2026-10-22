@@ -151,3 +151,11 @@ Fecha: 2026-10-22.
 **Archivos:** `app/api/caja/config/route.ts` (nuevo; GET/PATCH solo `mp_cuenta_id`, admin, valida cuenta existente y activa, upsert en `caja_config`), `app/(app)/admin/caja-config/client_page.tsx` (4º fetch + selector "Cuenta para cobros de Mercado Pago").
 **Tests:** `__tests__/api/caja-config-mp.test.ts` (nuevo, 11); actualizados: `app/(app)/admin/caja-config/client_page.test.tsx` (4 fetch + caso selector), `__tests__/caja-config-client_page.test.tsx` (permite 1 fetch a config; `findAllByText`), `__tests__/slice2-clp-guard.test.ts` (la ruta existe pero solo maneja `mp_cuenta_id`, sin dólar).
 **Resultado:** Fase B roja (módulo inexistente / 4 fetch esperados). Fase D: 28 tests verdes (corte + co-ubicados + `pedidos-mercadopago`). `tsc`: sin errores nuevos fuera de tests (solo `.next/types` catálogo y `app/page.tsx`).
+
+## Sub-slice 10c — cobro + pago aprobado
+
+**Archivos:** `lib/pedidos/cobro-pedido.ts` (registrarCobroPedido), `lib/pedidos/pago-aprobado.ts` (pagoAprobado), `__tests__/api/pago-aprobado.test.ts`.
+**Tests:** 18 (cada estado, monto/moneda, segundo payment id, sin `mp_cuenta_id`, convertir fallido, doble ejecución).
+**Resultado:** Fase B roja (módulo inexistente). Fase D: 18/18 verdes. `tsc`: 2 errores fuera de tests, ninguno en archivos nuevos.
+
+**Correccion 10c (carrera webhook doble):** si `convertirPedido` no da 201, `pagoAprobado` relee el estado; si ya es `convertido` sigue a `cobrar()` (idempotente) sin revision. `marcarRevision` excluye `convertido` del cambio de estado y en ese caso solo guarda `mp_revision_motivo`. +2 tests (doble ejecucion 409/relectura convertido; marcarRevision no saca de convertido): 20/20 verdes.

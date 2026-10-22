@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import flags from '@/config/feature-flags.json';
-import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
@@ -459,7 +458,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     }
   };
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (!prenota?.items?.length) return;
     const infoRows = [
       { Campo: 'Título', Valor: prenota.titulo },
@@ -476,12 +475,25 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
       'Total': Number(i.subtotal),
     }));
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(infoRows), 'Info');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(prenota.items)), 'Items');
+    const ExcelJS = await import('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const addSheet = (name: string, rows: Record<string, any>[]) => {
+      const ws = wb.addWorksheet(name);
+      ws.columns = Object.keys(rows[0]).map(k => ({ header: k, key: k }));
+      ws.addRows(rows);
+    };
+    addSheet('Info', infoRows);
+    addSheet('Items', toRows(prenota.items));
 
     const filename = `${prenota.titulo}${prenota.nombre_cliente ? ' — ' + prenota.nombre_cliente : ''}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Construye el PDF en memoria (doc jsPDF) sin llamar a .save() — compartido

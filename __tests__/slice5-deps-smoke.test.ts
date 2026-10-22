@@ -21,6 +21,7 @@ const REMOVED_DEPS = [
   '@hookform/resolvers',
   'undici',
   '@types/sharp',
+  'xlsx', // S1: vulnerabilidades sin parche, reemplazado por exceljs
 ];
 
 const KEPT_DEPS = [
@@ -28,7 +29,6 @@ const KEPT_DEPS = [
   'sharp',
   'next-themes',
   '@base-ui/react',
-  'xlsx',
   'exceljs',
   'cloudinary',
   'lucide-react',

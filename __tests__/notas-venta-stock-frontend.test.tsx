@@ -21,7 +21,6 @@ jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
-jest.mock('xlsx', () => ({ utils: { json_to_sheet: jest.fn(), book_new: jest.fn(), book_append_sheet: jest.fn(), writeFile: jest.fn() } }));
 jest.mock('jspdf', () => jest.fn(() => ({ internal: { pageSize: { getWidth: () => 200, getHeight: () => 280 } }, text: jest.fn(), save: jest.fn(), setFontSize: jest.fn(), addPage: jest.fn() })));
 jest.mock('jspdf-autotable', () => jest.fn());
 

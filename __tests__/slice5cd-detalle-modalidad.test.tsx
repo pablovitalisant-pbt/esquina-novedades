@@ -13,14 +13,20 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), us
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 jest.mock('@/config/feature-flags.json', () => ({ 'notas-venta-whatsapp-pdf': false }));
 
-const mockSheets: any[] = [];
-jest.mock('xlsx', () => ({
-  utils: {
-    json_to_sheet: jest.fn((rows: any) => { mockSheets.push(rows); return {}; }),
-    book_new: jest.fn(() => ({})),
-    book_append_sheet: jest.fn(),
+// 'xlsx' tiene vulnerabilidades sin parche: importarlo debe fallar (S1).
+jest.mock('xlsx', () => { throw new Error('xlsx prohibido: usar exceljs'); }, { virtual: true });
+
+const mockSheets: { name: string; columns: any[]; rows: any[] }[] = [];
+jest.mock('exceljs', () => ({
+  Workbook: class {
+    addWorksheet(name: string) {
+      const sheet: any = { name, columns: [], rows: [] };
+      sheet.addRows = (r: any[]) => { sheet.rows.push(...r); };
+      mockSheets.push(sheet);
+      return sheet;
+    }
+    xlsx = { writeBuffer: async () => new ArrayBuffer(0) };
   },
-  writeFile: jest.fn(),
 }));
 
 let mockAutoTable: any = null;
@@ -136,9 +142,16 @@ describe('5d — Excel, PDF y WhatsApp', () => {
 
   it('Excel agrega Modalidad y Total = subtotal', async () => {
     await renderNota([caja]);
+    (global as any).URL.createObjectURL = jest.fn(() => 'blob:x');
+    (global as any).URL.revokeObjectURL = jest.fn();
+    mockSheets.length = 0;
     fireEvent.click(screen.getByText('Exportar Excel'));
-    const rows = mockSheets.find(r => Array.isArray(r) && r[0]?.['Código'] === 'C-001');
-    expect(rows[0]).toMatchObject({ Modalidad: 'Caja', Total: 30000 });
+    await waitFor(() => expect(mockSheets).toHaveLength(2));
+    expect(mockSheets.map(s => s.name)).toEqual(['Info', 'Items']);
+    const items = mockSheets[1];
+    expect(items.columns.map(c => c.header)).toEqual(['Código', 'Descripción', 'Modalidad', 'Cajas', 'Unidades', 'Precio', 'Total']);
+    expect(items.rows[0]).toMatchObject({ Código: 'C-001', Modalidad: 'Caja', Total: 30000 });
+    expect(mockSheets[0].columns.map(c => c.header)).toEqual(['Campo', 'Valor']);
   });
 
   it('PDF agrega columna Modalidad y usa subtotal (no 36*10000)', async () => {

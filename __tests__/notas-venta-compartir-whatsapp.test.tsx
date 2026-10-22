@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
-jest.mock('xlsx', () => ({ utils: { json_to_sheet: jest.fn(), book_new: jest.fn(), book_append_sheet: jest.fn(), writeFile: jest.fn() } }));
 jest.mock('jspdf-autotable', () => (_doc: any, _options: any) => {});
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),

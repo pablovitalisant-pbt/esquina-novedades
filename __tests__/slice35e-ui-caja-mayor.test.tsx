@@ -24,7 +24,6 @@ import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 // jspdf requiere TextEncoder que no existe en jsdom
 jest.mock('jspdf', () => ({}));
 jest.mock('jspdf-autotable', () => ({}));
-jest.mock('xlsx', () => ({}));
 
 jest.mock('next-auth/react', () => ({
   useSession: () => ({ data: { user: { rol: 'vendedor' } } }),

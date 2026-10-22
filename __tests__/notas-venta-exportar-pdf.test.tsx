@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
-jest.mock('xlsx', () => ({ utils: { json_to_sheet: jest.fn(), book_new: jest.fn(), book_append_sheet: jest.fn(), writeFile: jest.fn() } }));
 // Captura el config de autoTable para inspeccionar head/body/columnStyles.
 let lastAutoTableConfig: any = null;
 jest.mock('jspdf-autotable', () => (_doc: any, options: any) => { lastAutoTableConfig = options; });

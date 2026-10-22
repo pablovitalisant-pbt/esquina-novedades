@@ -23,7 +23,6 @@ jest.mock('next/navigation', () => ({
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
-jest.mock('xlsx', () => ({ utils: { json_to_sheet: jest.fn(), book_new: jest.fn(), book_append_sheet: jest.fn(), writeFile: jest.fn() } }));
 jest.mock('jspdf-autotable', () => jest.fn());
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 

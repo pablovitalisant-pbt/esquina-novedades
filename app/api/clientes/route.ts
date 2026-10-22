@@ -7,6 +7,9 @@ import { NextResponse } from 'next/server';
 // number para que el render no dependa de un tipo ambiguo.
 const conSaldoFavor = (r: any) => ({ ...r, saldo_favor: Number(r.saldo_favor) || 0 });
 
+// Slice 6a — etiqueta derivada de las notas activas del cliente.
+const ETIQUETAS = ['mayorista', 'minorista', 'ambos', 'sin'];
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -18,34 +21,36 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
+  const etiqueta = searchParams.get('etiqueta');
+  if (etiqueta !== null && !ETIQUETAS.includes(etiqueta)) {
+    return NextResponse.json({ error: 'Etiqueta inválida' }, { status: 400 });
+  }
+  // `sin` = etiqueta NULL; el resto filtra por igualdad. El filtro va antes del LIMIT.
+  const pattern = q ? `%${q}%` : null;
 
   try {
-    if (q) {
-      const pattern = `%${q}%`;
-      const rows = await sql`
-        SELECT id, nombre, telefono, direccion, notas, created_at::text,
-          COALESCE((
-            SELECT SUM(CASE WHEN tipo='credito' THEN monto ELSE -monto END)
-            FROM public.clientes_saldo_favor_movimientos
-            WHERE cliente_id = clientes.id
-          ), 0) AS saldo_favor
-        FROM public.clientes
-        WHERE nombre ILIKE ${pattern}
-        ORDER BY nombre ASC
-        LIMIT 20
-      `;
-      return NextResponse.json({ data: (rows as any[]).map(conSaldoFavor) });
-    }
-
     const rows = await sql`
-      SELECT id, nombre, telefono, direccion, notas, created_at::text,
-        COALESCE((
-          SELECT SUM(CASE WHEN tipo='credito' THEN monto ELSE -monto END)
-          FROM public.clientes_saldo_favor_movimientos
-          WHERE cliente_id = clientes.id
-        ), 0) AS saldo_favor
-      FROM public.clientes
-      ORDER BY nombre ASC
+      SELECT c.*, COALESCE((
+        SELECT SUM(CASE WHEN tipo='credito' THEN monto ELSE -monto END)
+        FROM public.clientes_saldo_favor_movimientos
+        WHERE cliente_id = c.id
+      ), 0) AS saldo_favor
+      FROM (
+        SELECT id, nombre, telefono, direccion, notas, created_at::text,
+          (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
+                       WHEN BOOL_AND(pi.modalidad='caja') THEN 'mayorista'
+                       WHEN BOOL_AND(pi.modalidad='unidad') THEN 'minorista'
+                       ELSE 'ambos' END
+           FROM public.prenotas p
+           JOIN public.prenota_items pi ON pi.prenota_id = p.id
+           WHERE p.cliente_id = clientes.id AND p.estado = 'activa') AS etiqueta
+        FROM public.clientes
+        WHERE (${q}::text IS NULL OR nombre ILIKE ${pattern})
+      ) c
+      WHERE (${etiqueta}::text IS NULL
+        OR (${etiqueta} = 'sin' AND c.etiqueta IS NULL)
+        OR (${etiqueta} <> 'sin' AND c.etiqueta = ${etiqueta}))
+      ORDER BY c.nombre ASC
       LIMIT 50
     `;
     return NextResponse.json({ data: (rows as any[]).map(conSaldoFavor) });

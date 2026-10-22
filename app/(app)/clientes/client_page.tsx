@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { formatCLP } from '@/lib/utils';
 import { PlusCircle, Search, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import flags from '@/config/feature-flags.json';
+
+const ETIQUETAS: Record<string, string> = { mayorista: 'Mayorista', minorista: 'Minorista', ambos: 'Ambos', sin: 'Sin etiqueta' };
 
 interface Cliente {
   id: string; // UUID desde 13a
@@ -15,11 +19,13 @@ interface Cliente {
   notas: string | null;
   created_at: string;
   saldo_favor: number; // Slice 3c — disponible del ledger de saldo a favor
+  etiqueta: string | null; // Slice 6 — derivada de notas activas
 }
 
 export function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [search, setSearch] = useState('');
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -34,15 +40,18 @@ export function ClientesPage() {
   const fetchClientes = useCallback(async () => {
     setLoading(true);
     try {
-      const url = search ? `/api/clientes?q=${encodeURIComponent(search)}` : '/api/clientes';
-      const res = await fetch(url);
+      const params = new URLSearchParams();
+      if (search) params.set('q', search);
+      if (filtroEtiqueta) params.set('etiqueta', filtroEtiqueta);
+      const qs = params.toString();
+      const res = await fetch(qs ? `/api/clientes?${qs}` : '/api/clientes');
       if (res.ok) {
         const { data } = await res.json();
         setClientes(data || []);
       }
     } catch (e) { console.error('[clientes] fetchClientes:', e); }
     finally { setLoading(false); }
-  }, [search]);
+  }, [search, filtroEtiqueta]);
 
   useEffect(() => { fetchClientes(); }, [fetchClientes]);
 
@@ -117,14 +126,27 @@ export function ClientesPage() {
       </div>
 
       {/* ─── Búsqueda ─── */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--body)]" />
-        <Input
-          placeholder="Buscar por nombre..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--body)]" />
+          <Input
+            placeholder="Buscar por nombre..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {flags['clientes-etiqueta'] && (
+          <select
+            aria-label="Filtrar por etiqueta"
+            value={filtroEtiqueta}
+            onChange={e => setFiltroEtiqueta(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm bg-white bg-[var(--muted)]900"
+          >
+            <option value="">Todas las etiquetas</option>
+            {Object.entries(ETIQUETAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        )}
       </div>
 
       {/* ─── Formulario ─── */}
@@ -166,7 +188,12 @@ export function ClientesPage() {
               {clientes.map(c => (
                 <tr key={c.id} className="border-t border-[var(--border)] border-[var(--border)]800">
                   <td className="px-4 py-3">
-                    <div className="font-medium">{c.nombre}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {c.nombre}
+                      {flags['clientes-etiqueta'] && c.etiqueta && (
+                        <Badge variant="secondary" data-testid="etiqueta-badge">{ETIQUETAS[c.etiqueta] ?? c.etiqueta}</Badge>
+                      )}
+                    </div>
                     {c.direccion && <div className="text-xs text-[var(--body)]">{c.direccion}</div>}
                     {Number(c.saldo_favor) > 0.005 && (
                       <div className="text-xs text-[var(--success)] font-medium">

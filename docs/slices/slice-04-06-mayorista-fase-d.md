@@ -42,3 +42,11 @@
 - `npx tsc --noEmit`: 3 errores fuera de tests (sin cambio); errores de tests preexistentes.
 - Tamano: 62 lineas modificadas + 136 lineas de tests nuevos = 198 (bajo el limite de 200).
 
+
+## Corte 6a+6b — etiqueta de cliente derivada (flag `clientes-etiqueta`, false)
+- Archivos: `app/api/clientes/route.ts` (GET: una sola query para `q` + `etiqueta`; subquery `CASE WHEN COUNT(*)=0 THEN NULL WHEN BOOL_AND(pi.modalidad='caja') THEN 'mayorista' WHEN BOOL_AND(pi.modalidad='unidad') THEN 'minorista' ELSE 'ambos' END` sobre prenotas `estado='activa'`; whitelist `mayorista|minorista|ambos|sin` -> 400; filtro aplicado antes del `LIMIT 50`); `app/(app)/clientes/client_page.tsx` (`Cliente.etiqueta`, `Badge` junto al nombre y `<select>` de filtro tras flag, `etiqueta` agregada a la URL de fetch); `config/feature-flags.json` (`clientes-etiqueta: false`); `PRD.md` §9 filas 4/5/6 marcadas completadas; `__tests__/slice-03-sin-powersync.test.ts` (conteo de flags 15 -> 16).
+- Tests: nuevos `__tests__/api/clientes-etiqueta.test.ts` (7) y `__tests__/clientes-etiqueta-ui.test.tsx` (3).
+- Fase B: 8 rojos por la razon correcta (sin subquery de etiqueta, sin whitelist, sin filtro, sin badge/select). Ajustados: ninguno mas (los mocks de `sql` de slice18/saldo-favor/telefono-unico siguen verdes con la query unificada).
+- Fase D: 15 suites verdes, 189 tests verdes (co-ubicado `client_page.test.tsx`, `api/clientes-*`, `slice18*`, `slice8`, `permisos-por-rol`, `prenota-detalle` y los smoke de feature flags).
+- `npx tsc --noEmit`: 3 errores fuera de tests (`.next/*` x2 + `app/page.tsx`, preexistentes; sin cambios). Guard estatico `unidades*precio`: 0 lineas.
+- Tamano: 75 lineas anadidas/modificadas en archivos existentes + 125 de tests nuevos = 200 (limite).

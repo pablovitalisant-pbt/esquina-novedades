@@ -13,5 +13,6 @@
   "pedidos-staff-ui": true,
   "inversion-mercaderia": true,
   "precio-mayorista-ui": false,
-  "notas-venta-modalidad": false
+  "notas-venta-modalidad": false,
+  "clientes-etiqueta": false
 }

@@ -35,20 +35,20 @@ describe('CajaConfigClient — CLP', () => {
 
   test('no muestra bloque dólar ni columna moneda', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
-    await screen.findByText('Caja chica');
+    await screen.findAllByText('Caja chica');
     expect(screen.queryByText(/dólar/i)).toBeNull();
     expect(screen.queryByText(/USD|ARS|Moneda/)).toBeNull();
   });
 
-  test('no consulta /api/caja/config', async () => {
+  test('/api/caja/config solo para la cuenta de Mercado Pago (sin dólar)', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
-    await screen.findByText('Caja chica');
-    expect(fetchMock.mock.calls.some(c => c[0] === '/api/caja/config')).toBe(false);
+    await screen.findAllByText('Caja chica');
+    expect(fetchMock.mock.calls.filter(c => c[0] === '/api/caja/config')).toHaveLength(1);
   });
 
   test('sin console.error durante el render', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
-    await screen.findByText('Caja chica');
+    await screen.findAllByText('Caja chica');
     const errors = consoleErrorSpy.mock.calls.filter(c => typeof c[0] === 'string' && c[0].includes('Error'));
     expect(errors).toHaveLength(0);
   });

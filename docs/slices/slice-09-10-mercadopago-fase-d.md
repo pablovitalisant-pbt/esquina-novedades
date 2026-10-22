@@ -144,3 +144,10 @@ Fecha: 2026-10-22.
 **Archivos:** `lib/pedidos/convertir.ts` (nuevo, núcleo sin sesión: `convertirPedido(id, usuarioId, usuarioNombre)` → `{status, body}`, lógica idéntica incl. `FOR UPDATE` y condición repetida en el UPDATE), `lib/pedidos/usuario-sistema.ts` (nuevo, resuelve por rut `SISTEMA-MP`; lanza si no existe), `app/api/pedidos/[id]/convertir/route.ts` (envoltorio con sesión), `app/api/pedidos/[id]/route.ts` (`revision` descartable; la devolución de stock ya exige `stock_reservado = true`).
 **Tests:** `__tests__/api/pedidos-convertir-lib.test.ts` (nuevo, 6), `__tests__/api/pedidos-id.test.ts` (+1 caso `revision`); `pedidos-convertir.test.ts` sin cambios.
 **Resultado:** Fase B roja (módulo inexistente / guard sin `revision`); Fase D verde: 26 tests del corte + 24 de tests que mencionan lo tocado. `tsc`: sin errores nuevos en archivos tocados. `lib/auth.ts` filtra `activo = true` (SISTEMA-MP no puede iniciar sesión).
+
+
+## Sub-slice 10b — cuenta MP en caja-config
+
+**Archivos:** `app/api/caja/config/route.ts` (nuevo; GET/PATCH solo `mp_cuenta_id`, admin, valida cuenta existente y activa, upsert en `caja_config`), `app/(app)/admin/caja-config/client_page.tsx` (4º fetch + selector "Cuenta para cobros de Mercado Pago").
+**Tests:** `__tests__/api/caja-config-mp.test.ts` (nuevo, 11); actualizados: `app/(app)/admin/caja-config/client_page.test.tsx` (4 fetch + caso selector), `__tests__/caja-config-client_page.test.tsx` (permite 1 fetch a config; `findAllByText`), `__tests__/slice2-clp-guard.test.ts` (la ruta existe pero solo maneja `mp_cuenta_id`, sin dólar).
+**Resultado:** Fase B roja (módulo inexistente / 4 fetch esperados). Fase D: 28 tests verdes (corte + co-ubicados + `pedidos-mercadopago`). `tsc`: sin errores nuevos fuera de tests (solo `.next/types` catálogo y `app/page.tsx`).

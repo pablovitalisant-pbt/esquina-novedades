@@ -45,11 +45,16 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
   useEffect(() => {
     (async () => {
       try {
-        const [cuentasRes, saldosRes, entregaRes] = await Promise.all([
+        const [cuentasRes, saldosRes, entregaRes, configRes] = await Promise.all([
           fetch("/api/caja/cuentas"),
           fetch("/api/caja/saldos-iniciales"),
           fetch("/api/entrega/opciones"),
+          fetch("/api/caja/config"),
         ]);
+        if (configRes.ok) {
+          const json = await configRes.json();
+          setMpCuentaId(String(json.data?.mp_cuenta_id ?? ""));
+        }
         if (cuentasRes.ok) {
           const json = await cuentasRes.json();
           setCuentas(json.data || []);
@@ -65,6 +70,25 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
       } catch { /* mantener vacío */ }
     })();
   }, []);
+
+  // ─── Cuenta para cobros de Mercado Pago ─────────────────
+  const [mpCuentaId, setMpCuentaId] = useState("");
+
+  const guardarMpCuenta = async (valor: string) => {
+    if (!valor) return;
+    const res = await fetch("/api/caja/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mp_cuenta_id: parseInt(valor, 10) }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      toast.error(typeof err.error === "string" ? err.error : "Error al guardar la cuenta");
+      return;
+    }
+    setMpCuentaId(valor);
+    toast.success("Cuenta de Mercado Pago actualizada");
+  };
 
   // ─── Opciones de entrega (admin de costos) ──────────────
   const [opciones, setOpciones] = useState<OpcionEntrega[]>([]);
@@ -351,6 +375,24 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
             </TableBody>
           </Table>
         )}
+      </div>
+
+      {/* ─── Cuenta Mercado Pago ────────────────────────── */}
+      <div className="border rounded-card p-5 space-y-2">
+        <label htmlFor="mp-cuenta" className="font-semibold text-sm uppercase tracking-wide text-[var(--body)]">
+          Cuenta para cobros de Mercado Pago
+        </label>
+        <select
+          id="mp-cuenta"
+          value={mpCuentaId}
+          onChange={(e) => guardarMpCuenta(e.target.value)}
+          className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        >
+          <option value="">Seleccionar cuenta</option>
+          {cuentas.filter((c) => c.activa).map((c) => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
       </div>
 
       {/* ─── Saldos Iniciales ───────────────────────────── */}

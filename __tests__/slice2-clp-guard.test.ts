@@ -26,7 +26,9 @@ describe('Slice 2 CLP — guard global', () => {
     expect(hits).toEqual([]);
   });
 
-  it('api/caja/config ya no existe', () => {
-    expect(fs.existsSync(path.join(ROOT, 'app/api/caja/config/route.ts'))).toBe(false);
+  it('api/caja/config solo maneja mp_cuenta_id (sin dólar)', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'app/api/caja/config/route.ts'), 'utf8');
+    expect(src).toContain('mp_cuenta_id');
+    expect(src).not.toMatch(/dolar|usd/i);
   });
 });

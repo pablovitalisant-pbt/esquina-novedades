@@ -30,22 +30,33 @@ beforeEach(() => {
     ok: true,
     json: async () => ({
       data: url === '/api/caja/cuentas'
-        ? [{ id: 3, nombre: 'Caja chica', moneda: 'USD', activa: true, orden: 1, created_at: null }]
-        : url === '/api/entrega/opciones' ? [OPCION] : [],
+        ? [{ id: 3, nombre: 'Caja chica', moneda: 'USD', activa: true, orden: 1, created_at: null }, { id: 4, nombre: 'Caja MP', moneda: 'CLP', activa: true, orden: 2, created_at: null }]
+        : url === '/api/entrega/opciones' ? [OPCION]
+        : url === '/api/caja/config' ? { mp_cuenta_id: 3 } : [],
     }),
   }));
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
 
 describe('app/(app)/admin/caja-config — carga por API y guard sin conexión', () => {
-  it('carga con 3 fetch (sin /api/caja/config) y muestra la cuenta activa sin moneda ni dólar', async () => {
+  it('carga con 4 fetch y muestra la cuenta activa sin moneda ni dólar', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
     await screen.findAllByText('Caja chica');
     expect(screen.getAllByText('Activa').length).toBeGreaterThan(0);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls.some((c: any[]) => c[0] === '/api/caja/config')).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(screen.queryByText(/USD|ARS|Moneda/)).toBeNull();
     expect(screen.queryByText('Valor USD a ARS')).toBeNull();
+  });
+
+  it('cuenta para cobros de Mercado Pago: preselecciona y hace PATCH al cambiar', async () => {
+    render(<CajaConfigClient currentUserNombre="Admin" />);
+    const select = (await screen.findByLabelText('Cuenta para cobros de Mercado Pago')) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('3'));
+    fireEvent.change(select, { target: { value: '4' } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/caja/config',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ mp_cuenta_id: 4 }) }),
+    ));
   });
 
   it('admin de entregas: edita costo y hace PATCH a la opción', async () => {

@@ -179,7 +179,7 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 | 5 | ✅ COMPLETADO — Modalidad unidad/caja en notas de venta + tipo derivado | `prenota_items` ya tiene `cajas` y `unidades` |
 | 6 | ✅ COMPLETADO — Etiqueta de cliente | derivada del historial (vista o query), visible en `/clientes` |
 | 7 | ✅ COMPLETADO — Tienda: carrito con modalidad + entrega + email | reusa `pedidos-publicos` / `carrito-pedidos-ui` |
-| 8 | Reserva de stock + expiración 36 h | §8.4 |
+| 8 | ✅ COMPLETADO — Reserva de stock + expiración 36 h | §8.4 |
 | 9 | Mercado Pago: preferencia + redirect + back_urls | credenciales de prueba |
 | 10 | Webhook firmado + conversión a nota + cobro en caja | idempotente |
 | 11 | Deploy producción | dominio Namecheap → Vercel, credenciales de producción, Señal 3 |

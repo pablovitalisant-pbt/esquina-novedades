@@ -10,9 +10,9 @@ import { authOptions } from '@/lib/auth';
 // y sigue. El pedido queda 'convertido' aunque la conversión sea parcial (una
 // sola vía — no hay reconvertir). El ítem faltante lo agrega el vendedor luego
 // a mano desde /notas-venta/[id], donde ya puede editar precios.
-// ponytail: sin lock FOR UPDATE sobre el pedido — dos conversiones concurrentes
-// del mismo pedido podrían crear dos notas (mismo riesgo que el flujo manual);
-// si el throughput lo exige, serializar con un UPDATE estado='convertido' previo.
+// El pedido se bloquea con FOR UPDATE dentro del CTE (rama `reservado`) para que
+// dos conversiones concurrentes (p. ej. reintentos del webhook MP) serialicen:
+// la segunda espera el lock, reevalúa el WHERE y encuentra la fila ya cambiada.
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -28,14 +28,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { id } = await params;
     const empresaId = 1; // single-tenant, Bazar Naty
 
-    // 1. Pedido pendiente?
+    // 1. Pedido convertible? `pendiente` legacy descuenta stock al convertir.
+    // `pagado` con stock_reservado=true ya descontó al reservar: solo crea la
+    // nota. Cualquier otro estado (pendiente_pago, expirado, rechazado…) → 409.
     const pedidoRows = await sql`
-      SELECT id, estado, cliente_id FROM public.pedidos WHERE id = ${id}
+      SELECT id, estado, cliente_id, stock_reservado FROM public.pedidos WHERE id = ${id}
     `;
     if (pedidoRows.length === 0) {
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
     }
-    if (pedidoRows[0].estado !== 'pendiente') {
+    const estado = pedidoRows[0].estado;
+    const reservado = pedidoRows[0].stock_reservado === true;
+    const convertible = estado === 'pendiente' || (estado === 'pagado' && reservado);
+    if (!convertible) {
       return NextResponse.json({ error: 'El pedido no está pendiente' }, { status: 409 });
     }
     const clienteId = pedidoRows[0].cliente_id;
@@ -47,6 +52,62 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const n = Number((count as any)[0].count) + 1;
     const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
     const titulo = `Nota de Venta #${n} de ${usuarioNombre} — ${fecha}`;
+
+    // 2a. Pedido con stock ya reservado: una sola sentencia atómica crea la
+    // nota + ítems (modalidad/precio/unidades del pedido) y marca el pedido,
+    // sin tocar saldo. Si otro request lo convirtió antes, no inserta nada.
+    if (reservado) {
+      const itemsReservados = await sql`
+        SELECT codigo, cantidad, modalidad FROM public.pedido_items WHERE pedido_id = ${id}
+      `;
+      const rows = await sql`
+        WITH target AS (
+          SELECT id FROM public.pedidos
+          WHERE id = ${id} AND estado = 'pagado' AND stock_reservado = true
+          FOR UPDATE
+        ), nueva AS (
+          INSERT INTO public.prenotas (titulo, titulo_base, usuario_id, cliente_id)
+          SELECT ${titulo}, ${titulo}, ${usuarioId}, ${clienteId} FROM target
+          RETURNING id
+        ), upd AS (
+          UPDATE public.pedidos
+          SET estado = 'convertido', stock_reservado = false,
+              prenota_id = (SELECT id FROM nueva)
+          WHERE id IN (SELECT id FROM target)
+            AND estado = 'pagado' AND stock_reservado = true
+          RETURNING id
+        ), ins AS (
+          INSERT INTO public.prenota_items
+            (prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, modalidad)
+          SELECT (SELECT id FROM nueva), pi.codigo, pi.detalle, p.imagen_url, ${empresaId},
+                 CASE WHEN pi.modalidad = 'caja' THEN pi.cantidad ELSE 0 END,
+                 COALESCE(pi.unidades, pi.cantidad),
+                 COALESCE(NULLIF(pi.precio, 0), pi.precio_referencia), pi.modalidad
+          FROM public.pedido_items pi
+          JOIN public.productos p ON p.id = pi.producto_id AND p.empresa_id = ${empresaId}
+          WHERE pi.pedido_id = ${id} AND EXISTS (SELECT 1 FROM upd)
+          RETURNING codigo
+        )
+        SELECT (SELECT id FROM nueva) AS prenota_id
+      `;
+      const prenotaReservada = rows[0]?.prenota_id;
+      if (!prenotaReservada) {
+        return NextResponse.json({ error: 'El pedido ya no es convertible' }, { status: 409 });
+      }
+      return NextResponse.json(
+        {
+          data: {
+            prenota_id: Number(prenotaReservada),
+            convertidos: itemsReservados.map((it: any) => ({
+              codigo: it.codigo,
+              cajas: it.modalidad === 'caja' ? Number(it.cantidad) : 0,
+            })),
+            fallidos: [],
+          },
+        },
+        { status: 201 }
+      );
+    }
     const prenotaRows = await sql`
       INSERT INTO public.prenotas (titulo, titulo_base, usuario_id, cliente_id)
       VALUES (${titulo}, ${titulo}, ${usuarioId}, ${clienteId})

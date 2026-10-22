@@ -78,4 +78,63 @@ describe('PATCH /api/pedidos/[id]', () => {
     expect(res.status).toBe(409);
     expect(body.error).toMatch(/pendiente/i);
   });
+
+  // ─── Slice 8d: descartar un pedido con stock reservado ───────────────
+  test('descartar reservado devuelve stock en la misma sentencia y nunca dos veces', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    let estado = 'pendiente_pago';
+
+    // Fake DB: la sentencia nueva (CTE con pedido_items) transiciona solo si el
+    // pedido sigue descartable; la sentencia vieja (solo WHERE estado='pendiente')
+    // no puede descartar un reservado.
+    sql.mockImplementation((...args: any[]) => {
+      const q = args[0].join('');
+      if (!q.includes("estado = 'descartado'")) return [];
+      if (!q.includes('public.pedido_items') || !q.includes('SUM(pi.unidades)')) return [];
+      if (estado !== 'pendiente_pago' && estado !== 'pagado') return [];
+      estado = 'descartado';
+      return [{ id: 'pedido-1', estado: 'descartado' }];
+    });
+
+    const res1 = await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
+    const res2 = await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(409);
+
+    // Devolución y cambio de estado van en UNA sola sentencia: la segunda
+    // llamada solo ejecuta esa sentencia y el guard la deja sin filas.
+    expect(sql.mock.calls).toHaveLength(2);
+    const q = sql.mock.calls[0][0].join('');
+    expect(q).toContain('SUM(pi.unidades)');
+    expect(q).toContain('UPDATE public.productos');
+    expect(q).toContain('UPDATE public.ubicaciones_bodega');
+  });
+
+  test('la devolución solo aplica a pedidos con stock_reservado=true', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    let query = '';
+    sql.mockImplementationOnce((...args: any[]) => {
+      query = args[0].join('');
+      return [{ id: 'pedido-1', estado: 'descartado' }];
+    });
+    const res = await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
+    expect(res.status).toBe(200);
+    expect(query).toMatch(/stock_reservado = true/);
+  });
+
+  // Slice 8d corrección: el guard de estado va en el WHERE del propio UPDATE
+  // (que toma el lock de la fila), no en un SELECT previo. Así la segunda
+  // transacción espera, reevalúa y devuelve 0 filas: no hay doble devolución.
+  test('el guard de estado vive en el UPDATE único (sin SELECT previo)', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    let query = '';
+    sql.mockImplementationOnce((...args: any[]) => {
+      query = args[0].join('');
+      return [{ id: 'pedido-1', estado: 'descartado' }];
+    });
+    await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
+    expect(sql.mock.calls).toHaveLength(1);
+    expect(query).toMatch(/UPDATE public\.pedidos[\s\S]*WHERE id = [\s\S]*AND estado IN/);
+  });
 });

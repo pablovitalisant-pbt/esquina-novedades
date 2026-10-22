@@ -215,3 +215,46 @@
 - Fase D (`npx jest` sobre el corte + co-ubicados `app/api/notas-venta/[id]/items/route.test.ts` y `app/api/catalogos/public/[slug]/route.test.ts` + relacionados que importan/mencionan los archivos tocados): **14 suites, 216 tests, verde**. `catalogo-precio-override.test.ts` es un test de integración con DB real que falla en su `beforeAll` por la rama de test vacía (`SELECT id FROM usuarios` → 0 filas); no depende de este corte.
 - `npx tsc --noEmit`: sin errores nuevos fuera de tests (se mantienen los preexistentes de `.next/types` y `app/page.tsx`).
 - Decisión: liberación segura (log + continuar) solo en lecturas; en `POST items` se propaga (contrato §8). Sin guard de flag en el lib: con `tienda-pago-online=false` no existen pedidos `pendiente_pago` reservados, y la CTE no toca filas. Suite completa: la corre el Director Técnico.
+
+## Sub-slice 8d — convertir reservado + descartar con devolución
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §2, §3, §8 y §9 (tests 26–29).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `app/api/pedidos/[id]/convertir/route.ts` | modificado | Lee `stock_reservado`. Convertible: `pendiente` (legacy, descuenta como hoy) o `pagado` con `stock_reservado=true`. Este último crea la nota en UNA sentencia CTE (`prenotas` + `prenota_items` con `modalidad`, `precio` y `unidades` del pedido) y marca `estado='convertido'`, `stock_reservado=false` en el mismo statement, sin tocar saldo. Otros estados → 409 sin escrituras. |
+| `app/api/pedidos/[id]/route.ts` | modificado | PATCH descartar: admite `pendiente`, `pendiente_pago` y `pagado` en un solo CTE. Si el pedido tenía `stock_reservado=true`, devuelve `SUM(pedido_items.unidades)` a `productos` y `ubicaciones_bodega` en la misma sentencia; el UPDATE condicionado es la exclusión, así que una segunda llamada devuelve 409 y no re-devuelve stock. |
+| `PRD.md` | modificado | Fila 8 de §9 marcada como completada. |
+| `__tests__/api/pedidos-convertir.test.ts` | modificado | Casos nuevos: `pagado` reservado → 201 sin descuentos y CTE con modalidad/precio/unidades/stock_reservado=false; `expirado` → 409; `pendiente_pago` → 409. |
+| `__tests__/api/pedidos-id.test.ts` | modificado | Casos nuevos: descartar reservado devuelve stock una sola vez (dos llamadas → 200 y 409); la sentencia incluye `stock_reservado = true` y ambas actualizaciones de saldo. |
+
+### Resultados
+
+- Fase B: rojo por la razón correcta (3/3): `convertir` devolvía 409 para `pagado` reservado; PATCH solo descartaba `pendiente` y no devolvía stock.
+- Fase D (`npx jest` sobre los tests del corte + co-ubicados y relacionados que importan/mencionan los archivos tocados: `pedidos-convertir`, `pedidos-id`, `notas-venta-eliminar-item`, `productos-softdelete-impacto-lateral`): **4 suites, 39 tests, verde**.
+- `npx tsc --noEmit`: sin errores nuevos fuera de tests; se mantienen los preexistentes (`app/page.tsx` y `.next/types`).
+- Decisión: `pendiente_pago` no se convierte (aún no pagado) → 409. La devolución se apoya en `pedido_items.unidades` (lo reservado), nunca en `cantcaja` actual. Suite completa: la corre el Director Técnico.
+
+### Corrección post-revisión (sin commit)
+
+- **RACE en convertir (rama reservado):** el CTE `target` ahora es
+  `SELECT id FROM public.pedidos WHERE id = ... AND estado = 'pagado' AND stock_reservado = true FOR UPDATE`.
+  En READ COMMITTED la segunda conversión concurrente (reintento del webhook MP)
+  espera el lock, reevalúa el WHERE sobre la fila nueva y queda vacía → 409, sin
+  segunda nota. `upd` repite `AND estado = 'pagado' AND stock_reservado = true`
+  como defensa redundante.
+- **Cajas por modalidad:** `prenota_items.cajas` ahora es
+  `CASE WHEN pi.modalidad = 'caja' THEN pi.cantidad ELSE 0 END`; antes una línea
+  `unidad` guardaba `cantidad` como si fueran cajas. `convertidos[].cajas` del
+  response usa la misma regla.
+- **PATCH descartar:** sin cambio. El `UPDATE ... WHERE estado IN (...)` dentro
+  del CTE ya es el lock: la transacción perdedora reevalúa y devuelve 0 filas,
+  `devoluciones` (que depende de `obj`) queda vacía y no hay doble devolución.
+  Se agrega test que fija que el guard vive en el UPDATE único y que no hay
+  SELECT previo.
+- **Tests:** `__tests__/api/pedidos-convertir.test.ts` fija `FOR UPDATE`, la
+  condición de estado en `upd`, el `CASE` por modalidad y la doble conversión
+  (201 y luego 409); `pedidos-id` fija el guard en el UPDATE único.
+  `npx jest pedidos-convertir pedidos-id` → **19 tests, verde**.

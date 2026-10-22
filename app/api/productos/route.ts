@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularPrecio } from "@/lib/calcular-precio";
+import { esPrecioMayorValido } from "@/lib/precio-mayor";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -43,6 +44,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cantidad por caja debe ser al menos 1" }, { status: 400 });
     }
 
+    const precioMayor = body.precio_mayor === undefined ? null : body.precio_mayor;
+    if (!esPrecioMayorValido(precioMayor)) {
+      return NextResponse.json({ error: "Precio por caja debe ser un entero mayor a 0 o vacio" }, { status: 400 });
+    }
+
     // Calcular prcventa: servidor es la única fuente del cálculo (invariante anti-drift)
     const costoNum = Number(costo);
     const margenNum = Number(margen_pct);
@@ -59,8 +65,8 @@ export async function POST(request: Request) {
 
     // Insertar
     const result = await sql`
-      INSERT INTO productos (empresa_id, codigo, detalle, prcventa, costo, cif, margen_pct, saldo, umed, cantcaja, pesocaja, cubicaja, es_nuevo, prcminimo, categoria, stock_minimo)
-      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventaCalculado}, ${costoNum}, ${costoNum}, ${margenNum}, ${saldo !== undefined ? Number(saldo) : 0}, 'U', ${cantcajaNum}, 0, 0, true, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null})
+      INSERT INTO productos (empresa_id, codigo, detalle, prcventa, costo, cif, margen_pct, saldo, umed, cantcaja, pesocaja, cubicaja, es_nuevo, prcminimo, categoria, stock_minimo, precio_mayor)
+      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventaCalculado}, ${costoNum}, ${costoNum}, ${margenNum}, ${saldo !== undefined ? Number(saldo) : 0}, 'U', ${cantcajaNum}, 0, 0, true, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null}, ${precioMayor})
       RETURNING *
     `;
 
@@ -98,6 +104,7 @@ export async function GET(request: Request) {
         SUM(p.saldo) as saldo,
         MAX(p.prcventa) as prcventa,
         MAX(p.prcminimo) as prcminimo,
+        MAX(p.precio_mayor) as precio_mayor,
         MAX(p.costo) as costo,
         MAX(p.margen_pct) as margen_pct,
         MAX(p.cif) as cif,

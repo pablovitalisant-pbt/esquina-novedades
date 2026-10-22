@@ -31,6 +31,7 @@ export interface Producto {
   margen_pct: number | null;
   prcventa: number;
   prcminimo: number;
+  precio_mayor?: number | null;
   cantcaja: number;
   pesocaja: number;
   cubicaja: number;

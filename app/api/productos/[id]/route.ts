@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularPrecio } from "@/lib/calcular-precio";
+import { esPrecioMayorValido } from "@/lib/precio-mayor";
 
 // ponytail: rechazar NaN/null — ver PBT-IA NaN/null bypass hallazgo
 const esNumeroValido = (v: any): boolean =>
@@ -23,6 +24,7 @@ const WHITELIST: Record<string, string> = {
   prcventa: "prcventa", prcminimo: "prcminimo", umed: "umed",
   cantcaja: "cantcaja", pesocaja: "pesocaja", cubicaja: "cubicaja",
   es_nuevo: "es_nuevo", categoria: "categoria", imagen_url: "imagen_url",
+  precio_mayor: "precio_mayor",
   stock_minimo: "stock_minimo", no_reponer: "no_reponer", // Slice 15: "no reponer" offline
 };
 
@@ -66,6 +68,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Peso por caja no puede ser negativo" }, { status: 400 });
     if (changes.cubicaja !== undefined && (!esNumeroValido(changes.cubicaja) || Number(changes.cubicaja) < 0))
       return NextResponse.json({ error: "Cubicaje no puede ser negativo" }, { status: 400 });
+    if (changes.precio_mayor !== undefined && !esPrecioMayorValido(changes.precio_mayor))
+      return NextResponse.json({ error: "Precio por caja debe ser un entero mayor a 0 o vacio" }, { status: 400 });
     if (changes.umed !== undefined && !esUmedValido(changes.umed))
       return NextResponse.json({ error: "Unidad de medida invalida: debe ser Unid o Set" }, { status: 400 });
     if (changes.umed !== undefined) changes.umed = changes.umed.trim();

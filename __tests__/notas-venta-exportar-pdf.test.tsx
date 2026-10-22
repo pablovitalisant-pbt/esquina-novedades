@@ -21,10 +21,6 @@ let lastAutoTableConfig: any = null;
 jest.mock('jspdf-autotable', () => (_doc: any, options: any) => { lastAutoTableConfig = options; });
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 
-var dbMock: any;
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({ PowerSyncProvider: ({ children }: any) => children }));
-jest.mock('@powersync/react', () => ({ usePowerSync: () => dbMock, PowerSyncContext: { Provider: ({ children }: any) => children } }));
-jest.mock('@/config/feature-flags.json', () => ({ get 'notas-venta-offline-lectura'() { return false; } }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 
 // Mock de jsPDF ampliado: texto, guardar, fuente, tamaño, imagen, dibujo de celda.
@@ -96,7 +92,6 @@ function mockFetchConImagenes(opcion: 'ok' | 'falla' | 'sin-imagen', dolar: stri
 }
 
 async function renderNota(fetchMock: any) {
-  dbMock = { get: jest.fn(), getAll: jest.fn() };
   global.fetch = fetchMock;
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
   await screen.findByText('Nota PDF');

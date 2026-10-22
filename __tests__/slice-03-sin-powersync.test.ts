@@ -27,6 +27,12 @@ const MIGRADOS = [
   'app/(app)/notas-venta/client_page.tsx',
   'app/(app)/notas-venta/client_page.test.tsx',
   '__tests__/notas-venta-prefetch-hover.test.tsx',
+  'app/(app)/notas-venta/[id]/client_page.tsx',
+  'app/(app)/notas-venta/[id]/client_page.test.tsx',
+  '__tests__/notas-venta-eliminar-offline.test.tsx',
+  '__tests__/notas-venta-guardar-offline.test.tsx',
+  '__tests__/notas-venta-compartir-whatsapp.test.tsx',
+  '__tests__/notas-venta-exportar-pdf.test.tsx',
 ];
 const PROHIBIDO = /@powersync|lib\/powersync|usePowerSync|OFFLINE_READ|wa-sqlite|offline-lectura|alertas-badge-offline/;
 

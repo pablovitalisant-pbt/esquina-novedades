@@ -44,3 +44,17 @@ Se conservan guards `navigator.onLine` y `OFFLINE_WRITE_MSG` (D2). `lib/powersyn
 - `notas-venta/client_page.test.tsx` reescrito: carga por `fetch` y anular por `DELETE`.
 - Fase D: T1 + `notas-venta/client_page` + `notas-venta-prefetch-hover` + `notas-venta-compartidas-smoke` → 4 suites, 40 tests, verde.
 - `npx tsc --noEmit`: 129 errores (baseline 129, sin aumento).
+
+## Corte 3.8a + 3.8b (notas-venta/[id])
+
+**Archivos modificados:** `app/(app)/notas-venta/[id]/client_page.tsx`, `app/(app)/notas-venta/[id]/client_page.test.tsx`, `__tests__/notas-venta-{eliminar-offline,guardar-offline,compartir-whatsapp,exportar-pdf}.test.tsx`, `__tests__/slice-03-sin-powersync.test.ts` (+6 entradas en `MIGRADOS`).
+
+**Cambios:** `PrenotaDetallePage` ya no monta provider (`PrenotaDetalleContent` fusionado); se quitan `usePowerSync`, `OFFLINE_READ`, props `db`/`offlineReady` de `PrenotaItemsTable` y las ramas offline de `fetchPrenota`, buscador, `agregarProducto`, `eliminarItem`, `handleGuardar` y anular nota vacía. Se conserva el flag `notas-venta-whatsapp-pdf`. `eliminar-offline` y `guardar-offline` quedan con un solo caso online (fetch DELETE/PATCH con UUID); se borran en 3.10.
+
+**Tests:**
+- Fase B: T1 en ROJO (6 nuevos fallan por el patrón prohibido).
+- Fase D: T1 + 11 suites de notas-venta: 75 pasan, 13 fallan, todos en las 4 suites heredadas (`client_page.test`, `stock-frontend`, `buscador-productos-offline`, `shell-offline-id-url`). Baseline del corte: 15 fallos en esas mismas 4 suites (mejora de 2).
+- `client_page.test.tsx`: el test nuevo "carga por fetch" falla por la misma causa heredada (el mock de `next/navigation` no define `useParams`); no se corrigió.
+- `npx tsc --noEmit`: 127 errores (baseline 129, sin aumento).
+
+**Diff (numstat, archivos que permanecen):** 90 líneas añadidas / 505 borradas (límite D8: añadidas ≤ 200).

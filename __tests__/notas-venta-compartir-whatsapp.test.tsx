@@ -25,11 +25,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/notas-venta/1',
 }));
 
-var dbMock: any;
-jest.mock('@/lib/powersync/PowerSyncProvider', () => ({ PowerSyncProvider: ({ children }: any) => children }));
-jest.mock('@powersync/react', () => ({ usePowerSync: () => dbMock, PowerSyncContext: { Provider: ({ children }: any) => children } }));
 jest.mock('@/config/feature-flags.json', () => ({
-  get 'notas-venta-offline-lectura'() { return false; },
   get 'notas-venta-whatsapp-pdf'() { return true; }, // el slice está detrás de este flag
 }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
@@ -81,7 +77,6 @@ function mockFetchBase() {
 }
 
 async function renderNota() {
-  dbMock = { get: jest.fn(), getAll: jest.fn() };
   global.fetch = mockFetchBase();
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
   await screen.findByText('Nota WhatsApp');

@@ -2,8 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { usePowerSync } from '@powersync/react';
-import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
 import flags from '@/config/feature-flags.json';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -36,8 +34,6 @@ function PrenotaItemsTable({
   autoFocusItemId,
   onAutoFocusConsumed,
   dolarDia,
-  db,
-  offlineReady,
 }: {
   items: any[];
   onEliminar: (itemId: string) => void;
@@ -46,8 +42,6 @@ function PrenotaItemsTable({
   autoFocusItemId?: string | null;
   onAutoFocusConsumed?: () => void;
   dolarDia: number;
-  db?: any;
-  offlineReady?: boolean;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCajas, setEditCajas] = useState<number>(0);
@@ -83,32 +77,19 @@ function PrenotaItemsTable({
   const handleGuardar = async (itemId: string) => {
     setSaving(true);
     try {
-      if (offlineReady && db) {
-        // Mutación local → la cola de PowerSync sincroniza a Neon. itemId es
-        // UUID string (migración 027) — NO convertirlo a Number. Sin esta rama,
-        // un ítem local sin sync a Neon daba 404 "Item no encontrado" (BUG-041).
-        await db.execute(
-          'UPDATE prenota_items SET cajas = ?, unidades = ?, precio = ? WHERE id = ?',
-          [editCajas, editUnidades, editPrecio, itemId]
-        );
-        setEditingId(null);
-        consumedAutoFocusRef.current = null;
-        onActualizar();
-      } else {
-        const res = await fetch(`/api/notas-venta/${prenotaId}/items/${itemId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          toast.error(err.error || 'Error al guardar');
-          return;
-        }
-        setEditingId(null);
-        consumedAutoFocusRef.current = null;
-        onActualizar();
+      const res = await fetch(`/api/notas-venta/${prenotaId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || 'Error al guardar');
+        return;
       }
+      setEditingId(null);
+      consumedAutoFocusRef.current = null;
+      onActualizar();
     } catch {
       toast.error('Error al guardar');
     } finally {
@@ -262,24 +243,7 @@ function PrenotaItemsTable({
   );
 }
 
-// PrenotaDetallePage decide si montar PowerSync según el flag. Con el flag en
-// false (default) NO se monta el provider → fetch actual sin cambios.
-export function PrenotaDetallePage({ session, params }: { session: any; params: { id: string } }) {
-  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
-  if (OFFLINE_READ) {
-    return (
-      <PowerSyncProvider>
-        <PrenotaDetalleContent session={session} />
-      </PowerSyncProvider>
-    );
-  }
-  return <PrenotaDetalleContent session={session} />;
-}
-
-function PrenotaDetalleContent({ session }: { session: any }) {
-  const OFFLINE_READ = (flags as any)['notas-venta-offline-lectura'];
-  // usePowerSync() devuelve null sin provider (flag off) → branch offline inactivo.
-  const db = usePowerSync();
+export function PrenotaDetallePage({ session }: { session: any; params: { id: string } }) {
   const router = useRouter();
   // El id se lee de la URL real (useParams), no del prop `params` horneado en el
   // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta
@@ -320,52 +284,12 @@ function PrenotaDetalleContent({ session }: { session: any }) {
   const fetchPrenota = async () => {
     setLoading(true);
     try {
-      if (OFFLINE_READ && db) {
-        // Lectura local (flag on): replica GET /api/notas-venta/[id] tal cual,
-        // incluida la resta de reembolsos en total_pagado (asimetría detalle
-        // vs. lista) — no se corrige en este slice.
-        const prenota = await db.get(
-          `SELECT p.*, c.nombre AS cliente_nombre
-           FROM prenotas p
-           LEFT JOIN clientes c ON c.id = p.cliente_id
-           WHERE p.id = ?`,
-          [Number(id)]
-        );
-        if (!prenota) {
-          toast.error('No se pudo cargar la nota de venta');
-          return;
-        }
-        const items = (await db.getAll(
-          `SELECT * FROM prenota_items WHERE prenota_id = ? ORDER BY created_at ASC`,
-          [Number(id)]
-        )) as any[];
-        const total = (items || []).reduce(
-          (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio),
-          0
-        );
-        const pagadoRow = await db.get(
-          `SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
-           FROM caja_movimiento_notas cmn
-           JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
-           WHERE cmn.prenota_id = ?`,
-          [Number(id)]
-        );
-        const totalPagado = parseFloat((pagadoRow as any)?.total ?? 0);
-        setPrenota({
-          ...prenota,
-          items,
-          total,
-          total_pagado: totalPagado,
-          saldo_pendiente: total - totalPagado,
-        });
+      const res = await fetch(`/api/notas-venta/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPrenota(data);
       } else {
-        const res = await fetch(`/api/notas-venta/${id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setPrenota(data);
-        } else {
-          toast.error('No se pudo cargar la nota de venta');
-        }
+        toast.error('No se pudo cargar la nota de venta');
       }
     } catch {
       toast.error('No se pudo cargar la nota de venta');
@@ -462,40 +386,14 @@ function PrenotaDetalleContent({ session }: { session: any }) {
     setProductoLoading(true);
     const timer = setTimeout(async () => {
       try {
-        if (OFFLINE_READ && db) {
-          // Lectura local (flag on): replica GET /api/productos?search=...
-          // sobre la tabla local. La API hace LOWER(codigo) LIKE OR
-          // LOWER(detalle) LIKE (case-insensitive ASCII); SQLite LIKE es
-          // case-insensitive para ASCII por default — coincide. empresa_id no
-          // existe localmente (single-tenant, AppSchema no lo declara) → se
-          // setea a 1 para que agregarProducto no falle si el campo falta.
-          const q = `%${productoQuery.trim().toLowerCase()}%`;
-          const rows = (await db.getAll(
-            `SELECT codigo, MAX(id) as id, MAX(detalle) as detalle, SUM(saldo) as saldo,
-                    MAX(prcventa) as prcventa, MAX(prcminimo) as prcminimo, MAX(costo) as costo,
-                    MAX(margen_pct) as margen_pct, MAX(umed) as umed, MAX(imagen_url) as imagen_url,
-                    MAX(es_nuevo) as es_nuevo, MAX(cantcaja) as cantcaja, MAX(pesocaja) as pesocaja,
-                    MAX(cubicaja) as cubicaja, MAX(stock_minimo) as stock_minimo
-             FROM productos
-             WHERE LOWER(codigo) LIKE ? OR LOWER(detalle) LIKE ?
-             GROUP BY codigo
-             ORDER BY codigo ASC
-             LIMIT 200`,
-            [q, q]
-          )) as any[];
-          setProductoResults((rows || []).map((r) => ({ ...r, empresa_id: 1 })));
+        const res = await fetch(`/api/productos?search=${encodeURIComponent(productoQuery)}`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const { data } = await res.json();
+          setProductoResults(data || []);
           setHighlightedIndex(0);
           setShowResults(true);
-        } else {
-          const res = await fetch(`/api/productos?search=${encodeURIComponent(productoQuery)}`, {
-            signal: controller.signal,
-          });
-          if (res.ok) {
-            const { data } = await res.json();
-            setProductoResults(data || []);
-            setHighlightedIndex(0);
-            setShowResults(true);
-          }
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') setProductoResults([]);
@@ -516,30 +414,6 @@ function PrenotaDetalleContent({ session }: { session: any }) {
     agregarCallCounterRef.current += 1;
     const currentCall = agregarCallCounterRef.current;
     try {
-      if (OFFLINE_READ && db) {
-        // Escritura local (flag on): INSERT directo a SQLite con id UUID del
-        // cliente. El sync a Postgres lo hace uploadData() (Slice 10b) al
-        // reconectar, que reutiliza el mismo id (COALESCE en la ruta, Slice 10a).
-        // NO se decrementa productos.saldo local (decisión explícita — ver
-        // contrato 10b: el descuento real es server-side al sincronizar).
-        const itemId = crypto.randomUUID();
-        const createdAt = new Date().toISOString();
-        await db.execute(
-          `INSERT INTO prenota_items (id, prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, stock_referencia, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [itemId, Number(id), prod.codigo, prod.detalle, prod.imagen_url, prod.empresa_id, 1, prod.cantcaja ?? 1, prod.prcventa, prod.saldo, createdAt]
-        );
-        if (currentCall === agregarCallCounterRef.current) {
-          setAutoFocusItemId(itemId);
-        }
-        setProductoQuery('');
-        setProductoResults([]);
-        setShowResults(false);
-        await fetchPrenota();
-        toast.success('Producto agregado');
-        return;
-      }
-
       const res = await fetch(`/api/notas-venta/${id}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -579,19 +453,11 @@ function PrenotaDetalleContent({ session }: { session: any }) {
   const eliminarItem = async (itemId: string) => {
     if (!confirm('¿Eliminar este ítem de la nota de venta?')) return;
     try {
-      if (OFFLINE_READ && db) {
-        // Mutación local → la cola de PowerSync sincroniza a Neon. Mismo patrón
-        // que eliminar nota vacía. itemId es UUID string (migración 027) — NO
-        // convertirlo a Number (Number(uuid)=NaN matchea 0 filas en silencio).
-        // (BUG-040, BUG-041)
-        await db.execute('DELETE FROM prenota_items WHERE id = ?', [itemId]);
-      } else {
-        const res = await fetch(`/api/notas-venta/${id}/items/${itemId}`, { method: 'DELETE' });
-        if (!res.ok) {
-          const err = await res.json();
-          toast.error(err.error || 'Error al eliminar item');
-          return;
-        }
+      const res = await fetch(`/api/notas-venta/${id}/items/${itemId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || 'Error al eliminar item');
+        return;
       }
       await fetchPrenota();
     } catch {
@@ -938,19 +804,10 @@ function PrenotaDetalleContent({ session }: { session: any }) {
           onClick={async () => {
             if (prenota?.items?.length === 0) {
               if (confirm('Esta nota de venta no tiene productos. ¿Deseas eliminarla?')) {
-                if (OFFLINE_READ && db) {
-                  // Anular offline (Slice 14): nota vacía → nunca tiene pago ni
-                  // stock que restaurar; solo se muta prenotas.estado localmente.
-                  await db.execute(
-                    `UPDATE prenotas SET estado = 'anulada', updated_at = ? WHERE id = ? AND estado = 'activa'`,
-                    [new Date().toISOString(), Number(id)]
-                  );
-                } else {
-                  const res = await fetch(`/api/notas-venta/${id}`, { method: 'DELETE' });
-                  if (!res.ok) {
-                    toast.error('No se pudo eliminar la nota de venta');
-                    return;
-                  }
+                const res = await fetch(`/api/notas-venta/${id}`, { method: 'DELETE' });
+                if (!res.ok) {
+                  toast.error('No se pudo eliminar la nota de venta');
+                  return;
                 }
               }
             }
@@ -1208,7 +1065,7 @@ function PrenotaDetalleContent({ session }: { session: any }) {
               )}
             </div>
           )}
-          <PrenotaItemsTable items={prenota.items} onEliminar={eliminarItem} prenotaId={id} onActualizar={fetchPrenota} autoFocusItemId={autoFocusItemId} onAutoFocusConsumed={limpiarAutoFocus} dolarDia={dolarDia} db={db} offlineReady={OFFLINE_READ} />
+          <PrenotaItemsTable items={prenota.items} onEliminar={eliminarItem} prenotaId={id} onActualizar={fetchPrenota} autoFocusItemId={autoFocusItemId} onAutoFocusConsumed={limpiarAutoFocus} dolarDia={dolarDia} />
         </>
       ) : (
         <p className="text-[var(--body-subtle)]">No hay productos en esta nota de venta aún</p>

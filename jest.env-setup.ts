@@ -7,8 +7,12 @@
  * apuntando a la rama de PRODUCCIÓN (`ep-blue-truth-accio1kb`), aborta la suite
  * con un error explícito ANTES de ejecutar un solo test.
  */
+import { existsSync } from 'fs';
+import { assertNoProduccion, assertEnvTestExiste } from './lib/test-safeguards';
+
+// BUG-001: abortar si falta .env.test, antes de cargar nada.
+assertEnvTestExiste(existsSync('.env.test'));
 require('dotenv').config({ path: '.env.test', override: true });
 
 // BUG-034 + BUG-064: aborta si DATABASE_URL apunta a cualquier host de producción.
-import { assertNoProduccion } from './lib/test-safeguards';
 assertNoProduccion(process.env.DATABASE_URL || '');

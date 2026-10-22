@@ -57,3 +57,6 @@ ol/
 _backups/
 _evidencia/
 .env.mirror
+
+# Referencia de otro cliente, solo local
+/docs/referencia-bazar-naty/

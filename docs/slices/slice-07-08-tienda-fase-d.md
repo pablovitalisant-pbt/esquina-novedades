@@ -140,3 +140,33 @@
 - Fase D (`npx jest` sobre tests del corte + co-ubicados/relacionados `caja-config-client_page`, `slice-03-sin-powersync`, `slice14-cajas-smoke`, `slice2-build-smoke`, `slice2a-clp`): **7 suites, 97 tests, verde**.
 - `npx tsc --noEmit`: sin errores nuevos fuera de tests (se mantienen los preexistentes de `.next/types` y `app/page.tsx`).
 - Simplificación deliberada: el admin de caja-config edita solo el costo; `activa`/`requiere_direccion`/`nota` siguen disponibles por el PATCH pero no se exponen aún. El GET usado es el público (solo activas), por lo que no se reactivan opciones inactivas desde esta pantalla. Suite completa: la corre el Director Técnico.
+
+## Sub-slice 8a — migración 043 + liberación de reservas vencidas
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §4.2, §6.1 y §9 (tests 18–21, 25).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `migrations/043_pedidos_reserva.sql` | nuevo | CHECK de estados ampliado (conserva los 3 actuales), `expira_en`, `mp_preference_id`, `mp_payment_id`, `stock_reservado BOOLEAN NOT NULL DEFAULT false`, `idempotency_key TEXT`; `pedido_items.unidades INTEGER` (unidades de stock reservadas por línea, se llenan en 8b); índices parcial `pendiente_pago/expira_en`, únicos de `mp_payment_id` e `idempotency_key`. Idempotente. |
+| `lib/pedidos/liberar-reservas.ts` | nuevo | `liberarReservasVencidas()`: una sola sentencia CTE. El `UPDATE pedidos ... WHERE estado='pendiente_pago' AND stock_reservado=true AND expira_en < NOW()` es la exclusión; devuelve stock a `productos.saldo` y `ubicaciones_bodega.saldo` agrupado por producto, sumando `pi.unidades` (lo reservado). No recalcula con `cantcaja`, que puede haber cambiado entre la reserva y la expiración; las líneas con `unidades IS NULL` no devuelven nada. |
+| `__tests__/api/liberar-reservas.test.ts` | nuevo | Semántica del SQL (un statement, NOW(), condiciones de estado/reserva/expiración, suma de `pi.unidades`, exclusión de NULL, ambas tablas, `GROUP BY`), segunda llamada sin doble devolución y ceros sin vencidos. Incluye el caso que intenta romper: `cantcaja` cambia tras reservar y se devuelven exactamente las unidades reservadas. |
+| `scripts/migrations-order.ts` | modificado | `043_pedidos_reserva.sql` al final. |
+| `__tests__/slice-00-schema.test.ts` | modificado | Última migración = 043. |
+| `__tests__/api/productos-precio-mayor.test.ts` | modificado | Última migración = 043. |
+| `__tests__/api/entrega-opciones.test.ts` | modificado | Impacto lateral: su assert de "042 al final" ahora exige 042 seguida de 043. |
+
+### Resultados
+
+- Fase B: rojo por la razón correcta (módulo `liberar-reservas` inexistente y orden de migraciones aún en 042).
+- Fase D (`npx jest` sobre el corte + co-ubicados/relacionados: `slice-00-schema`, `productos-precio-mayor`, `entrega-opciones`, `slice5ab-modalidad`, `productos-softdelete-impacto-lateral`, `slice15-pettycash-smoke`): **7 suites, 134 tests, verde**.
+- `npx tsc --noEmit`: sin errores nuevos fuera de tests (se mantiene el preexistente de `app/page.tsx`; `liberar-reservas.ts` sin errores).
+- Decisión: no se agregó guard de flag en el lib; con `tienda-pago-online=false` nunca existen pedidos `pendiente_pago` con reserva, y el flag/wiring llegan en 8b/8c. Suite completa: la corre el Director Técnico.
+
+#### Corrección post-revisión (hallazgo del Director Técnico)
+
+- `lib/pedidos/liberar-reservas.ts` recalculaba las unidades a devolver con `p.cantcaja` **actual**; si el tamaño de la caja cambiaba entre reserva y expiración se devolvía una cantidad distinta a la reservada.
+- Fix: `pedido_items.unidades` guarda las unidades reservadas por línea (se llena en 8b al reservar); la liberación suma `pi.unidades` y las filas con `unidades IS NULL` no devuelven nada. La migración 043 aún no estaba aplicada en ninguna base, así que se extendió sin migración nueva.
+- Test agregado: `cantcaja` cambia después de reservar → se devuelven exactamente las unidades reservadas.
+- Fase D (`npx jest __tests__/api/liberar-reservas.test.ts __tests__/slice-00-schema.test.ts`): **2 suites, 22 tests, verde**.

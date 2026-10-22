@@ -78,7 +78,7 @@ test('migración 042: tabla+seed idempotente y columnas de checkout', () => {
   expect(s).toMatch(/ALTER TABLE public\.pedido_items ADD COLUMN IF NOT EXISTS modalidad/);
   expect(s).toMatch(/GENERATED ALWAYS AS \(cantidad \* precio\) STORED/);
   expect(s).toMatch(/ALTER TABLE public\.clientes ADD COLUMN IF NOT EXISTS email TEXT/);
-  expect(read('scripts/migrations-order.ts')).toMatch(/042_opciones_entrega_checkout\.sql',\s*\];/);
+  expect(read('scripts/migrations-order.ts')).toMatch(/042_opciones_entrega_checkout\.sql',\s*'043_pedidos_reserva\.sql',\s*\];/);
   expect(s.indexOf('CREATE TABLE IF NOT EXISTS public.opciones_entrega'))
     .toBeLessThan(s.indexOf('REFERENCES public.opciones_entrega'));
 });

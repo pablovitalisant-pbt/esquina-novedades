@@ -39,4 +39,5 @@ export const MIGRATION_ORDER: string[] = [
   '040_productos_precio_mayor.sql',
   '041_prenota_items_modalidad_subtotal.sql',
   '042_opciones_entrega_checkout.sql',
+  '043_pedidos_reserva.sql',
 ];

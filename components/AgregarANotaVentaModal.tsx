@@ -170,7 +170,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
           <p className="text-xs text-[var(--body)] mt-1">{cajas * producto.cantcaja} unidades</p>
         </div>
         <div>
-          <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Precio USD</label>
+          <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Precio</label>
           <input type="number" min={0} step={0.01} value={precio} onChange={e => setPrecio(Number(e.target.value))} onFocus={e => e.target.select()} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
         </div>
         <div className="flex gap-3 mt-2">

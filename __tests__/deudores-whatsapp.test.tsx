@@ -85,7 +85,7 @@ describe('DeudoresClient — botón WhatsApp', () => {
     const url = openSpy.mock.calls[0][0] as string;
     const msg = decodeURIComponent(url.split('?text=')[1]);
     expect(msg).toContain('Juana Pérez');
-    expect(msg).toContain('1,450.00');
+    expect(msg).toContain('$1.450');
     expect(msg).toContain('Nota de Venta #12');
   });
 

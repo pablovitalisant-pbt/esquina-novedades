@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
-import { formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 
 // Convierte un Blob (de /api/share-image) a data URL base64 para doc.addImage.
 function blobToDataURL(blob: Blob): Promise<string> {
@@ -33,7 +33,6 @@ function PrenotaItemsTable({
   onActualizar,
   autoFocusItemId,
   onAutoFocusConsumed,
-  dolarDia,
 }: {
   items: any[];
   onEliminar: (itemId: string) => void;
@@ -41,7 +40,6 @@ function PrenotaItemsTable({
   onActualizar: () => void;
   autoFocusItemId?: string | null;
   onAutoFocusConsumed?: () => void;
-  dolarDia: number;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCajas, setEditCajas] = useState<number>(0);
@@ -133,20 +131,10 @@ function PrenotaItemsTable({
                 <td className="px-4 py-3 text-right">{item.cajas}</td>
                 <td className="px-4 py-3 text-right">{item.unidades}</td>
                 <td className="px-4 py-3 text-right">
-                  ${Number(item.precio).toFixed(2)}
-                  {formatArsEquivalente(Number(item.precio), dolarDia) && (
-                    <div className="text-xs text-[var(--body-subtle)]">
-                      {formatArsEquivalente(Number(item.precio), dolarDia)}
-                    </div>
-                  )}
+                  {formatCLP(Number(item.precio))}
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-[var(--heading)]">
-                  ${(Number(item.unidades) * Number(item.precio)).toFixed(2)}
-                  {formatArsEquivalente(Number(item.unidades) * Number(item.precio), dolarDia) && (
-                    <div className="text-xs text-[var(--body-subtle)]">
-                      {formatArsEquivalente(Number(item.unidades) * Number(item.precio), dolarDia)}
-                    </div>
-                  )}
+                  {formatCLP(Number(item.unidades) * Number(item.precio))}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {editingId === item.id ? (
@@ -179,7 +167,7 @@ function PrenotaItemsTable({
                         />
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Precio USD</label>
+                        <label className="text-xs text-[var(--body-subtle)]">Precio</label>
                         <input
                           type="number"
                           min={0}
@@ -255,7 +243,6 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
 
   const [prenota, setPrenota] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [dolarDia, setDolarDia] = useState(0);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
@@ -302,21 +289,6 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     fetchPrenota();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Tipo de cambio para mostrar equivalentes en ARS (patrón PagarNotaDialog).
-  // Fetch una vez al cargar; si falla o dolar_dia es 0, formatArsEquivalente
-  // retorna null y no se muestra la línea ARS.
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/caja/config');
-        const data = await res.json();
-        setDolarDia(parseFloat(data?.data?.valor || '0'));
-      } catch {
-        setDolarDia(0);
-      }
-    })();
-  }, []);
 
   // Búsqueda de clientes con debounce + AbortController (patrón AgregarANotaVentaModal)
   useEffect(() => {
@@ -477,8 +449,8 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
       'Descripción': i.descripcion,
       'Cajas': Number(i.cajas),
       'Unidades': Number(i.unidades),
-      'Precio USD': Number(i.precio),
-      'Total USD': Number(i.unidades) * Number(i.precio),
+      'Precio': Number(i.precio),
+      'Total':Number(i.unidades) * Number(i.precio),
     }));
 
     const wb = XLSX.utils.book_new();
@@ -499,11 +471,6 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     const fecha = new Date().toLocaleDateString('es-CL', {
       day: '2-digit', month: 'long', year: 'numeric'
     });
-
-    // jsPDF usa Helvetica WinAnsi, que no renderiza ≈ (U+2248) y corrompe el
-    // texto. formatArsEquivalente lo sigue usando en la UI (HTML ok); acá solo
-    // se sanea el texto que va al PDF. Ver BUG-038 en BUGS.md.
-    const paraPdf = (t: string) => t.replace(/≈\s*/g, '');
 
     // ─── Header: banda --accent (#FFB612) + logo/marca a la izquierda y
     //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).
@@ -558,7 +525,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(35, 31, 32);
-    doc.text(paraPdf(clienteNombre), 20, infoY + 17);
+    doc.text(clienteNombre, 20, infoY + 17);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`N°: ${id}`, rightBoxX + 5, infoY + 10);
@@ -587,20 +554,14 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     // Header dark, texto blanco, zebra striping. "Cajas" → "Cantidad de Cajas".
     const startY = infoY + boxH + 10;
     const rows = prenota.items.map((i: any) => {
-      const precioUsd = Number(i.precio);
-      const totalUsd = precioUsd * Number(i.unidades);
-      const precio = `USD$${precioUsd.toFixed(2)}`;
-      const total = `USD$${totalUsd.toFixed(2)}`;
-      const arsP = formatArsEquivalente(precioUsd, dolarDia);
-      const arsT = formatArsEquivalente(totalUsd, dolarDia);
       return [
         '', // columna Imagen — se dibuja aparte vía didDrawCell (index 0)
         i.codigo,
         i.descripcion || '',
         Number(i.cajas),
         Number(i.unidades),
-        arsP ? `${precio}\n${paraPdf(arsP)}` : precio,
-        arsT ? `${total}\n${paraPdf(arsT)}` : total,
+        formatCLP(Number(i.precio)),
+        formatCLP(Number(i.precio) * Number(i.unidades)),
       ];
     });
 
@@ -657,12 +618,9 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     const total = prenota.items.reduce(
       (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
     );
-    const totalStr = `Total: USD$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const arsTotal = formatArsEquivalente(total, dolarDia);
+    const totalStr = `Total: ${formatCLP(total)}`;
     const pagado = Number(prenota.total_pagado);
     const pendiente = Number(prenota.saldo_pendiente);
-    const arsPagado = formatArsEquivalente(pagado, dolarDia);
-    const arsPend = formatArsEquivalente(pendiente, dolarDia);
     const totalBoxW = 60;
     const totalBoxX = pageWidth - 14 - totalBoxW;
     const footerBandH = 16;
@@ -674,8 +632,8 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     // pinta después y es opaca) o se pasa del borde de página, mover todo el
     // bloque a una hoja nueva con un Y alto. Con tablas largas finalY queda muy
     // abajo y Pagado/Pendiente llegaban a superar pageHeight (jsPDF no los dibuja).
-    const yResumen0 = finalY + (arsTotal ? 24 : 20);
-    const blockBottom = yResumen0 + (arsPagado ? 10 : 6) + 10; // baseline "Gracias"
+    const yResumen0 = finalY + 20;
+    const blockBottom = yResumen0 + 6 + 10; // baseline "Gracias"
     if (blockBottom + 4 > footerBandY) {
       doc.addPage();
       finalY = 20;
@@ -686,18 +644,16 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     doc.setTextColor(35, 31, 32); // --heading
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(paraPdf(arsTotal ? `${totalStr}\n${arsTotal}` : totalStr), totalBoxX + 4, finalY + 8);
+    doc.text(totalStr, totalBoxX + 4, finalY + 8);
 
     // Pagado / Pendiente reestilizados como filas etiqueta/valor, alineadas a la derecha.
-    let yResumen = finalY + (arsTotal ? 24 : 20);
+    let yResumen = finalY + 20;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(35, 31, 32); // --heading
-    const pagadoStr = `Pagado: USD$${pagado.toFixed(2)}`;
-    const pendStr = `Pendiente: USD$${pendiente.toFixed(2)}`;
-    doc.text(paraPdf(arsPagado ? `${pagadoStr}\n${arsPagado}` : pagadoStr), pageWidth - 14, yResumen, { align: 'right' });
-    yResumen += arsPagado ? 10 : 6;
-    doc.text(paraPdf(arsPend ? `${pendStr}\n${arsPend}` : pendStr), pageWidth - 14, yResumen, { align: 'right' });
+    doc.text(`Pagado: ${formatCLP(pagado)}`, pageWidth - 14, yResumen, { align: 'right' });
+    yResumen += 6;
+    doc.text(`Pendiente: ${formatCLP(pendiente)}`, pageWidth - 14, yResumen, { align: 'right' });
 
     // ─── Footer: agradecimiento + banda de contacto ───
     let fy = yResumen + 10;
@@ -749,9 +705,8 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
       const total = prenota.items.reduce(
         (sum: number, i: any) => sum + Number(i.unidades) * Number(i.precio), 0
       );
-      const totalStr = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const lineas = prenota.items.map((i: any) =>
-        `• ${i.codigo} — ${i.descripcion || ''} (${i.cajas} cajas / ${i.unidades} uds) $${Number(i.precio).toFixed(2)}`
+        `• ${i.codigo} — ${i.descripcion || ''} (${i.cajas} cajas / ${i.unidades} uds) ${formatCLP(Number(i.precio))}`
       ).join('\n');
       const mensaje = [
         `*${prenota.titulo}*`,
@@ -759,7 +714,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
         ``,
         lineas,
         ``,
-        `*Total: $${totalStr}*`,
+        `*Total: ${formatCLP(total)}*`,
       ].filter(l => l !== null).join('\n');
       const url = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
       window.open(url, '_blank');
@@ -933,7 +888,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
                   <div className="font-medium text-sm truncate">{prod.detalle}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold">${Number(prod.prcventa).toFixed(2)}</div>
+                  <div className="text-sm font-semibold">{formatCLP(Number(prod.prcventa))}</div>
                   <div className="text-xs text-[var(--body-subtle)]">stock: {prod.saldo}</div>
                   <div className="text-[10px] text-[var(--body-subtle)] leading-none">
                     {Math.floor(prod.saldo / prod.cantcaja)} cj{prod.saldo % prod.cantcaja > 0 ? ` + ${prod.saldo % prod.cantcaja}` : ''}
@@ -967,14 +922,9 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
                 <div className="flex items-center justify-end gap-2">
                   <span className="text-sm text-[var(--body)] font-medium">Total nota de venta:</span>
                   <span className="text-lg font-bold text-[var(--heading)]">
-                    ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCLP(total)}
                   </span>
                 </div>
-                {formatArsEquivalente(total, dolarDia) && (
-                  <span className="text-xs text-[var(--body-subtle)]">
-                    {formatArsEquivalente(total, dolarDia)}
-                  </span>
-                )}
               </div>
             );
           })()}
@@ -985,24 +935,14 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
                 <span className="text-[var(--body)]">
                   Pagado:{' '}
                   <strong className="text-[var(--success)]">
-                    ${Number(prenota.total_pagado).toFixed(2)}
+                    {formatCLP(Number(prenota.total_pagado))}
                   </strong>
-                  {formatArsEquivalente(Number(prenota.total_pagado), dolarDia) && (
-                    <span className="block text-xs text-[var(--body-subtle)]">
-                      {formatArsEquivalente(Number(prenota.total_pagado), dolarDia)}
-                    </span>
-                  )}
                 </span>
                 <span className="text-[var(--body)]">
                   Pendiente:{' '}
                   <strong className={Number(prenota.saldo_pendiente) <= 0.005 ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
-                    ${Number(prenota.saldo_pendiente).toFixed(2)}
+                    {formatCLP(Number(prenota.saldo_pendiente))}
                   </strong>
-                  {formatArsEquivalente(Number(prenota.saldo_pendiente), dolarDia) && (
-                    <span className="block text-xs text-[var(--body-subtle)]">
-                      {formatArsEquivalente(Number(prenota.saldo_pendiente), dolarDia)}
-                    </span>
-                  )}
                 </span>
                 {prenota?.estado !== 'anulada' && Number(prenota.saldo_pendiente) <= 0.005 && (
                   <Badge variant="success">
@@ -1028,7 +968,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
                   variant="outline"
                   onClick={() => setAplicarSaldoOpen(true)}
                 >
-                  Aplicar saldo a favor (${Number(prenota.cliente_saldo_favor).toFixed(2)})
+                  Aplicar saldo a favor ({formatCLP(Number(prenota.cliente_saldo_favor))})
                 </Button>
               )}
               {prenota?.estado !== 'anulada' && Number(prenota.total_pagado) > 0 && (
@@ -1065,7 +1005,7 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
               )}
             </div>
           )}
-          <PrenotaItemsTable items={prenota.items} onEliminar={eliminarItem} prenotaId={id} onActualizar={fetchPrenota} autoFocusItemId={autoFocusItemId} onAutoFocusConsumed={limpiarAutoFocus} dolarDia={dolarDia} />
+          <PrenotaItemsTable items={prenota.items} onEliminar={eliminarItem} prenotaId={id} onActualizar={fetchPrenota} autoFocusItemId={autoFocusItemId} onAutoFocusConsumed={limpiarAutoFocus} />
         </>
       ) : (
         <p className="text-[var(--body-subtle)]">No hay productos en esta nota de venta aún</p>

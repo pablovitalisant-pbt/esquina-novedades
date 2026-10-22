@@ -92,11 +92,6 @@ describe('R8b-d — PrenotaDetallePage manejo errores stock', () => {
         ],
       }),
     });
-    // Fetch de config (dolar_dia) — corre al montar, justo después de la nota.
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ data: { clave: 'dolar_dia', valor: '1200' } }),
-    });
   });
 
   it('agregarProducto con POST 400 → toast.error, NO fetchPrenota posterior', async () => {

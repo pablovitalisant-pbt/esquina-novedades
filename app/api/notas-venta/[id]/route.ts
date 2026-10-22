@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
+import { formatCLP } from '@/lib/utils';
 
 import type { RouteContext } from '@/types';
 
@@ -171,7 +172,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   if (totalPagado > 0) {
     return NextResponse.json({
       error: 'PAGO_REGISTRADO',
-      mensaje: `Esta nota de venta tiene un pago registrado de $${totalPagado.toFixed(2)}`,
+      mensaje: `Esta nota de venta tiene un pago registrado de ${formatCLP(totalPagado)}`,
       monto_pagado: totalPagado,
       prenota_id: id,
     }, { status: 409 });

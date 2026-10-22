@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, PlusCircle, Trash2, ExternalLink, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { PagarNotaDialog } from '@/components/PagarNotaDialog';
-import { formatArsEquivalente, formatSaldoPendiente } from '@/lib/utils';
+import { formatCLP, formatSaldoPendiente } from '@/lib/utils';
 
 type Prenota = {
   id: number;
@@ -29,7 +29,6 @@ export function PrenotasPage({ session }: { session: any }) {
 
   const [prenotas, setPrenotas] = useState<Prenota[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dolarDia, setDolarDia] = useState(0);
   const [creating, setCreating] = useState(false);
   const [pagarNotaId, setPagarNotaId] = useState<number | null>(null);
 
@@ -86,18 +85,6 @@ export function PrenotasPage({ session }: { session: any }) {
 
   useEffect(() => cancelHoverPrefetch, []);
 
-  // Tipo de cambio para mostrar equivalentes en ARS (patrón PagarNotaDialog).
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/caja/config');
-        const data = await res.json();
-        setDolarDia(parseFloat(data?.data?.valor || '0'));
-      } catch {
-        setDolarDia(0);
-      }
-    })();
-  }, []);
 
   const handleCrear = async () => {
     setCreating(true);
@@ -199,16 +186,11 @@ export function PrenotasPage({ session }: { session: any }) {
                 {prenota.total !== undefined && (
                   <>
                     <p className="text-sm font-semibold text-[var(--heading)] mt-1">
-                      Total: ${prenota.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Total: {formatCLP(prenota.total)}
                     </p>
-                    {formatArsEquivalente(prenota.total, dolarDia) && (
-                      <p className="text-xs text-[var(--body-subtle)]">
-                        {formatArsEquivalente(prenota.total, dolarDia)}
-                      </p>
-                    )}
                     {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente) && (
                       <p className="text-sm font-semibold text-[var(--destructive)] mt-0.5">
-                        Pendiente: ${formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente)}
+                        Pendiente: {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente)}
                       </p>
                     )}
                   </>

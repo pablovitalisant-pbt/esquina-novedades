@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { formatCLP } from '@/lib/utils';
 import { sql } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -92,7 +93,7 @@ export async function POST(
     // 4. No aplicar más de lo que falta de la nota (el sobrante no vuelve).
     if (monto > saldoPendiente + 0.005) {
       return NextResponse.json(
-        { error: `El monto excede el saldo pendiente de la nota ($${saldoPendiente.toFixed(2)})` },
+        { error: `El monto excede el saldo pendiente de la nota (${formatCLP(saldoPendiente)})` },
         { status: 422 }
       );
     }

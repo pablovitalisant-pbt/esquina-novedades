@@ -28,12 +28,12 @@ export function formatUSD(value: number, decimals: number = 2): string {
 // Saldo pendiente formateado para la lista de Notas de Venta. Retorna el
 // string SOLO si hay pago parcial (total_pagado > 0 y saldo_pendiente > 0).
 // Sin pago → null (redundante con el Total); pagada completa → null. El guard
-// > 0.005 evita mostrar "Pendiente: $0.00" por ruido de punto flotante.
+// > 0.005 evita mostrar "Pendiente: $0" por ruido de punto flotante.
 export function formatSaldoPendiente(total_pagado?: number, saldo_pendiente?: number): string | null {
   const pagado = Number(total_pagado ?? 0);
   const pendiente = Number(saldo_pendiente ?? 0);
   if (pagado > 0.005 && pendiente > 0.005) {
-    return pendiente.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return formatCLP(pendiente);
   }
   return null;
 }

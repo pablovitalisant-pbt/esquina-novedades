@@ -183,7 +183,7 @@ describe('exportarPDF — logo, dirección e imágenes', () => {
   });
 });
 
-describe('exportarPDF — línea ARS secundaria', () => {
+describe('exportarPDF — montos en CLP', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastAutoTableConfig = null;
@@ -202,38 +202,22 @@ describe('exportarPDF — línea ARS secundaria', () => {
     // aparte vía didDrawCell. Ver BUGS.md.
     expect(body[0]).toHaveLength(7);
     expect(body[0][0]).toBe('');
-    // precio = 10 USD, dolar 1200 → ARS 12000. El ≈ se sanea a ~ para jsPDF
-    // (Helvetica WinAnsi no renderiza U+2248). Ver BUGS.md.
-    expect(body[0][5]).toMatch(/^USD\$10\.00\nAR\$/);
-    expect(body[0][6]).toMatch(/^USD\$20\.00\nAR\$/);
+    // Precio y Total en CLP entero, sin USD ni línea ARS.
+    expect(body[0][5]).toBe('$10');
+    expect(body[0][6]).toBe('$20');
   });
 
-  // R2: Total, Pagado y Pendiente del resumen llevan línea ARS en doc.text.
-  it('R2: Total, Pagado y Pendiente incluyen el equivalente ARS', async () => {
+  // R2: Total, Pagado y Pendiente del resumen en CLP.
+  it('R2: Total, Pagado y Pendiente en CLP, sin USD ni AR$', async () => {
     await renderNota(mockFetchConImagenes('ok'));
     fireEvent.click(screen.getByText('Exportar PDF'));
     await waitFor(() => expect(save).toHaveBeenCalled());
 
     const todos = text.mock.calls.map((c: any[]) => c[0]).flat().filter((t: any) => typeof t === 'string');
-    expect(todos.some(t => t.startsWith('Total:') && t.includes('AR$'))).toBe(true);
-    expect(todos.some(t => t.startsWith('Pagado:') && t.includes('AR$'))).toBe(true);
-    expect(todos.some(t => t.startsWith('Pendiente:') && t.includes('AR$'))).toBe(true);
-  });
-
-  // R3: con dolar_dia = 0, no hay línea ARS (solo USD) y no rompe.
-  it('R3: dolar_dia=0 → PDF sin línea ARS, se guarda igual', async () => {
-    await renderNota(mockFetchConImagenes('ok', '0'));
-    fireEvent.click(screen.getByText('Exportar PDF'));
-    await waitFor(() => expect(save).toHaveBeenCalled());
-
-    const body = lastAutoTableConfig?.body as any[] | undefined;
-    if (body) {
-      // celdas Precio/Total solo con USD, sin salto de línea ARS
-      expect(body[0][5]).toBe('USD$10.00');
-      expect(body[0][6]).toBe('USD$20.00');
-    }
-    const todos = text.mock.calls.map((c: any[]) => c[0]).flat().filter((t: any) => typeof t === 'string');
-    expect(todos.some(t => t.includes('≈ AR$'))).toBe(false);
+    expect(todos).toContain('Total: $20');
+    expect(todos).toContain('Pagado: $0');
+    expect(todos).toContain('Pendiente: $0');
+    expect(todos.some(t => /USD|AR\$|≈/.test(t))).toBe(false);
   });
 });
 
@@ -317,7 +301,7 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     await waitFor(() => expect(save).toHaveBeenCalled());
 
     const todos = todosText();
-    expect(todos.some(t => t.startsWith('Total:') && t.includes('AR$'))).toBe(true);
+    expect(todos).toContain('Total: $20');
     // Pagado/Pendiente siguen presentes, reestilizados
     expect(todos.some(t => t.startsWith('Pagado:'))).toBe(true);
     expect(todos.some(t => t.startsWith('Pendiente:'))).toBe(true);
@@ -428,7 +412,7 @@ describe('exportarPDF — fila de totales (foot: Cantidad de Cajas + Unidades)',
     await waitFor(() => expect(save).toHaveBeenCalled());
 
     const todos = text.mock.calls.map((c: any[]) => c[0]).flat().filter((t: any) => typeof t === 'string');
-    expect(todos.some(t => t.startsWith('Total:') && t.includes('AR$'))).toBe(true);
+    expect(todos).toContain('Total: $20');
   });
 });
 
@@ -450,7 +434,7 @@ describe('exportarPDF — BUG-062: bloque de totales desbordado', () => {
     expect(addPage).toHaveBeenCalled();
     // Los totales se dibujan igual (en la página nueva)
     const todos = text.mock.calls.map((c: any[]) => c[0]).flat().filter((t: any) => typeof t === 'string');
-    expect(todos.some(t => t.startsWith('Total:') && t.includes('AR$'))).toBe(true);
+    expect(todos).toContain('Total: $20');
     expect(todos.some(t => t.startsWith('Pagado:'))).toBe(true);
     expect(todos.some(t => t.startsWith('Pendiente:'))).toBe(true);
   });

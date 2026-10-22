@@ -230,7 +230,7 @@ describe('Notas de Venta — columna Total (Punto 3 del contrato)', () => {
     jest.clearAllMocks();
   });
 
-  test('[TOTAL COLUMN] header usa "Precio unitario" y columna Total muestra unidades × precio en $X.XX', async () => {
+  test('[TOTAL COLUMN] header usa "Precio unitario" y columna Total muestra unidades × precio en CLP', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -238,7 +238,7 @@ describe('Notas de Venta — columna Total (Punto 3 del contrato)', () => {
         titulo: 'Nota de Venta #1',
         nombre_cliente: null,
         items: [
-          { id: 1, codigo: 'TST-01', descripcion: 'Item de prueba', cajas: 1, unidades: 3, precio: 2.5, stock_referencia: 10 },
+          { id: 1, codigo: 'TST-01', descripcion: 'Item de prueba', cajas: 1, unidades: 3, precio: 2500, stock_referencia: 10 },
         ],
       }),
     });
@@ -253,9 +253,9 @@ describe('Notas de Venta — columna Total (Punto 3 del contrato)', () => {
     // Verificar header "Total" presente
     expect(screen.getByText(/^total$/i)).toBeInTheDocument();
 
-    // Verificar que al menos un elemento muestra $7.50 (3 unidades × $2.50)
+    // Verificar que al menos un elemento muestra $7.500 (3 unidades × $2.500)
     // Aparece tanto en la celda de la tabla como en el resumen debajo
-    const totalMatches = screen.getAllByText('$7.50');
+    const totalMatches = screen.getAllByText('$7.500');
     expect(totalMatches.length).toBeGreaterThanOrEqual(1);
   });
 });

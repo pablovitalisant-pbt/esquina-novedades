@@ -11,3 +11,11 @@
 **Fuera del corte (pendiente):** `ProductCard-prenota.test.tsx`/otros no tocados siguen verdes. `formatSaldoPendiente` (en-US) queda para 2b. Sin flag (reemplazo de comportamiento).
 
 **Corrección 2a:** `app/(app)/clientes/client_page.test.tsx` TEST 4 y 6 ajustados a "Saldo a favor: $40" (formatCLP). Borrado con `git rm` `__tests__/slice4-clp-ars-smoke.test.ts` (afirmaba ARS/USD, contradice el Slice 2).
+
+## Sub-slice 2b
+
+**Archivos (producción):** `lib/utils.ts` (`formatSaldoPendiente` → `formatCLP`), `app/(app)/notas-venta/[id]/client_page.tsx` (UI, PDF, WhatsApp, Excel en CLP; sin `dolarDia`, sin fetch a `/api/caja/config`, `paraPdf` eliminado), `app/(app)/notas-venta/client_page.tsx`, `app/(app)/deudores/client_page.tsx`, `components/{AgregarANotaVentaModal,AplicarSaldoFavorDialog}.tsx`, `app/api/notas-venta/[id]/route.ts` y `aplicar-saldo-favor/route.ts` (mensajes con `formatCLP`).
+
+**Tests:** nuevo `__tests__/slice2b-clp.test.ts` (formatSaldoPendiente + guard sobre los 7 archivos del corte). Adaptados: notas-venta-exportar-pdf (bloque ARS → CLP), notas-venta-pendiente, notas-venta-auto-focus, deudores-whatsapp, notas-venta-stock-frontend (mock `dolar_dia` retirado).
+
+**Resultado:** Fase B en rojo (8/9). Fase D sobre 45 suites relacionadas: 14 tests fallidos antes y 14 después (los mismos, baseline heredado: `notas-venta/[id]/client_page.test.tsx`, `notas-venta-stock-frontend`, `api/prenotas`, `items/route.test`); 0 regresiones, +8 tests verdes. `tsc --noEmit`: 3 errores fuera de tests (sin cambio). `saldo-favor.test.ts` (pagar, ARS) y `PagarNotaDialog` quedan para 2c/2e. Sin flag.

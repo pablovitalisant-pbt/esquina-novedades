@@ -24,12 +24,12 @@ describe('formatSaldoPendiente', () => {
   });
 
   // Pago parcial → sí se muestra
-  it('pago parcial (pagado 50, pendiente 150) → "150.00"', () => {
-    expect(formatSaldoPendiente(50, 150)).toBe('150.00');
+  it('pago parcial (pagado 50, pendiente 150) → "$150"', () => {
+    expect(formatSaldoPendiente(50, 150)).toBe('$150');
   });
 
-  it('pago parcial con decimales → formato 2 decimales', () => {
-    expect(formatSaldoPendiente(50.25, 149.75)).toBe('149.75');
+  it('pago parcial con decimales → CLP entero', () => {
+    expect(formatSaldoPendiente(50.25, 149.75)).toBe('$150');
   });
 
   // Pagada completa → no se muestra

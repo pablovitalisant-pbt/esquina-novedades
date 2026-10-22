@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { MessageCircle } from 'lucide-react';
-import { formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 
 interface DeudaNota {
   id: number;
@@ -24,20 +24,14 @@ interface Deudor {
 export function DeudoresClient({ session }: { session: any }) {
   const [deudores, setDeudores] = useState<Deudor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dolarDia, setDolarDia] = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
-        const [deudoresRes, configRes] = await Promise.all([
-          fetch('/api/deudores'),
-          fetch('/api/caja/config'),
-        ]);
+        const deudoresRes = await fetch('/api/deudores');
         if (!deudoresRes.ok) throw new Error();
         const { data } = await deudoresRes.json();
-        const configData = await configRes.json();
         setDeudores(data || []);
-        setDolarDia(parseFloat(configData?.data?.valor || '0'));
       } catch {
         toast.error('Error al cargar deudores');
       } finally {
@@ -56,12 +50,9 @@ export function DeudoresClient({ session }: { session: any }) {
   const abrirWhatsApp = (d: Deudor) => {
     const telefono = (d.telefono || '').replace(/\D/g, '');
     if (!telefono) return;
-    const monto = d.deuda_total.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    const monto = formatCLP(d.deuda_total);
     const titulos = d.notas.map((n) => n.titulo).join(', ');
-    const msg = `Hola ${d.cliente_nombre}, te recordamos que tienes una deuda pendiente de $${monto} en las notas: ${titulos}`;
+    const msg = `Hola ${d.cliente_nombre}, te recordamos que tienes una deuda pendiente de ${monto} en las notas: ${titulos}`;
     window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -129,12 +120,7 @@ export function DeudoresClient({ session }: { session: any }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--heading)]">
-                    ${d.deuda_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    {formatArsEquivalente(d.deuda_total, dolarDia) && (
-                      <span className="block text-xs font-normal text-[var(--body-subtle)]">
-                        {formatArsEquivalente(d.deuda_total, dolarDia)}
-                      </span>
-                    )}
+                    {formatCLP(d.deuda_total)}
                   </td>
                   <td className="px-4 py-3 text-right text-[var(--body-subtle)]">
                     {formatFecha(d.deuda_mas_antigua)}

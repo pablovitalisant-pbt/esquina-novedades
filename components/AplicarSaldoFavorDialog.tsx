@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatCLP } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,7 @@ export function AplicarSaldoFavorDialog({
   const aplicar = async () => {
     if (monto <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
     if (monto > saldoPendiente + 0.005) {
-      toast.error(`El monto excede el saldo pendiente de $${saldoPendiente.toFixed(2)}`);
+      toast.error(`El monto excede el saldo pendiente de ${formatCLP(saldoPendiente)}`);
       return;
     }
     setLoading(true);
@@ -80,7 +81,7 @@ export function AplicarSaldoFavorDialog({
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <p className="text-sm text-[var(--body)]">
-            Saldo a favor disponible: <strong className="text-[var(--heading)]">${saldoDisponible.toFixed(2)}</strong>
+            Saldo a favor disponible: <strong className="text-[var(--heading)]">{formatCLP(saldoDisponible)}</strong>
           </p>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-[var(--body)]">Monto a aplicar</label>

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { CajaImputacionCreateSchema } from "@/docs/specs/caja-mayor.spec";
+import { formatCLP } from "@/lib/utils";
 
 function guard(session: any) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -35,7 +36,7 @@ export async function POST(
 
     // Fetch movement
     const movRows = await sql`
-      SELECT id, tipo, kcodcli2, moneda, monto, monto_usd, empresa
+      SELECT id, tipo, kcodcli2, monto, empresa
       FROM caja_movimientos
       WHERE id = ${movimientoId}
     `;
@@ -62,7 +63,7 @@ export async function POST(
     }
 
     const kcodcli2 = mov.kcodcli2; // UUID (string) desde 13a
-    const montoDisponibleUsd = parseFloat(mov.monto_usd ?? mov.monto);
+    const montoDisponible = Number(mov.monto);
 
     // ponytail: Slice 13 — repunte. Validate against prenotas, not movidcto.
     // BUG-009: migrado — ahora usa prenota_id directamente.
@@ -106,9 +107,9 @@ export async function POST(
       const totalPrevio = parseFloat(pagadoRows[0].total);
       const saldoDisponible = totalNota - totalPrevio;
 
-      if (n.monto_aplicado > saldoDisponible + 0.005) {
+      if (n.monto_aplicado > saldoDisponible) {
         return NextResponse.json(
-          { error: `Nota #${prenotaId}: monto $${n.monto_aplicado.toFixed(2)} excede saldo pendiente $${saldoDisponible.toFixed(2)}` },
+          { error: `Nota #${prenotaId}: monto ${formatCLP(n.monto_aplicado)} excede saldo pendiente ${formatCLP(saldoDisponible)}` },
           { status: 422 }
         );
       }
@@ -118,9 +119,9 @@ export async function POST(
     }
 
     // R13: total imputado <= monto disponible
-    if (totalImputado > montoDisponibleUsd + 0.005) {
+    if (totalImputado > montoDisponible) {
       return NextResponse.json(
-        { error: `El total imputado ($${totalImputado.toFixed(2)}) excede el monto del cobro ($${montoDisponibleUsd.toFixed(2)} USD)` },
+        { error: `El total imputado (${formatCLP(totalImputado)}) excede el monto del cobro (${formatCLP(montoDisponible)})` },
         { status: 422 }
       );
     }
@@ -143,7 +144,7 @@ export async function POST(
         data: {
           movimiento_id: movimientoId,
           total_imputado: totalImputado,
-          monto_disponible: montoDisponibleUsd - totalImputado,
+          monto_disponible: montoDisponible - totalImputado,
           notas: inserted,
         },
       },

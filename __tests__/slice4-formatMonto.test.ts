@@ -35,9 +35,8 @@ describe('formatMonto — contrato ARS (mismo formato que CLP)', () => {
     expect(formatMonto(1000, 'USD')).toBe('1.000');
   });
 
-  test('USD: 1000.5 no es entero → "1.000,5" (coma decimal)', () => {
-    // 1000.5 % 1 !== 0 → minimumFractionDigits: 2 → "1.000,50"
-    expect(formatMonto(1000.5, 'USD')).toBe('1.000,50');
+  test('Slice 2c: CLP entero, sin decimales (1000.5 → "1.001")', () => {
+    expect(formatMonto(1000.5, 'USD')).toBe('1.001');
   });
 
   // ──── CLP rechazado ────

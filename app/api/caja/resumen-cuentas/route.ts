@@ -16,14 +16,13 @@ export async function GET() {
       SELECT
         m.cuenta_id,
         cc.nombre AS cuenta_nombre,
-        cc.moneda,
         COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE 0 END), 0) AS total_cobros,
         COALESCE(SUM(CASE WHEN m.tipo = 'gasto' THEN m.monto ELSE 0 END), 0) AS total_gastos,
         COALESCE(SUM(CASE WHEN m.tipo = 'reembolso' THEN m.monto ELSE 0 END), 0) AS total_reembolsos,
         COALESCE(SUM(CASE WHEN m.tipo = 'cobro' THEN m.monto ELSE -m.monto END), 0) AS movimientos_neto
       FROM caja_movimientos m
       JOIN caja_cuentas cc ON cc.id = m.cuenta_id
-      GROUP BY m.cuenta_id, cc.nombre, cc.moneda, cc.orden, cc.id
+      GROUP BY m.cuenta_id, cc.nombre, cc.orden, cc.id
       ORDER BY cc.orden ASC, cc.id ASC
     `;
 
@@ -39,7 +38,6 @@ export async function GET() {
     const result = rows.map((r: any) => ({
       cuenta_id: r.cuenta_id,
       cuenta_nombre: r.cuenta_nombre,
-      moneda: r.moneda as "USD" | "ARS",
       total_cobros: parseFloat(r.total_cobros),
       total_gastos: parseFloat(r.total_gastos),
       total_reembolsos: parseFloat(r.total_reembolsos),

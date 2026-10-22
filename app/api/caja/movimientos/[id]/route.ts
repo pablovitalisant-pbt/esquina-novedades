@@ -2,10 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  CajaMovimientoUpdateSchema,
-  roundUpToHalf,
-} from "@/docs/specs/caja-mayor.spec";
+import { CajaMovimientoUpdateSchema } from "@/docs/specs/caja-mayor.spec";
+import { formatCLP } from "@/lib/utils";
 
 function guard(session: any) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -58,53 +56,18 @@ export async function PATCH(
       await sql`DELETE FROM caja_movimiento_notas WHERE movimiento_id = ${movimientoId}`;
     }
 
-    // Determine effective moneda and monto
-    const newMoneda = updates.moneda ?? current.moneda;
-    const newMonto = updates.monto ?? parseFloat(current.monto);
-    const monedaChanged = updates.moneda !== undefined && updates.moneda !== current.moneda;
-    const montoChanged = updates.monto !== undefined;
+    const newMonto = updates.monto ?? Number(current.monto);
 
-    let montoUsd: number;
-    let tipoCambio: number | null;
-
-    if (newMoneda === "USD") {
-      // R23 / R26: USD → monto_usd = monto, tipo_cambio = null
-      montoUsd = newMonto;
-      tipoCambio = null;
-    } else {
-      // ARS — needs dolar_dia
-      const dolarRows = await sql`
-        SELECT valor FROM caja_config WHERE clave = 'dolar_dia'
-      `;
-      const dolarDia = parseFloat(dolarRows[0]?.valor || "0");
-      if (dolarDia <= 0) {
-        return NextResponse.json(
-          { error: "Dólar del día no configurado. Contacta al administrador." },
-          { status: 422 }
-        );
-      }
-
-      if (monedaChanged || montoChanged) {
-        // R24 / R25: recalculate with current dolar_dia from caja_config
-        montoUsd = roundUpToHalf(newMonto / dolarDia);
-        tipoCambio = dolarDia;
-      } else {
-        // Neither changed: preserve existing values
-        montoUsd = parseFloat(current.monto_usd);
-        tipoCambio = current.tipo_cambio ? parseFloat(current.tipo_cambio) : null;
-      }
-    }
-
-    // R27: if monto_usd decreased, auto-adjust imputaciones
+    // R27: if monto decreased, auto-adjust imputaciones (CLP entero, sin tolerancia)
     let ajusteRequerido: { diferencia: number; mensaje: string } | null = null;
-    if (montoUsd < parseFloat(current.monto_usd || "0") - 0.005) {
+    if (newMonto < Number(current.monto)) {
       const imputado = await sql`
         SELECT COALESCE(SUM(monto_aplicado), 0) AS total
         FROM caja_movimiento_notas WHERE movimiento_id = ${movimientoId}
       `;
-      const totalImputado = parseFloat(imputado[0].total);
-      if (totalImputado > montoUsd + 0.005) {
-        const diferencia = Math.round((totalImputado - montoUsd) * 100) / 100;
+      const totalImputado = Number(imputado[0].total);
+      if (totalImputado > newMonto) {
+        const diferencia = totalImputado - newMonto;
 
         // Reducir imputaciones empezando por la última (ORDER BY id DESC)
         const notas = await sql`
@@ -114,23 +77,22 @@ export async function PATCH(
           ORDER BY id DESC
         `;
 
-        let pendiente = Math.round(diferencia * 100) / 100;
+        let pendiente = diferencia;
         for (const nota of notas) {
-          if (pendiente <= 0.005) break;
-          const montoActual = parseFloat(nota.monto_aplicado);
-          const reduccion = Math.round(Math.min(montoActual, pendiente) * 100) / 100;
-          const nuevoMonto = Math.round((montoActual - reduccion) * 100) / 100;
+          if (pendiente <= 0) break;
+          const montoActual = Number(nota.monto_aplicado);
+          const reduccion = Math.min(montoActual, pendiente);
           await sql`
             UPDATE caja_movimiento_notas
-            SET monto_aplicado = ${nuevoMonto}
+            SET monto_aplicado = ${montoActual - reduccion}
             WHERE id = ${nota.id}
           `;
-          pendiente = Math.round((pendiente - reduccion) * 100) / 100;
+          pendiente -= reduccion;
         }
 
         ajusteRequerido = {
           diferencia,
-          mensaje: `El total imputado supera el monto por $${diferencia.toFixed(2)} USD. Se ajustó automáticamente.`,
+          mensaje: `El total imputado supera el monto por ${formatCLP(diferencia)}. Se ajustó automáticamente.`,
         };
       }
     }
@@ -158,10 +120,8 @@ export async function PATCH(
           kcodcli2 = ${updateKcodcli2},
           nombre_cliente = ${updateNombreCliente},
           cuenta_id = COALESCE(${updateCuentaId}, cuenta_id),
-          moneda = ${newMoneda},
+          moneda = 'CLP',
           monto = ${newMonto},
-          monto_usd = ${montoUsd},
-          tipo_cambio = ${tipoCambio},
           forma_pago = COALESCE(${updateFormaPago}, forma_pago),
           observaciones = ${updateObservaciones},
           empresa = ${newEmpresa},
@@ -170,7 +130,7 @@ export async function PATCH(
           updated_at = now()
       WHERE id = ${movimientoId}
       RETURNING id, fecha::text, tipo, kcodcli2 AS cliente_id, nombre_cliente,
-        cuenta_id, moneda, monto, monto_usd, tipo_cambio, forma_pago,
+        cuenta_id, moneda, monto, forma_pago,
         observaciones, empresa, es_credito, usuario_id, usuario_nombre,
         created_at::text, updated_at::text
     `;

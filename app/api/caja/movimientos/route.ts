@@ -2,10 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  CajaMovimientoCreateSchema,
-  roundUpToHalf,
-} from "@/docs/specs/caja-mayor.spec";
+import { CajaMovimientoCreateSchema } from "@/docs/specs/caja-mayor.spec";
 import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, MovimientosPaginadosConCierres } from "@/docs/specs/caja-mayor.spec";
 
 export async function GET(request: Request) {
@@ -24,7 +21,6 @@ export async function GET(request: Request) {
 
     // Filters — null means "no filter"
     const cuentaId = searchParams.get("cuenta_id") ? parseInt(searchParams.get("cuenta_id")!, 10) : null;
-    const monedaFiltro = searchParams.get("moneda") || null;
     const tipoFiltro = searchParams.get("tipo") || null;
     const empresaFiltro = searchParams.get("empresa") || null;
     const desde = searchParams.get("desde") || null;
@@ -33,8 +29,7 @@ export async function GET(request: Request) {
     // Safe parameterized query: COALESCE/IS NULL pattern — no string interpolation
     const rows = await sql`
       SELECT m.id, m.fecha::text, m.tipo, m.kcodcli2 AS cliente_id, m.nombre_cliente,
-        m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.monto_usd,
-        m.tipo_cambio, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
+        m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
         COALESCE((
           SELECT ARRAY_AGG(cmn.prenota_id::text ORDER BY cmn.id)
           FROM caja_movimiento_notas cmn
@@ -44,7 +39,6 @@ export async function GET(request: Request) {
       FROM caja_movimientos m
       JOIN caja_cuentas cc ON cc.id = m.cuenta_id
       WHERE (${cuentaId}::int IS NULL OR m.cuenta_id = ${cuentaId})
-        AND (${monedaFiltro}::text IS NULL OR m.moneda = ${monedaFiltro})
         AND (${tipoFiltro}::text IS NULL OR m.tipo = ${tipoFiltro})
         AND (${empresaFiltro}::text IS NULL OR m.empresa = ${empresaFiltro})
         AND (${desde}::date IS NULL OR m.fecha >= ${desde}::date)
@@ -58,7 +52,6 @@ export async function GET(request: Request) {
       SELECT COUNT(*)::int AS total
       FROM caja_movimientos m
       WHERE (${cuentaId}::int IS NULL OR m.cuenta_id = ${cuentaId})
-        AND (${monedaFiltro}::text IS NULL OR m.moneda = ${monedaFiltro})
         AND (${tipoFiltro}::text IS NULL OR m.tipo = ${tipoFiltro})
         AND (${empresaFiltro}::text IS NULL OR m.empresa = ${empresaFiltro})
         AND (${desde}::date IS NULL OR m.fecha >= ${desde}::date)
@@ -167,7 +160,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda, monto, forma_pago, observaciones, empresa, es_credito } = parsed.data;
+    const { fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, monto, forma_pago, observaciones, empresa, es_credito } = parsed.data;
     // UUID opcional — lo manda BackendConnector en Slice 11b (id local de
     // PowerSync). Se toma del body crudo porque el schema (Zod) descarta
     // campos desconocidos.
@@ -187,50 +180,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // R7 / R8: ARS → USD conversion
-    // Slice 11b (Opción B): si el cliente mandó `tipo_cambio_capturado`
-    // (el valor que el usuario vio al registrar offline), se usa ese directo,
-    // sin re-derivar del servidor al sincronizar. Flujo online normal (sin
-    // ese campo) sigue igual: deriva de caja_config.
-    let monto_usd: number | null = null;
-    let tipo_cambio: number | null = null;
-
-    const tipoCambioCapturado = parseFloat(body?.tipo_cambio_capturado ?? "0");
-
-    if (moneda === "ARS" && tipoCambioCapturado > 0) {
-      tipo_cambio = tipoCambioCapturado;
-      monto_usd = roundUpToHalf(monto / tipoCambioCapturado);
-    } else if (moneda === "ARS") {
-      const configRows = await sql`
-        SELECT valor FROM caja_config WHERE clave = 'dolar_dia'
-      `;
-      const dolarDia = parseFloat(configRows[0]?.valor || "0");
-      if (dolarDia <= 0) {
-        return NextResponse.json(
-          { error: "Dólar del día no configurado. Contacta al administrador." },
-          { status: 422 }
-        );
-      }
-      tipo_cambio = dolarDia;
-      monto_usd = roundUpToHalf(monto / dolarDia);
-    } else {
-      monto_usd = monto;
-      tipo_cambio = null;
-    }
-
     const usuarioId = parseInt((session!.user as any).id, 10);
     const usuarioNombre = (session!.user as any).nombre as string;
 
     const rows = await sql`
       INSERT INTO caja_movimientos (
         id, fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda,
-        monto, monto_usd, tipo_cambio, forma_pago, observaciones,
+        monto, forma_pago, observaciones,
         empresa, es_credito, usuario_id, usuario_nombre
       ) VALUES (
         COALESCE(${id ?? null}, gen_random_uuid()), ${fecha}::date, ${tipo},
         ${kcodcli2 ?? null}, ${nombre_cliente ?? null},
-        ${cuenta_id}, ${moneda},
-        ${monto}, ${monto_usd}, ${tipo_cambio},
+        ${cuenta_id}, 'CLP',
+        ${monto},
         ${forma_pago}, ${observaciones ?? null},
         ${finalEmpresa ?? null}, ${es_credito ?? false}, ${usuarioId}, ${usuarioNombre}
       )
@@ -241,7 +203,7 @@ export async function POST(request: Request) {
       -- funcione en el reintento sin chocar contra la PK UUID.
       ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
       RETURNING id, fecha::text, tipo, kcodcli2 AS cliente_id, nombre_cliente,
-        cuenta_id, moneda, monto, monto_usd, tipo_cambio, forma_pago,
+        cuenta_id, moneda, monto, forma_pago,
         observaciones, empresa, es_credito, usuario_id, usuario_nombre,
         created_at::text, updated_at::text
     `;

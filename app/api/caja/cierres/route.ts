@@ -95,7 +95,7 @@ export async function POST(_request: Request) {
 
     // Build resumen by account
     const cuentas = await sql`
-      SELECT id, nombre, moneda FROM caja_cuentas WHERE activa = true ORDER BY orden ASC
+      SELECT id, nombre FROM caja_cuentas WHERE activa = true ORDER BY orden ASC
     `;
 
     const resumen: CuentaCierreResumen[] = [];
@@ -147,7 +147,6 @@ export async function POST(_request: Request) {
       resumen.push({
         cuenta_id: c.id,
         cuenta_nombre: c.nombre,
-        moneda: c.moneda as "USD" | "ARS",
         saldo_anterior: saldoAnterior,
         total_cobros: totalCobros,
         total_gastos: totalGastos,

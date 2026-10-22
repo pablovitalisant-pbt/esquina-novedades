@@ -46,7 +46,7 @@ export async function POST(
     // 1. Leer pagos originales (fuera de transacción)
     const pagos = await sql`
       SELECT cmn.monto_aplicado, cmn.movimiento_id,
-        cm.cuenta_id, cm.moneda, cm.monto, COALESCE(cm.monto_usd, 0) AS monto_usd, cm.tipo_cambio,
+        cm.cuenta_id, cm.monto,
         cm.forma_pago, cm.kcodcli2, cm.nombre_cliente
       FROM caja_movimiento_notas cmn
       JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
@@ -82,14 +82,13 @@ export async function POST(
         WITH mov AS (
           INSERT INTO caja_movimientos (
             fecha, tipo, kcodcli2, nombre_cliente, cuenta_id,
-            moneda, monto, monto_usd, tipo_cambio, forma_pago,
+            moneda, monto, forma_pago,
             observaciones, empresa, es_credito, usuario_id, usuario_nombre
           ) VALUES (
             CURRENT_DATE, 'reembolso',
             ${p.kcodcli2}, ${p.nombre_cliente},
-            ${p.cuenta_id}, ${p.moneda},
-            ${parseFloat(p.monto)}, ${parseFloat(p.monto_usd)},
-            ${p.tipo_cambio}, ${p.forma_pago},
+            ${p.cuenta_id}, 'CLP',
+            ${Number(p.monto)}, ${p.forma_pago},
             ${observaciones ?? 'Reembolso'}, 'bazar-naty', false,
             ${usuarioId}, ${usuarioNombre}
           )

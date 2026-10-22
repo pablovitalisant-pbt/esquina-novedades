@@ -45,7 +45,7 @@ function reqPagar(overrides: any = {}) {
 function cobroRow(over: any = {}) {
   return {
     id: 99, fecha: '2026-08-18', tipo: 'cobro', cliente_id: 'c-uuid-1',
-    nombre_cliente: 'Juana', cuenta_id: 1, moneda: 'USD', monto: 1500,
+    nombre_cliente: 'Juana', cuenta_id: 1, monto: 1500,
     monto_usd: 1500, tipo_cambio: null, forma_pago: 'efectivo',
     observaciones: null, empresa: 'bazar-naty', es_credito: false,
     usuario_id: 7, usuario_nombre: 'Admin', ...over,
@@ -108,18 +108,18 @@ describe('POST /pagar — generación de crédito en sobrepago', () => {
     // El proxy testable: credito_generado 0 y no se inserta (0 filas por la condicion).
   });
 
-  test('TEST 4: sobrepago en ARS → excedente calculado sobre monto_usd, no monto ARS', async () => {
-    // saldo 10.00 USD, dolar 1000 → pago ARS 12000 → monto_usd=12, excedente=2
+  test('TEST 4 (Slice 2c): sobrepago CLP entero; moneda del body ignorada, sin caja_config', async () => {
+    // saldo 10000, pago 12000 → aplicado 10000, excedente 2000
     sql.mockResolvedValueOnce([{ id: 12, estado: 'activa', cliente_id: 'c-uuid-1', nombre_cliente: 'Juana' }]);
-    sql.mockResolvedValueOnce([{ total: 10 }]);
+    sql.mockResolvedValueOnce([{ total: 10000 }]);
     sql.mockResolvedValueOnce([{ total: 0 }]);
-    sql.mockResolvedValueOnce([{ valor: '1000' }]); // dolar_dia
-    sql.mockResolvedValueOnce([cobroRow({ moneda: 'ARS', monto: 12000, monto_usd: 12, tipo_cambio: 1000 })]);
+    sql.mockResolvedValueOnce([cobroRow({ monto: 12000 })]);
     const res = await PagarPOST(reqPagar({ monto: 12000, moneda: 'ARS' }), { params: Promise.resolve({ id: '12' }) });
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.monto_aplicado).toBeCloseTo(10, 2); // cap al saldo
-    expect(body.credito_generado).toBeCloseTo(2, 2); // 12 - 10, en USD
+    expect(body.monto_aplicado).toBe(10000); // cap al saldo
+    expect(body.credito_generado).toBe(2000);
+    expect(sql).toHaveBeenCalledTimes(4);
   });
 
   test('TEST 6: smoke — nota saldada por sobrepago deja de aparecer en /deudores', async () => {

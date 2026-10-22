@@ -16,7 +16,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     const cuentaId = searchParams.get("cuenta_id") ? parseInt(searchParams.get("cuenta_id")!, 10) : null;
-    const monedaFiltro = searchParams.get("moneda") || null;
     const tipoFiltro = searchParams.get("tipo") || null;
     const empresaFiltro = searchParams.get("empresa") || null;
     const desde = searchParams.get("desde") || null;
@@ -25,8 +24,7 @@ export async function GET(request: Request) {
     // Fetch all matching movements (no pagination — limit high enough for practical use)
     const rows = await sql`
       SELECT m.id, m.fecha::text, m.tipo, m.kcodcli2, m.nombre_cliente,
-        m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.monto_usd,
-        m.tipo_cambio, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
+        m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
         COALESCE((
           SELECT ARRAY_AGG(cmn.prenota_id::text ORDER BY cmn.id)
           FROM caja_movimiento_notas cmn
@@ -36,7 +34,6 @@ export async function GET(request: Request) {
       FROM caja_movimientos m
       JOIN caja_cuentas cc ON cc.id = m.cuenta_id
       WHERE (${cuentaId}::int IS NULL OR m.cuenta_id = ${cuentaId})
-        AND (${monedaFiltro}::text IS NULL OR m.moneda = ${monedaFiltro})
         AND (${tipoFiltro}::text IS NULL OR m.tipo = ${tipoFiltro})
         AND (${empresaFiltro}::text IS NULL OR m.empresa = ${empresaFiltro})
         AND (${desde}::date IS NULL OR m.fecha >= ${desde}::date)

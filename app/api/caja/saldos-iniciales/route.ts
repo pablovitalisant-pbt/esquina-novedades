@@ -20,7 +20,7 @@ export async function GET() {
 
   try {
     const rows = await sql`
-      SELECT si.id, si.cuenta_id, cc.nombre AS cuenta_nombre, cc.moneda AS cuenta_moneda,
+      SELECT si.id, si.cuenta_id, cc.nombre AS cuenta_nombre,
         si.fecha::text, si.saldo, si.observaciones,
         si.created_at::text
       FROM caja_saldos_iniciales si
@@ -32,7 +32,6 @@ export async function GET() {
       id: r.id,
       cuenta_id: r.cuenta_id,
       cuenta_nombre: r.cuenta_nombre,
-      cuenta_moneda: r.cuenta_moneda as "USD" | "ARS",
       fecha: r.fecha,
       saldo: parseFloat(r.saldo),
       observaciones: r.observaciones,
@@ -70,16 +69,15 @@ export async function POST(request: Request) {
       RETURNING id, cuenta_id, fecha::text, saldo, observaciones, creado_por, created_at::text
     `;
 
-    // Fetch cuenta name/moneda
+    // Fetch cuenta name
     const cuentaRows = await sql`
-      SELECT nombre, moneda FROM caja_cuentas WHERE id = ${cuenta_id}
+      SELECT nombre FROM caja_cuentas WHERE id = ${cuenta_id}
     `;
 
     const result = {
       id: rows[0].id,
       cuenta_id: rows[0].cuenta_id,
       cuenta_nombre: cuentaRows[0]?.nombre || "",
-      cuenta_moneda: (cuentaRows[0]?.moneda || "USD") as "USD" | "ARS",
       fecha: rows[0].fecha,
       saldo: parseFloat(rows[0].saldo),
       observaciones: rows[0].observaciones,

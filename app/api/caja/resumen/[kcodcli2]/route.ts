@@ -36,12 +36,10 @@ export async function GET(
         p.created_at::text AS fecha,
         COALESCE(SUM(pi.unidades * pi.precio), 0) AS total,
         cmn.id AS pago_id,
-        cmn.monto_aplicado AS pago_monto_usd,
+        cmn.monto_aplicado AS pago_monto_aplicado,
         cmn.movimiento_id AS pago_mov_id,
         cmov.fecha::text AS pago_fecha,
         cmov.monto AS pago_monto_original,
-        cmov.moneda AS pago_moneda_original,
-        cmov.tipo_cambio AS pago_tipo_cambio,
         cmov.forma_pago AS pago_forma_pago
       FROM public.prenotas p
       LEFT JOIN public.prenota_items pi ON pi.prenota_id = p.id
@@ -49,7 +47,7 @@ export async function GET(
       LEFT JOIN caja_movimientos cmov ON cmov.id = cmn.movimiento_id
       WHERE p.cliente_id = ${kcodcli2}
       GROUP BY p.id, p.created_at, cmn.id, cmn.monto_aplicado, cmn.movimiento_id,
-        cmov.fecha, cmov.monto, cmov.moneda, cmov.tipo_cambio, cmov.forma_pago
+        cmov.fecha, cmov.monto, cmov.forma_pago
       ORDER BY p.created_at ASC, cmov.fecha ASC
     `;
 
@@ -75,12 +73,10 @@ export async function GET(
           movimiento_id: r.pago_mov_id, // UUID (string) desde 11a
           fecha: r.pago_fecha,
           monto_original: parseFloat(r.pago_monto_original),
-          moneda_original: r.pago_moneda_original as "USD" | "ARS",
-          tipo_cambio: r.pago_tipo_cambio ? parseFloat(r.pago_tipo_cambio) : null,
-          monto_usd: parseFloat(r.pago_monto_usd),
+          monto_usd: Number(r.pago_monto_aplicado), // transitorio hasta 2d (UI aún lo lee)
           forma_pago: r.pago_forma_pago,
         });
-        nota.total_pagado += parseFloat(r.pago_monto_usd);
+        nota.total_pagado += Number(r.pago_monto_aplicado);
       }
       nota.saldo_pendiente = nota.total - nota.total_pagado;
     }

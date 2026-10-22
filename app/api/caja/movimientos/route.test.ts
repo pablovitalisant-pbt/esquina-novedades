@@ -36,7 +36,7 @@ function mockFlow() {
 function baseBody() {
   return {
     fecha: '2026-07-05', tipo: 'cobro', kcodcli2: '5', nombre_cliente: 'X',
-    cuenta_id: 1, moneda: 'USD', monto: 100, forma_pago: 'efectivo', empresa: 'bazar-naty',
+    cuenta_id: 1, monto: 100, forma_pago: 'efectivo', empresa: 'bazar-naty',
   };
 }
 
@@ -82,16 +82,19 @@ describe('app/api/caja/movimientos POST — id UUID opcional (Slice 11a)', () =>
     expect(String(insert[0])).toContain('ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id');
   });
 
-  it('ARS con tipo_cambio_capturado: usa ese valor, sin consultar caja_config', async () => {
+  it('Slice 2c: moneda del body ignorada, sin caja_config, INSERT sin monto_usd/tipo_cambio y CLP forzada', async () => {
     mockFlow();
-    await post({ ...baseBody(), moneda: 'ARS', monto: 1000, tipo_cambio_capturado: 980 });
-    // solo 2 sql: prenotas check + INSERT (NO caja_config, porque capturado > 0)
-    const cajaConfig = sqlMock.mock.calls.filter((c: any[]) => String(c[0]).includes('caja_config'));
-    expect(cajaConfig.length).toBe(0);
+    const res = await post({ ...baseBody(), moneda: 'ARS', monto: 1000, tipo_cambio_capturado: 980 });
+    expect(res.status).toBe(201);
+    expect(sqlMock.mock.calls.filter((c: any[]) => String(c[0]).includes('caja_config')).length).toBe(0);
     const insert = sqlMock.mock.calls.find((c: any[]) => String(c[0]).includes('INSERT INTO caja_movimientos'));
-    // params del INSERT: id, fecha, tipo, kcodcli2, ..., monto_usd(idx 9), tipo_cambio(idx 10)
-    expect(insert[10]).toBe(980); // tipo_cambio capturado (no el del server)
-    expect(typeof insert[9]).toBe('number'); // monto_usd = roundUpToHalf(1000/980) > 0
-    expect(Number(insert[9])).toBeGreaterThan(1);
+    expect(String(insert[0])).not.toMatch(/monto_usd|tipo_cambio/);
+    expect(String(insert[0])).toContain("'CLP'");
+    expect(insert).not.toContain('ARS');
+  });
+
+  it('Slice 2c: monto decimal -> 400', async () => {
+    const res = await post({ ...baseBody(), monto: 100.5 });
+    expect(res.status).toBe(400);
   });
 });

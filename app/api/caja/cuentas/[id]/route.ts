@@ -38,12 +38,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
     }
 
-    const { nombre, moneda, orden, activa } = parsed.data;
+    const { nombre, orden, activa } = parsed.data;
 
     const rows = await sql`
       UPDATE caja_cuentas
       SET nombre = COALESCE(${nombre ?? null}, nombre),
-          moneda = COALESCE(${moneda ?? null}, moneda),
           orden = COALESCE(${orden ?? null}, orden),
           activa = COALESCE(${activa ?? null}, activa)
       WHERE id = ${id}

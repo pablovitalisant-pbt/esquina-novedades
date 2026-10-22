@@ -21,14 +21,12 @@ export const CajaCuentaCreateSchema = z.object({
     .string()
     .min(1, "El nombre es requerido")
     .max(100, "Máximo 100 caracteres"),
-  moneda: z.enum(["USD", "ARS"]),
   orden: z.number().int().min(0).default(0),
   activa: z.boolean().default(true),
 });
 
 export const CajaCuentaUpdateSchema = z.object({
   nombre: z.string().min(1).max(100).optional(),
-  moneda: z.enum(["USD", "ARS"]).optional(),
   orden: z.number().int().min(0).optional(),
   activa: z.boolean().optional(),
 });
@@ -39,7 +37,7 @@ export type CajaCuentaUpdate = z.infer<typeof CajaCuentaUpdateSchema>;
 export interface CajaCuenta {
   id: number;
   nombre: string;
-  moneda: "USD" | "ARS";
+  moneda: "USD" | "ARS"; // legado: el backend ya no lo manda; se quita en 2d/2e
   activa: boolean;
   orden: number;
   created_at: string;
@@ -60,8 +58,7 @@ export const CajaMovimientoCreateSchema = z.object({
   ),
   nombre_cliente: z.string().nullable().optional(),
   cuenta_id: z.coerce.number().int().positive("Selecciona una cuenta"),
-  moneda: z.enum(["USD", "ARS"]),
-  monto: z.coerce.number().positive("El monto debe ser mayor a 0"),
+  monto: z.coerce.number().int("El monto debe ser entero").positive("El monto debe ser mayor a 0"),
   forma_pago: z.enum(["efectivo", "cheque", "transferencia"]),
   observaciones: z.string().nullable().optional(),
   empresa: z.string().nullable().optional(),
@@ -78,8 +75,7 @@ export const CajaMovimientoUpdateSchema = z.object({
   ),
   nombre_cliente: z.string().nullable().optional(),
   cuenta_id: z.coerce.number().int().positive().optional(),
-  moneda: z.enum(["USD", "ARS"]).optional(),
-  monto: z.coerce.number().positive().optional(),
+  monto: z.coerce.number().int().positive().optional(),
   forma_pago: z.enum(["efectivo", "cheque", "transferencia"]).optional(),
   observaciones: z.string().nullable().optional(),
   empresa: z.string().nullable().optional(),
@@ -88,31 +84,17 @@ export const CajaMovimientoUpdateSchema = z.object({
 
 export type CajaMovimientoUpdate = z.infer<typeof CajaMovimientoUpdateSchema>;
 
-/**
- * Conversión ARS → USD según fórmula del Excel:
- * ROUNDUP(monto_ars / dolar_dia, 0.5)
- * = redondea hacia arriba al múltiplo de 0.5 más cercano.
- */
+// Transitorio: lo usa caja-mayor/client_page (2d); se borra en 2e.
 export function roundUpToHalf(value: number): number {
   return Math.ceil(value * 2) / 2;
 }
 
 /**
- * Formatea un monto en formato boliviano.
- * - Separador de miles: punto (.)
- * - Separador decimal: coma (,)
- * - ARS: sin decimales (ej: 1.200.000)
- * - USD: decimales solo si no es entero, máx 2 (ej: 500,50)
+ * Formatea un monto CLP entero (es-CL): 1200000 → "1.200.000".
+ * El 2º arg es transitorio (llamadores aún lo pasan; se borra en 2e).
  */
-export function formatMonto(n: number, moneda: "USD" | "ARS"): string {
-  if (moneda === "ARS") {
-    return n.toLocaleString("es-BO", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  }
-  const esEntero = n % 1 === 0;
-  return n.toLocaleString("es-BO", {
-    minimumFractionDigits: esEntero ? 0 : 2,
-    maximumFractionDigits: 2,
-  });
+export function formatMonto(n: number, _moneda?: string): string {
+  return n.toLocaleString("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 export type CajaMovimientoCreate = z.infer<typeof CajaMovimientoCreateSchema>;
@@ -129,9 +111,9 @@ export interface CajaMovimiento {
   nombre_cliente: string | null;
   cuenta_id: number;
   cuenta_nombre?: string;
-  moneda: "USD" | "ARS";
+  moneda: "USD" | "ARS"; // legado: el backend ya no lo manda; se quita en 2d/2e
   monto: number;
-  monto_usd: number | null;
+  monto_usd: number | null; // legado (2d/2e)
   tipo_cambio: number | null;
   forma_pago: "efectivo" | "cheque" | "transferencia";
   observaciones: string | null;
@@ -154,7 +136,7 @@ export interface ClienteComprador {
 
 export const NotaImputacionSchema = z.object({
   prenota_id: z.number().int().positive("ID de nota requerido"),
-  monto_aplicado: z.number().positive("El monto debe ser mayor a 0"),
+  monto_aplicado: z.number().int().positive("El monto debe ser mayor a 0"),
 });
 
 export const CajaImputacionCreateSchema = z.object({
@@ -208,9 +190,9 @@ export interface PagoDetalle {
   movimiento_id: string; // UUID desde 11a
   fecha: string;
   monto_original: number;
-  moneda_original: "USD" | "ARS";
-  tipo_cambio: number | null;
-  monto_usd: number;
+  moneda_original?: "USD" | "ARS"; // legado (2d/2e)
+  tipo_cambio?: number | null;
+  monto_usd: number; // transitorio: = monto aplicado en CLP hasta 2d
   forma_pago: string;
 }
 
@@ -252,7 +234,7 @@ export interface MovimientosPaginados {
 export interface SaldoCuenta {
   cuenta_id: number;
   cuenta_nombre: string;
-  moneda: "USD" | "ARS";
+  moneda?: "USD" | "ARS"; // legado (2d/2e)
   total_cobros: number;
   total_gastos: number;
   total_reembolsos: number;
@@ -272,7 +254,7 @@ export interface CajaSaldoInicial {
   id: number;
   cuenta_id: number;
   cuenta_nombre: string;
-  cuenta_moneda: "USD" | "ARS";
+  cuenta_moneda?: "USD" | "ARS"; // legado (2d/2e)
   fecha: string;
   saldo: number;
   observaciones: string | null;
@@ -284,7 +266,7 @@ export interface CajaSaldoInicial {
 export interface CuentaCierreResumen {
   cuenta_id: number;
   cuenta_nombre: string;
-  moneda: "USD" | "ARS";
+  moneda?: "USD" | "ARS"; // legado (2d/2e)
   saldo_anterior: number;
   total_cobros: number;
   total_gastos: number;

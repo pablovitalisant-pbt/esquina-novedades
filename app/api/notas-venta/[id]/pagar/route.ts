@@ -3,12 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { roundUpToHalf } from "@/docs/specs/caja-mayor.spec";
 
 const PagarNotaSchema = z.object({
   cuenta_id: z.coerce.number().int().positive(),
-  monto: z.coerce.number().positive("El monto debe ser mayor a 0"),
-  moneda: z.enum(["USD", "ARS"]),
+  monto: z.coerce.number().int("El monto debe ser entero").positive("El monto debe ser mayor a 0"),
   forma_pago: z.enum(["efectivo", "cheque", "transferencia"]),
   observaciones: z.string().nullable().optional(),
 });
@@ -42,7 +40,7 @@ export async function POST(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { cuenta_id, monto, moneda, forma_pago, observaciones } = parsed.data;
+    const { cuenta_id, monto, forma_pago, observaciones } = parsed.data;
 
     // 1. Fetch nota (sin filtro de usuario_id — admin/vendedor puede pagar cualquier nota)
     const notaRows = await sql`
@@ -85,46 +83,23 @@ export async function POST(
     const totalPagado = parseFloat(pagadoRows[0].total);
     const saldoPendiente = total - totalPagado;
 
-    // 4. Validar que la nota no esté ya pagada (aplica a ambas monedas)
-    if (saldoPendiente <= 0.005) {
+    // 4. Validar que la nota no esté ya pagada
+    if (saldoPendiente <= 0) {
       return NextResponse.json(
         { error: "Esta nota ya está pagada en su totalidad" },
         { status: 422 }
       );
     }
 
-    // 5. Conversión ARS → USD (si aplica)
-
-    let monto_usd: number;
-    let tipo_cambio: number | null = null;
-
-    if (moneda === "ARS") {
-      const configRows = await sql`
-        SELECT valor FROM caja_config WHERE clave = 'dolar_dia'
-      `;
-      const dolarDia = parseFloat(configRows[0]?.valor || "0");
-      if (dolarDia <= 0) {
-        return NextResponse.json(
-          { error: "Dólar del día no configurado. Contacta al administrador." },
-          { status: 422 }
-        );
-      }
-      tipo_cambio = dolarDia;
-      monto_usd = roundUpToHalf(monto / dolarDia);
-    } else {
-      monto_usd = monto;
-    }
-
     // 6. Calcular monto_aplicado (cap al saldo pendiente). Slice 3a: el
-    // sobrepago (USD o ARS) ya no se rechaza — se capa aquí y el excedente
-    // genera crédito en el ledger de saldo a favor (si hay cliente_id).
-    const montoAplicado = Math.min(monto_usd, saldoPendiente);
+    // sobrepago ya no se rechaza — se capa aquí y el excedente genera
+    // crédito en el ledger de saldo a favor (si hay cliente_id).
+    const montoAplicado = Math.min(monto, saldoPendiente);
 
-    // Slice 3a — excedente del sobrepago. Solo genera crédito si supera el
-    // umbral de redondeo (0.005) y la nota pertenece a un cliente real (UUID).
-    // Sin cliente_id → se capa en silencio (comportamiento histórico).
-    const excedente = monto_usd - saldoPendiente;
-    const generaCredito = excedente > 0.005 && nota.cliente_id != null;
+    // Slice 3a — excedente del sobrepago (CLP entero). Solo genera crédito si
+    // la nota pertenece a un cliente real (UUID); sin cliente_id se capa en silencio.
+    const excedente = monto - saldoPendiente;
+    const generaCredito = excedente > 0 && nota.cliente_id != null;
     const credito_generado = generaCredito ? excedente : 0;
 
     const usuarioId = parseInt((session!.user as any).id, 10);
@@ -138,18 +113,18 @@ export async function POST(
       WITH mov AS (
         INSERT INTO caja_movimientos (
           fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda,
-          monto, monto_usd, tipo_cambio, forma_pago, observaciones,
+          monto, forma_pago, observaciones,
           empresa, es_credito, usuario_id, usuario_nombre
         ) VALUES (
           CURRENT_DATE, 'cobro',
           ${nota.cliente_id ?? null}, ${nota.nombre_cliente ?? null},
-          ${cuenta_id}, ${moneda},
-          ${monto}, ${monto_usd}, ${tipo_cambio},
+          ${cuenta_id}, 'CLP',
+          ${monto},
           ${forma_pago}, ${observaciones ?? null},
           'bazar-naty', false, ${usuarioId}, ${usuarioNombre}
         )
         RETURNING id, fecha::text, tipo, kcodcli2 AS cliente_id, nombre_cliente,
-          cuenta_id, moneda, monto, monto_usd, tipo_cambio, forma_pago,
+          cuenta_id, moneda, monto, forma_pago,
           observaciones, empresa, es_credito, usuario_id, usuario_nombre,
           created_at::text, updated_at::text
       ),
@@ -179,8 +154,6 @@ export async function POST(
         (SELECT cuenta_id FROM mov) AS cuenta_id,
         (SELECT moneda FROM mov) AS moneda,
         (SELECT monto FROM mov) AS monto,
-        (SELECT monto_usd FROM mov) AS monto_usd,
-        (SELECT tipo_cambio FROM mov) AS tipo_cambio,
         (SELECT forma_pago FROM mov) AS forma_pago,
         (SELECT observaciones FROM mov) AS observaciones,
         (SELECT empresa FROM mov) AS empresa,

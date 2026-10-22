@@ -19,29 +19,13 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const soloActivas = searchParams.get("activas") === "true";
-    const monedaFiltro = searchParams.get("moneda");
-    const filtrarMoneda = monedaFiltro === "USD" || monedaFiltro === "ARS";
 
     let rows;
-    if (soloActivas && filtrarMoneda) {
-      rows = await sql`
-        SELECT id, nombre, moneda, activa, orden, created_at::text
-        FROM caja_cuentas
-        WHERE activa = true AND moneda = ${monedaFiltro}
-        ORDER BY orden ASC, id ASC
-      `;
-    } else if (soloActivas) {
+    if (soloActivas) {
       rows = await sql`
         SELECT id, nombre, moneda, activa, orden, created_at::text
         FROM caja_cuentas
         WHERE activa = true
-        ORDER BY orden ASC, id ASC
-      `;
-    } else if (filtrarMoneda) {
-      rows = await sql`
-        SELECT id, nombre, moneda, activa, orden, created_at::text
-        FROM caja_cuentas
-        WHERE moneda = ${monedaFiltro}
         ORDER BY orden ASC, id ASC
       `;
     } else {
@@ -70,11 +54,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { nombre, moneda, orden, activa } = parsed.data;
+    const { nombre, orden, activa } = parsed.data;
 
     const rows = await sql`
       INSERT INTO caja_cuentas (nombre, moneda, orden, activa)
-      VALUES (${nombre}, ${moneda}, ${orden}, ${activa})
+      VALUES (${nombre}, 'CLP', ${orden}, ${activa})
       RETURNING id, nombre, moneda, activa, orden, created_at::text
     `;
 

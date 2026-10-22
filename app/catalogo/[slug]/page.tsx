@@ -153,13 +153,14 @@ export async function getCatalogData(slug: string) {
   }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const { data } = await getCatalogData(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const { data } = await getCatalogData(slug);
   return { title: `${EMPRESA.nombre} - ${data?.titulo || 'Catálogo'}` };
 }
 
-export default async function PublicCatalogoPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default async function PublicCatalogoPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const { status, data } = await getCatalogData(slug);
   if (status === 404) return notFound();
   if (status !== 200 || !data) {

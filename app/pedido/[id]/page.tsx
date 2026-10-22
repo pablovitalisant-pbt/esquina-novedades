@@ -38,8 +38,8 @@ function cantidadTexto(cantidad: number, modalidad: string): string {
  * Slice 9d — estado público del pedido. Solo nombre, estado, fecha, ítems,
  * entrega, costo y total: nunca teléfono, email ni dirección.
  */
-export default async function PedidoPage({ params }: { params: { id: string } }) {
-  const id = params?.id ?? '';
+export default async function PedidoPage({ params }: { params: Promise<{ id: string }> }) {
+  const id = (await params)?.id ?? '';
   if (!UUID_RE.test(id)) notFound();
 
   try {

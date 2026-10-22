@@ -251,7 +251,7 @@ function PrenotaItemsTable({
   );
 }
 
-export function PrenotaDetallePage({ session }: { session: any; params: { id: string } }) {
+export function PrenotaDetallePage({ session }: { session: any; params?: { id: string } }) {
   const router = useRouter();
   // El id se lee de la URL real (useParams), no del prop `params` horneado en el
   // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta

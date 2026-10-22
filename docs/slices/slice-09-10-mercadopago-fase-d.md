@@ -93,3 +93,48 @@ Fecha: 2026-10-22.
 - `npx tsc --noEmit`: 0 errores en archivos del corte; 2 fuera de tests
   (preexistentes, `.next/types` y `app/page.tsx`).
 
+## Sub-slice 9d — página pública `/pedido/[id]` + redirect del carrito
+
+Fecha: 2026-10-22.
+
+### Archivos
+
+- `app/pedido/[id]/page.tsx` (nuevo): server component `force-dynamic`;
+  valida UUID antes de consultar (`notFound()` si no matchea o no existe);
+  `liberarReservasVencidas()` en try/catch; muestra nombre, estado + mensaje,
+  fecha, ítems (cantidad/modalidad/código/subtotal), entrega + costo y total.
+  **No** selecciona ni renderiza teléfono, email ni dirección. Enlace "Pagar
+  con Mercado Pago" solo si `pendiente_pago` + `mp_init_point` + no vencido.
+- `middleware.ts`: excluye `pedido/` del matcher (con barra, `/pedidos` sigue
+  staff).
+- `components/CarritoDrawer.tsx`: si el 201 trae `data.init_point`, limpia,
+  cierra y redirige; sin init point conserva el flujo actual (toast).
+- `lib/redirigir.ts` (nuevo): `redirigirA()` aislado para poder testear la
+  navegación (jsdom no permite mockear `location`).
+- `__tests__/app/pedido/pedido-publico.test.tsx` (nuevo): privacidad (PII
+  presente en la fila mockeada y ausente del HTML), id inexistente/no UUID →
+  `notFound`, enlace de pago vigente, sin enlace vencido/revision/rechazado/
+  expirado.
+- `__tests__/middleware-pedido-publico.test.ts` (nuevo): usa el matcher real
+  exportado por `middleware.ts`.
+- `__tests__/carrito.test.tsx`: caso 201 con `init_point` (redirige, limpia y
+  cierra) junto al caso 201 sin init point ya existente.
+
+### Resultado
+
+- ROJO verificado antes de implementar: página y `lib/redirigir` inexistentes;
+  matcher real todavía exigía sesión para `/pedido/<uuid>`.
+- `npx jest __tests__/app/pedido/pedido-publico.test.tsx
+  __tests__/middleware-pedido-publico.test.ts __tests__/carrito.test.tsx
+  __tests__/checkout-entrega.test.tsx __tests__/api/cron-liberar-reservas.test.ts
+  __tests__/api/liberar-reservas.test.ts __tests__/slice2a-clp.test.ts
+  __tests__/slice-03-sin-powersync.test.ts
+  __tests__/slice-landing-page-public.test.tsx
+  __tests__/slice15-pettycash-smoke.test.ts` → 10 suites, 153 tests verdes.
+- Tests co-ubicados: ninguno junto a los archivos tocados; grep de imports
+  cubre los 10 suites anteriores.
+- `npx tsc --noEmit`: 0 errores en archivos del corte; se mantienen los
+  preexistentes fuera de tests (`.next/types` de catálogo y `app/page.tsx`).
+- Líneas: producción 151 (bajo el límite de 200); con tests nuevos/modificados
+  el diff total es ~320, excedido por el volumen de tests del corte.
+

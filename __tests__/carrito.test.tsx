@@ -18,6 +18,11 @@ jest.mock('sonner', () => ({
   toast: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }));
 
+const mockRedirigir = jest.fn();
+jest.mock('@/lib/redirigir', () => ({
+  redirigirA: (...args: any[]) => mockRedirigir(...args),
+}));
+
 const KEY = 'bazarnaty:pedido';
 
 const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, modalidad: 'caja', precio: 30, precio_referencia: 5, cantcaja: 6 };
@@ -264,6 +269,32 @@ describe('R4 — Error del POST conserva los items', () => {
     // limpiar() borra items (total 0) y conserva contacto
     expect(screen.getByTestId('total').textContent).toBe('0');
     // El trigger flotante desaparece sin items
+    await waitFor(() => expect(screen.queryByRole('button', { name: /abrir carrito/i })).not.toBeInTheDocument());
+  });
+
+  it('201 con init_point → limpia, cierra y redirige a Mercado Pago', async () => {
+    mockFetch(Promise.resolve({
+      ok: true,
+      status: 201,
+      json: async () => ({ data: { id: 'x', init_point: 'https://mp.example/checkout' } }),
+    }));
+
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A]} />
+        <CarritoDrawer />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
+
+    fireEvent.click(await screen.findByRole('button', { name: /enviar pedido/i }));
+
+    await waitFor(() => expect(mockRedirigir).toHaveBeenCalledWith('https://mp.example/checkout'));
+    expect(screen.getByTestId('total').textContent).toBe('0');
     await waitFor(() => expect(screen.queryByRole('button', { name: /abrir carrito/i })).not.toBeInTheDocument());
   });
 });

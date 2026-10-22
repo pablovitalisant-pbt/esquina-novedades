@@ -14,6 +14,7 @@ import { ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCarrito } from '@/contexts/CarritoContext';
 import { CarritoCheckoutForm, DatosCheckout, OpcionEntrega } from '@/components/CarritoCheckoutForm';
 import { formatCLP } from '@/lib/utils';
+import { redirigirA } from '@/lib/redirigir';
 
 /**
  * Carrito: trigger flotante (solo visible con items) + Sheet lateral con el
@@ -77,10 +78,15 @@ export function CarritoDrawer() {
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
-        toast.success('Pedido enviado');
         setContacto({ nombre: datos.nombre, telefono: datos.telefono, email: datos.email });
         limpiar(); // conserva el contacto para un próximo pedido
         setOpen(false);
+        const initPoint = body?.data?.init_point;
+        if (typeof initPoint === 'string' && initPoint) {
+          redirigirA(initPoint); // Slice 9d: pago online habilitado
+        } else {
+          toast.success('Pedido enviado');
+        }
       } else {
         toast.error(body?.error ?? 'No se pudo enviar el pedido');
         // items intactos ante error

@@ -24,7 +24,6 @@ import {
   Landmark,
   AlertTriangle,
   FileText,
-  ShieldAlert,
   PackagePlus,
   Inbox,
   PieChart
@@ -219,11 +218,6 @@ export function TopNav() {
                   <DropdownMenuItem>
                     <Link href="/admin/caja-config" className="flex items-center gap-2 w-full">
                       <Landmark className="w-4 h-4" /> Config de Caja
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Link href="/admin/sync-conflictos" className="flex items-center gap-2 w-full">
-                      <ShieldAlert className="w-4 h-4" /> Conflictos de Sync
                     </Link>
                   </DropdownMenuItem>
                   {(flags as any)['inversion-mercaderia'] && (

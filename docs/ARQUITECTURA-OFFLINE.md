@@ -1,3 +1,5 @@
+> **OBSOLETO** — PowerSync y el service worker se eliminaron en el Slice 3 (PRD §4: offline fuera del MVP). Se conserva solo como historia.
+
 # Arquitectura Offline-First — Bazar Naty
 
 Decisión aprobada por Pablo (Product Owner) el 2026-08-01.

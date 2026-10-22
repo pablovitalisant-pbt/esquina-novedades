@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   ShoppingCart, Users, LayoutList, Tag, Box,
-  Settings, ClipboardList, Landmark, AlertTriangle, FileText, ShieldAlert, PackagePlus, Inbox, PieChart
+  Settings, ClipboardList, Landmark, AlertTriangle, FileText,PackagePlus, Inbox, PieChart
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -171,10 +171,6 @@ export function BottomNav() {
                     <Link href="/admin/caja-config" onClick={() => setAdminOpen(false)}
                       className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
                       <Landmark className="w-4 h-4 text-[var(--body)]" /> Config de Caja
-                    </Link>
-                    <Link href="/admin/sync-conflictos" onClick={() => setAdminOpen(false)}
-                      className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
-                      <ShieldAlert className="w-4 h-4 text-[var(--body)]" /> Conflictos de Sync
                     </Link>
                     {(flags as any)['inversion-mercaderia'] && (
                       <Link href="/admin/inversion-mercaderia" onClick={() => setAdminOpen(false)}

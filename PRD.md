@@ -174,7 +174,7 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 | 0 | Neon + schema desde cero | Ver §10.1. Aplicar `migrations/` en orden contra la DB vacía y verificar que el schema real cubre todo lo que el código consulta. Seed: empresa + admin |
 | 1 | Rebranding Chile | LandingPage, layout metadata, catálogo, logo, `es-BO`→`es-CL`, "Documento de identidad"→"RUT" |
 | 2 | CLP única moneda | ~22 archivos con USD/ARS/tipo de cambio. Probablemente sub-slices |
-| 3 | Eliminar PowerSync / offline | `lib/powersync/*`, `api/powersync/token`, `admin/powersync-status`, `admin/sync-conflictos`, flags `*-offline-*`, `app/sw.ts`, `app/offline`, `components/AlertasBell`, `contexts/AlertasContext` (revisar dependencia) |
+| 3 | ✅ COMPLETADO — Eliminar PowerSync / offline | `lib/powersync/*`, `api/powersync/token`, `admin/powersync-status`, `admin/sync-conflictos`, flags `*-offline-*`, `app/sw.ts`, `app/offline`, `components/AlertasBell`, `contexts/AlertasContext` (revisar dependencia) |
 | 4 | Precio mayorista por caja | columna nueva en `productos`, UI de precios y edición |
 | 5 | Modalidad unidad/caja en notas de venta + tipo derivado | `prenota_items` ya tiene `cajas` y `unidades` |
 | 6 | Etiqueta de cliente | derivada del historial (vista o query), visible en `/clientes` |

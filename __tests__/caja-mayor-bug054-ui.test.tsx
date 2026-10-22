@@ -7,7 +7,7 @@
  * R4b Idem habilitado online.
  * R4c El estado online/offline se actualiza SIN recargar (listener de eventos).
  *
- * Slice 3: editar/eliminar offline (R3/R7) desaparecieron con PowerSync; las
+ * Slice 3: editar/eliminar offline (R3/R7) desaparecieron con la capa offline; las
  * mutaciones van siempre a la API.
  */
 

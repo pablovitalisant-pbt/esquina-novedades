@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  *
  * handleGuardar: la única ruta es fetch(PATCH) al API.
- * (Slice 3: se quitó la rama PowerSync; el archivo se borra en 3.10.)
+ * (Slice 3: se quitó la rama offline; pendiente renombrar a notas-venta-guardar-item.)
  */
 
 import React from 'react';

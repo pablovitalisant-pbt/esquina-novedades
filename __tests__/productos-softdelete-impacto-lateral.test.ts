@@ -89,7 +89,7 @@ describe('filtro activo en listados', () => {
   });
 
   // El conteo online de total_productos NO vive en client_page.tsx (esa es la
-  // rama PowerSync, flag categorias-offline-lectura en false, fuera de alcance):
+  // rama offline eliminada en Slice 3):
   // vive en la page server-side y en el API de categorias.
   test('categorias admin (page server-side) cuenta solo activos', () => {
     expect(leer('app/(app)/admin/categorias/page.tsx')).toMatch(/p\.activo\s*=\s*true/i);

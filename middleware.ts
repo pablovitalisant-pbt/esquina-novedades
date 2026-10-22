@@ -31,6 +31,6 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    '/((?!api/|login|offline|sw\.js|swe-worker\.js|catalogo|productos|_next/static|_next/image|favicon\.ico|.*\.(?:png|jpg|jpeg|svg|gif|webp|ico|json|webmanifest)$).+)',
+    '/((?!api/|login|catalogo|productos|_next/static|_next/image|favicon\.ico|.*\.(?:png|jpg|jpeg|svg|gif|webp|ico|json|webmanifest)$).+)',
   ],
 };

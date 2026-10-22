@@ -67,3 +67,12 @@ Se conservan guards `navigator.onLine` y `OFFLINE_WRITE_MSG` (D2). `lib/powersyn
 - Fase B: T1 en rojo (3 fallos) antes de editar. Fase D: jest del corte + tests de archivos tocados verdes (10 suites); tsc 125 errores (baseline 129).
 - Nota: `/api/caja/movimientos` se pide 2x en el mount (dos efectos), comportamiento previo; el test no lo fija.
 - Pendientes para 3.10/3.11: `@powersync` sólo queda en lib/powersync, app/api/powersync, powersync-status, sync-conflictos, sw.ts, tests a borrar (`notas-venta-buscador-productos-offline`, `-shell-offline-id-url`, `-sync-bug052`), PRD.md, next.config.mjs, package*.json. Flag `caja-mayor-offline-lectura` sigue en feature-flags.json (se quita en 3.10).
+
+## Corte 3.10 + 3.11 — cierre (proveedores, service worker, deps)
+
+- Borrados (git rm): `lib/powersync/*`, `app/api/powersync`, `app/api/sync-conflictos`, `admin/powersync-status`, `admin/sync-conflictos`, `app/offline`, `app/sw.ts`, `lib/sw-images.ts`, `sw-image-cache.test`, `notas-venta-{sync-bug052,buscador-productos-offline,shell-offline-id-url}`; `public/sw.js` (ignorado por git) borrado del disco.
+- Editados: `TopNav`, `BottomNav` (sin link Conflictos de Sync), `feature-flags.json` (25 → 13), `.env.example`, `next.config.mjs`, `tsconfig.json`, `middleware.ts`, `.gitignore`, `package.json` (−6 deps; lockfile lo regenera el Director Tecnico), `PRD.md` fila 3, banner OBSOLETO en `ARQUITECTURA-OFFLINE.md`, `slice-audit-ponytail-deletes`, 4 comentarios en tests.
+- Tests: `slice-03-sin-powersync.test.ts` + T2/T5/T-final. Fase B: 12 en ROJO (flags, existencia, grep global, config). Fase D: guardia + audit-ponytail + eliminar/guardar + bug054-ui + softdelete + caja-mayor → verde.
+- Pendiente: `git mv` de `notas-venta-{eliminar,guardar}-offline.test.tsx` → `-item` fue rechazado por permisos; los archivos conservan el nombre (contenido ya limpio).
+- `app/api/**` conserva comentarios históricos (D6; T-final los exenta). `tsc`: 122 errores (baseline 125 al iniciar el corte; sin aumento).
+- Diff D8 (archivos que permanecen, sin lockfile): ~66 añadidas (53 son el test guardia).

@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  *
  * eliminarItem (BUG-040): la única ruta es fetch(DELETE) + refetch online.
- * (Slice 3: se quitó la rama PowerSync; el archivo se borra en 3.10.)
+ * (Slice 3: se quitó la rama offline; pendiente renombrar a notas-venta-eliminar-item.)
  */
 
 import React from 'react';

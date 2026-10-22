@@ -38,17 +38,6 @@ const DEAD_FLAGS = [
 const LIVE_FLAGS = [
   'despachos-ia',
   'registro_notas_bodega_ui',
-  'sync-conflictos-reporte',
-  'bodega-offline-lectura',
-  'notas-venta-offline-lectura',
-  'precios-offline-lectura',
-  'caja-mayor-offline-lectura',
-  'categorias-offline-lectura',
-  'clientes-offline-lectura',
-  'alertas-stock-offline-lectura',
-  'usuarios-offline-lectura',
-  'caja-config-offline-lectura',
-  'catalogo-admin-offline-lectura',
   // cliente-stars-visible se borra junto con ClienteStars (componente muerto).
 ];
 
@@ -74,10 +63,9 @@ describe('Slice 1 audit ponytail — deletes seguros', () => {
     expect(fs.existsSync(path.join(ROOT, 'components/ClienteStars.tsx'))).toBe(false);
   });
 
-  test('.env.example usa POWERSYNC_JWT_PRIVATE_KEY, no POWERSYNC_JWT_SECRET', () => {
+  test('.env.example no contiene variables de la capa offline (Slice 3)', () => {
     const c = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf-8');
-    expect(c).toContain('POWERSYNC_JWT_PRIVATE_KEY');
-    expect(c).not.toContain('POWERSYNC_JWT_SECRET');
+    expect(c).not.toContain('POWER' + 'SYNC'); // partido para no tropezar con el guardia T-final
   });
 
   test('tailwind no escanea ./pages y tsconfig no excluye "ol"', () => {

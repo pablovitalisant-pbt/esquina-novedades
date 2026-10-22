@@ -52,9 +52,6 @@ ol/
 .env*
 !.env.example
 
-# Serwist
-public/sw*
-public/swe-worker*
 
 # Backups y dumps locales (datos sensibles, connection strings)
 _backups/

@@ -24,7 +24,7 @@ beforeEach(() => {
 
 const props = { dolarDia: 1000, cuentas: [], userName: 'Admin', userRol: 'admin', userId: 1 };
 
-describe('app/(app)/caja-mayor — lectura por fetch (sin PowerSync)', () => {
+describe('app/(app)/caja-mayor — lectura por fetch', () => {
   it('carga movimientos, saldos y dólar por fetch, una vez cada uno en el mount', async () => {
     render(<CajaMayorClient {...props} />);
     const hits = (u: string) => fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes(u)).length;

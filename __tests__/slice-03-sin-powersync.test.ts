@@ -58,10 +58,10 @@ const recorrer = (d: string): string[] =>
     : [];
 
 describe('Slice 3 — cierre (3.10 + 3.11)', () => {
-  it('T2 flags: solo los 16 esperados', () => {
+  it('T2 flags: solo los 17 esperados', () => {
     const keys = Object.keys(JSON.parse(leer('config/feature-flags.json'))).sort();
     expect(keys.filter((k) => /offline|sync-conflictos/.test(k))).toEqual([]);
-    expect(keys).toHaveLength(16);
+    expect(keys).toHaveLength(17);
     expect(keys).toContain('notas-venta-prefetch-hover');
     expect(leer('.env.example')).not.toMatch(/POWERSYNC/);
   });

@@ -14,5 +14,6 @@
   "inversion-mercaderia": true,
   "precio-mayorista-ui": false,
   "notas-venta-modalidad": false,
-  "clientes-etiqueta": false
+  "clientes-etiqueta": false,
+  "tienda-pago-online": false
 }

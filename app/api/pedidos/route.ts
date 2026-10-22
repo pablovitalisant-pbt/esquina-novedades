@@ -4,8 +4,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { calcularPedido, ErrorPrecio, type OpcionEntrega, type Origen, type ProductoPrecio } from '@/lib/pedidos/precios';
+import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { precioCatalogoBase } from '@/lib/precio-catalogo';
 import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
+import flags from '@/config/feature-flags.json';
 
 const ORIGENES = ['productos', 'catalogo'] as const;
 
@@ -66,10 +68,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'origen_slug es obligatorio cuando origen es catalogo' }, { status: 400 });
     }
 
+    // ─── Reserva online (flag) + idempotencia ───────────────────────
+    const pagoOnline = flags['tienda-pago-online'] === true;
+    if (pagoOnline) {
+      // Llamada perezosa antes de descontar: nunca reservar sobre stock sucio.
+      await liberarReservasVencidas();
+    }
+
+    const idempotencyKey = (
+      request.headers.get('idempotency-key')
+      ?? (typeof body?.idempotency_key === 'string' ? body.idempotency_key : '')
+    ).trim() || null;
+    if (idempotencyKey) {
+      const existentes = await sql`
+        SELECT id, cliente_id, estado, created_at::text, total
+        FROM public.pedidos
+        WHERE idempotency_key = ${idempotencyKey}
+        LIMIT 1
+      `;
+      if (existentes[0]) {
+        return NextResponse.json({ data: existentes[0] }, { status: 200 });
+      }
+    }
+
     // ─── Lectura de productos, entrega y precio de catálogo ─────────
     const productoIds = items.map((it: any) => it.producto_id);
     const productos = await sql`
-      SELECT id, codigo, detalle, prcventa, precio_mayor, cantcaja, activo, costo
+      SELECT id, codigo, detalle, prcventa, precio_mayor, cantcaja, activo, costo, saldo
       FROM public.productos
       WHERE id = ANY(${productoIds})
     `;
@@ -183,22 +208,79 @@ export async function POST(request: NextRequest) {
     queries.push(sql`
       INSERT INTO public.pedidos
         (id, cliente_id, nombre_contacto, telefono_contacto, email_contacto,
-         origen, origen_slug, entrega_codigo, entrega_costo, direccion_entrega, total)
+         origen, origen_slug, entrega_codigo, entrega_costo, direccion_entrega,
+         idempotency_key, estado, stock_reservado, expira_en, total)
       VALUES (${pedidoId}, ${clienteId}, ${nombre}, ${telefono}, ${email},
               ${origen}, ${origenSlug}, ${calculado.entrega_codigo},
-              ${calculado.entrega_costo}, ${calculado.direccion_entrega}, ${calculado.total})
+              ${calculado.entrega_costo}, ${calculado.direccion_entrega},
+              ${idempotencyKey}, ${pagoOnline ? 'pendiente_pago' : 'pendiente'}, ${pagoOnline},
+              CASE WHEN ${pagoOnline} THEN NOW() + INTERVAL '36 hours' ELSE NULL END,
+              ${calculado.total})
       RETURNING id, cliente_id, estado, created_at::text, total
     `);
     for (const linea of calculado.lineas) {
       queries.push(sql`
         INSERT INTO public.pedido_items
-          (pedido_id, producto_id, codigo, detalle, cantidad, modalidad, precio)
+          (pedido_id, producto_id, codigo, detalle, cantidad, modalidad, precio, unidades)
         VALUES (${pedidoId}, ${linea.producto_id}, ${linea.codigo}, ${linea.detalle},
-                ${linea.cantidad}, ${linea.modalidad}, ${linea.precio})
+                ${linea.cantidad}, ${linea.modalidad}, ${linea.precio},
+                ${pagoOnline ? linea.unidades : null})
       `);
     }
+    if (pagoOnline) {
+      for (const linea of calculado.lineas) {
+        // UPDATE condicionado + guard 1/0: si falta stock la transacción entera
+        // aborta con 22012, sin pedido ni descuento parcial.
+        queries.push(sql`
+          WITH upd AS (
+            UPDATE public.productos
+            SET saldo = saldo - ${linea.unidades}, updated_at = NOW()
+            WHERE id = ${linea.producto_id} AND saldo >= ${linea.unidades}
+            RETURNING id, codigo, empresa_id
+          ), ub AS (
+            UPDATE public.ubicaciones_bodega u
+            SET saldo = u.saldo - ${linea.unidades}, updated_at = NOW()
+            FROM upd
+            WHERE u.codigo = upd.codigo AND u.empresa_id = upd.empresa_id
+            RETURNING u.id
+          )
+          SELECT CASE WHEN EXISTS (SELECT 1 FROM upd) THEN 1 ELSE 1 / 0 END AS ok
+        `);
+      }
+    }
 
-    const results = await sql.transaction(queries);
+    let results;
+    try {
+      results = await sql.transaction(queries);
+    } catch (error: any) {
+      // Doble clic concurrente: el índice único aborta el INSERT; devolvemos
+      // el pedido que ganó la carrera sin reservar de nuevo.
+      if (idempotencyKey && String(error?.code) === '23505') {
+        const [existente] = await sql`
+          SELECT id, cliente_id, estado, created_at::text, total
+          FROM public.pedidos
+          WHERE idempotency_key = ${idempotencyKey}
+          LIMIT 1
+        `;
+        if (existente) return NextResponse.json({ data: existente }, { status: 200 });
+      }
+      if (String(error?.code) === '22012') {
+        // Rollback ya deshizo lo nuestro: releemos el saldo real para el detalle.
+        const actuales = await sql`
+          SELECT id, codigo, saldo FROM public.productos WHERE id = ANY(${productoIds})
+        `;
+        const porId = new Map((actuales as any[]).map((p) => [p.id, p]));
+        const sinStock = calculado.lineas
+          .filter((l) => Number(porId.get(l.producto_id)?.saldo ?? 0) < l.unidades)
+          .map((l) => ({
+            codigo: l.codigo,
+            disponible: Number(porId.get(l.producto_id)?.saldo ?? 0),
+            solicitado: l.unidades,
+          }));
+        return NextResponse.json({ error: 'Stock insuficiente', items: sinStock }, { status: 409 });
+      }
+      throw error;
+    }
     const pedido = results[0][0];
 
     return NextResponse.json({

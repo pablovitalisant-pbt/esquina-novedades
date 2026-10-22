@@ -170,3 +170,23 @@
 - Fix: `pedido_items.unidades` guarda las unidades reservadas por línea (se llena en 8b al reservar); la liberación suma `pi.unidades` y las filas con `unidades IS NULL` no devuelven nada. La migración 043 aún no estaba aplicada en ninguna base, así que se extendió sin migración nueva.
 - Test agregado: `cantcaja` cambia después de reservar → se devuelven exactamente las unidades reservadas.
 - Fase D (`npx jest __tests__/api/liberar-reservas.test.ts __tests__/slice-00-schema.test.ts`): **2 suites, 22 tests, verde**.
+
+## Sub-slice 8b — reserva atómica en POST /api/pedidos (flag `tienda-pago-online`)
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §5.1, §6 y §9 (tests 12–17, 34).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `config/feature-flags.json` | modificado | Nuevo flag `tienda-pago-online: false`. |
+| `app/api/pedidos/route.ts` | modificado | Con flag `true`: `liberarReservasVencidas()` al inicio; `estado='pendiente_pago'`, `stock_reservado=true`, `expira_en = NOW() + 36 h` calculado en DB y `pedido_items.unidades`. Una sola `sql.transaction` con `INSERT pedidos` + `INSERT pedido_items` + por línea `UPDATE productos SET saldo=saldo-u WHERE id AND saldo>=u` (con el mismo descuento en `ubicaciones_bodega`) y guard `1/0` que aborta con `22012`; el catch relee `saldo` real y responde 409 `{ error:'Stock insuficiente', items:[{codigo,disponible,solicitado}] }` sin dejar pedido (rollback). `Idempotency-Key` (header o `idempotency_key`): pre-check devuelve 200 con el pedido existente; el 23505 del índice único en carrera también devuelve el ganador. Con flag `false` el alta es idéntica a 7e (sin UPDATEs de stock, estado `pendiente`). |
+| `__tests__/api/pedidos-reserva.test.ts` | nuevo | Reserva exitosa (descuento en ambas tablas, guard `1/0`, unidades 12 para 2 cajas, estados y 36 h), liberación antes de tocar stock, dos pedidos por el último stock (201 + 409 con detalle), misma Idempotency-Key dos veces (una reserva, 200) y stock insuficiente (409, un solo `sql.transaction`). |
+| `__tests__/slice-03-sin-powersync.test.ts` | modificado | Impacto lateral: el assert "solo los N flags esperados" pasa de 16 a 17 por el flag nuevo. |
+
+### Resultados
+
+- Fase B: rojo por la razón correcta (5/5): el route ignoraba el flag, no descontaba stock, no emitía 409 y no deduplicaba por Idempotency-Key.
+- Fase D (`npx jest` sobre el corte + co-ubicados/relacionados: `pedidos`, `pedidos-precios-server`, `pedidos-convertir`, `pedidos-id`, `liberar-reservas`, `slice-03-sin-powersync`): **7 suites, 114 tests, verde**. Además, los 19 suites restantes que mencionan `config/feature-flags.json`: verde tras ajustar el conteo de flags (142 tests).
+- `npx tsc --noEmit`: sin errores nuevos en los archivos del corte; se mantienen los preexistentes (1 no-test `app/page.tsx` + 2 de `.next/types`, total 113 con tests). Suite completa: la corre el Director Técnico.
+- Simplificación deliberada: el detalle del 409 se construye releyendo `saldo` tras el rollback (no la lectura previa, que puede estar obsoleta por concurrencia). No se agrega endpoint nuevo ni cola de reintentos.

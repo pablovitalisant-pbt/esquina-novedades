@@ -2,17 +2,18 @@ import type { Metadata } from 'next';
 import { Public_Sans } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
+import { EMPRESA } from '@/lib/empresa';
 
 const publicSans = Public_Sans({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Import Bazar Naty',
-  description: 'Sistema de inventario para Importadora Bazar Naty',
+  title: EMPRESA.nombre,
+  description: `Venta mayorista y al detalle en ${EMPRESA.ciudad}`,
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Bazar Naty',
+    title: EMPRESA.nombre,
   },
   icons: {
     icon: [

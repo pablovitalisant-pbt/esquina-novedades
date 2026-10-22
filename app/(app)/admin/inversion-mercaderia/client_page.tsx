@@ -168,7 +168,7 @@ export function InversionMercaderiaClient() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center">
           <p className="text-[var(--body)]">No hay snapshot para esa fecha.</p>
           <p className="text-sm text-[var(--body)]/60 mt-1">
-            El snapshot diario se captura a las 22:55 (hora Bolivia) desde que se activó este módulo.
+            El snapshot diario se captura cada noche (hora Chile) desde que se activó este módulo.
           </p>
         </div>
       )}

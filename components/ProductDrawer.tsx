@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ImageWithFallback } from './ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
+import { EMPRESA } from '@/lib/empresa';
 import { toast } from 'sonner';
 import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
 import { useShareImage } from '@/hooks/useShareImage';
@@ -46,7 +47,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const skipNextSync = useRef(false);
-  const empresaSlug = 'bazar-naty';
+  const empresaSlug = EMPRESA.slug;
 
   // BUG-019 fix: estado para edición completa de producto
   const [editCosto, setEditCosto] = useState('');

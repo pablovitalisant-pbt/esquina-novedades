@@ -35,7 +35,7 @@ type CarritoContextValue = {
   limpiar: () => void;
 };
 
-const STORAGE_KEY = 'bazarnaty:pedido';
+const STORAGE_KEY = 'esquina:pedido';
 
 const CarritoContext = createContext<CarritoContextValue | null>(null);
 

@@ -43,7 +43,7 @@ describe('Slice 22 — Fase B: Bodega (contra contrato objetivo)', () => {
   });
 
   test('client_page.tsx hardcodea empresaSlug = bazar-naty (single-tenant, migracion 018)', () => {
-    expect(clientContent).toContain("= 'bazar-naty'");
+    expect(clientContent).toContain("= EMPRESA.slug");
   });
 
   // -----------------------------------------------------------------------

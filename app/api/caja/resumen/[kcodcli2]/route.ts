@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import type { NotaConPagos, PagoDetalle, ResumenClienteResponse } from "@/docs/specs/caja-mayor.spec";
 
@@ -63,7 +64,7 @@ export async function GET(
           saldo_pendiente: 0,
           cliente_id: kcodcli2,
           nombre_cliente: null,
-          origen: 'bazar-naty',
+          origen: EMPRESA.slug,
           pagos: [],
         });
       }

@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import { EMPRESA } from '@/lib/empresa';
 import { usuarioSistema } from '@/lib/pedidos/usuario-sistema';
 
 // Cobro en Caja Mayor del pedido online pagado con Mercado Pago. Idempotente:
@@ -24,7 +25,7 @@ export async function registrarCobroPedido(
       INSERT INTO caja_movimientos (fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda, monto,
                                     forma_pago, observaciones, empresa, es_credito, usuario_id, usuario_nombre)
       SELECT CURRENT_DATE, 'cobro', NULL, p.nombre_contacto, ${cuentaId}, 'CLP', p.total,
-             'mercadopago', ${obs}, 'bazar-naty', false, ${u.id}, ${u.nombre}
+             'mercadopago', ${obs}, ${EMPRESA.slug}, false, ${u.id}, ${u.nombre}
       FROM p RETURNING id
     ), upd AS (
       UPDATE pedidos SET caja_movimiento_id = (SELECT id FROM mov)
@@ -32,7 +33,7 @@ export async function registrarCobroPedido(
       RETURNING id
     ), nota AS (
       INSERT INTO caja_movimiento_notas (movimiento_id, empresa, prenota_id, monto_aplicado)
-      SELECT (SELECT id FROM mov), 'bazar-naty', p.prenota_id,
+      SELECT (SELECT id FROM mov), ${EMPRESA.slug}, p.prenota_id,
              LEAST(p.total, COALESCE((SELECT SUM(subtotal) FROM prenota_items WHERE prenota_id = p.prenota_id), 0))
       FROM p WHERE EXISTS (SELECT 1 FROM upd)
       RETURNING id

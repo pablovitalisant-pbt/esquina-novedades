@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { EMPRESA } from '@/lib/empresa';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,16 +44,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="space-y-3">
-            <CardTitle className="text-2xl font-bold text-center">Bazar Naty</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">{EMPRESA.nombre}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="rut">Documento de identidad</Label>
+              <Label htmlFor="rut">RUT</Label>
               <Input
                 id="rut"
                 type="text"
-                placeholder="Documento de identidad"
+                placeholder="RUT"
                 value={rut}
                 onChange={handleRutChange}
                 required

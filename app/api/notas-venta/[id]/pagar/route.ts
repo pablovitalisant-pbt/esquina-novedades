@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -121,7 +122,7 @@ export async function POST(
           ${cuenta_id}, 'CLP',
           ${monto},
           ${forma_pago}, ${observaciones ?? null},
-          'bazar-naty', false, ${usuarioId}, ${usuarioNombre}
+          ${EMPRESA.slug}, false, ${usuarioId}, ${usuarioNombre}
         )
         RETURNING id, fecha::text, tipo, kcodcli2 AS cliente_id, nombre_cliente,
           cuenta_id, moneda, monto, forma_pago,
@@ -143,7 +144,7 @@ export async function POST(
         RETURNING id
       )
       INSERT INTO caja_movimiento_notas (movimiento_id, empresa, prenota_id, monto_aplicado)
-      SELECT mov.id, 'bazar-naty', ${notaId}, ${montoAplicado}
+      SELECT mov.id, ${EMPRESA.slug}, ${notaId}, ${montoAplicado}
       FROM mov
       RETURNING
         (SELECT id FROM mov) AS id,

@@ -145,14 +145,14 @@ describe('page.tsx — comportamiento según sesión', () => {
 describe('Test 6: LandingPage — link de WhatsApp', () => {
   const defaultProps = { productos: [] as any[], empresaSlug: 'bazar-naty' };
 
-  test('renderiza link a wa.me/5493878236289 en header y hero', () => {
+  test('renderiza link a wa.me/56973409133 en header y hero', () => {
     render(<LandingPage {...defaultProps} />);
 
     const links = screen.getAllByRole('link');
-    const waLinks = links.filter(l => l.getAttribute('href')?.includes('wa.me/5493878236289'));
+    const waLinks = links.filter(l => l.getAttribute('href')?.includes('wa.me/56973409133'));
     expect(waLinks.length).toBeGreaterThanOrEqual(2);
     waLinks.forEach(l => {
-      expect(l.getAttribute('href')).toBe('https://wa.me/5493878236289');
+      expect(l.getAttribute('href')).toBe('https://wa.me/56973409133');
       expect(l.getAttribute('target')).toBe('_blank');
     });
   });

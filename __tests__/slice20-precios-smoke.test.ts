@@ -26,7 +26,7 @@ describe('Slice 20 — smoke limpieza Precios', () => {
 
   test('client_page.tsx hardcodea empresaSlug como bazar-naty (single-tenant, migracion 018)', () => {
     const content = fs.readFileSync(path.join(PROJECT_ROOT, PRECIOS_CLIENT), 'utf-8');
-    expect(content).toContain("bazar-naty");
+    expect(content).toContain("EMPRESA.slug");
   });
 
   test('page.tsx NO contiene query de empresas', () => {

@@ -32,13 +32,13 @@ describe('Sub-slice B — badges SANJH/VIDA DIGITAL eliminados', () => {
 
   test('bodega/client_page.tsx usa empresaSlug = bazar-naty', () => {
     const content = fs.readFileSync(path.join(ROOT, 'app/(app)/bodega/client_page.tsx'), 'utf-8');
-    expect(content).toContain("bazar-naty");
+    expect(content).toContain("EMPRESA.slug");
     expect(content).not.toContain("= 'sanjh'");
   });
 
   test('precios/client_page.tsx usa empresaSlug bazar-naty en ProductCard', () => {
     const content = fs.readFileSync(path.join(ROOT, 'app/(app)/precios/client_page.tsx'), 'utf-8');
-    expect(content).toContain("bazar-naty");
+    expect(content).toContain("EMPRESA.slug");
     expect(content).not.toContain("'sanjh'");
   });
 

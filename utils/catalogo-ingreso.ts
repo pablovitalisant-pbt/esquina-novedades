@@ -1,6 +1,6 @@
 import { sql as sqlType } from "@/lib/db";
 
-// Single-tenant: Bazar Naty (migración 018). Sin filtro empresa_id.
+// Single-tenant (migración 018). Sin filtro empresa_id.
 export async function getLatestIngresoRealCodigos(
   sql: typeof sqlType,
   topN: number = 1

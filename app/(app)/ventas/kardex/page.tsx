@@ -14,7 +14,7 @@ export default async function KardexPage() {
         </h1>
         <p className="text-[var(--body)]500 dark:text-[var(--body)]">
           Este módulo no está disponible en esta versión. Será reactivado cuando
-          haya historial de ventas real en Bazar Naty.
+          haya historial de ventas real.
         </p>
       </div>
     </div>

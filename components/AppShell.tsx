@@ -7,6 +7,7 @@ import { BottomNav } from './BottomNav';
 import { AlertasBell } from './AlertasBell';
 import { SessionProvider } from 'next-auth/react';
 import { AlertasProvider } from '@/contexts/AlertasContext';
+import { EMPRESA } from '@/lib/empresa';
 
 export function AppShell({ children, session }: { children: React.ReactNode, session: any }) {
   const rol = (session?.user as any)?.rol as string;
@@ -21,7 +22,7 @@ export function AppShell({ children, session }: { children: React.ReactNode, ses
           <Link href={
             (session?.user as any)?.rol === 'bodeguero' ? '/bodega' : '/precios'
           } className="font-extrabold text-xl tracking-tight text-[var(--primary)]">
-            Bazar Naty
+            {EMPRESA.nombre}
           </Link>
           <AlertasBell />
         </header>

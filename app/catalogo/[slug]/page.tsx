@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PublicCatalogoClient } from "./client_page";
 import { sql } from "@/lib/db";
+import { EMPRESA } from "@/lib/empresa";
 import { filterProducts, type CatalogoProducto } from "@/app/api/catalogos/public/[slug]/filter-products";
 import { getLatestIngresoRealCodigos } from "@/utils/catalogo-ingreso";
 import { precioCatalogoBase } from "@/lib/precio-catalogo";
@@ -154,7 +155,7 @@ export async function getCatalogData(slug: string) {
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { data } = await getCatalogData(params.slug);
-  return { title: `Bazar Naty - ${data?.titulo || 'Catálogo'}` };
+  return { title: `${EMPRESA.nombre} - ${data?.titulo || 'Catálogo'}` };
 }
 
 export default async function PublicCatalogoPage({ params }: { params: { slug: string } }) {

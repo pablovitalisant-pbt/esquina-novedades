@@ -13,10 +13,11 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
 import { cn } from '@/lib/utils';
+import { EMPRESA } from '@/lib/empresa';
 
 export function BodegaClient({ session }: any) {
   const { shareImage } = useShareImage();
-  const activeEmpresaId = 1; // single-tenant — Bazar Naty
+  const activeEmpresaId = 1; // single-tenant
   const [ubicaciones, setUbicaciones] = useState<UbicacionBodegaAgrupada[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -28,8 +29,7 @@ export function BodegaClient({ session }: any) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  // ponytail: single-tenant — Bazar Naty (empresa única, migración 018)
-  const empresaSlug = 'bazar-naty';
+  const empresaSlug = EMPRESA.slug;
 
   // Autobocus on search input for fast warehouse operations
   useEffect(() => {

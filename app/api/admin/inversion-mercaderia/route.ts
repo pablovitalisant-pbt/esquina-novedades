@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { calcularInversion, fechaBoliviaHoy } from "@/lib/inversion-mercaderia";
+import { calcularInversion, fechaHoyChile } from "@/lib/inversion-mercaderia";
 
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Fecha inválida (YYYY-MM-DD)" }, { status: 400 });
   }
 
-  const hoy = fechaBoliviaHoy();
+  const hoy = fechaHoyChile();
   const esVivo = !fecha || fecha >= hoy; // ausente, hoy o futura
 
   // El detalle del snapshot NO guarda categoria (decisión Fase A): filtrar una

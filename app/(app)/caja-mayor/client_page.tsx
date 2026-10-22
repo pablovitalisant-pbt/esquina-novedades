@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCLP } from "@/lib/utils";
+import { EMPRESA } from "@/lib/empresa";
 import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
 
 import type { Cuenta } from '@/types';
@@ -102,7 +103,7 @@ export function CajaMayorClient({
   const [editFecha, setEditFecha] = useState("");
   const [editClienteQuery, setEditClienteQuery] = useState("");
   const [editCliente, setEditCliente] = useState<ClienteOption | null>(null);
-  const [editEmpresa, setEditEmpresa] = useState<"bazar-naty" | "">("");
+  const [editEmpresa, setEditEmpresa] = useState<typeof EMPRESA.slug | "">("");
   const [editMonto, setEditMonto] = useState("");
   const [editCuentaId, setEditCuentaId] = useState("");
   const [editFormaPago, setEditFormaPago] = useState<FormaPago>("transferencia");
@@ -298,7 +299,7 @@ export function CajaMayorClient({
     setEditFormaPago(mov.forma_pago as FormaPago);
     setEditObs(mov.observaciones || "");
     setEditEsCredito(mov.es_credito ?? false);
-    setEditEmpresa((mov.empresa as "bazar-naty" | "") || "");
+    setEditEmpresa((mov.empresa as typeof EMPRESA.slug | "") || "");
     if (mov.cliente_id) {
       setEditCliente({ cliente_id: mov.cliente_id, nombre: mov.nombre_cliente || "", total_compras: 0, ultima_compra: "" });
       setEditClienteQuery(mov.nombre_cliente || "");
@@ -1324,8 +1325,8 @@ export function CajaMayorClient({
             {/* Empresa */}
             <div className="space-y-1">
               <label className="text-xs font-medium">Empresa</label>
-              <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as "bazar-naty" | "")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
-                <option value="">—</option><option value="bazar-naty">La Esquina</option>
+              <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as typeof EMPRESA.slug | "")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+                <option value="">—</option><option value={EMPRESA.slug}>La Esquina</option>
               </select>
             </div>
             {/* Monto */}

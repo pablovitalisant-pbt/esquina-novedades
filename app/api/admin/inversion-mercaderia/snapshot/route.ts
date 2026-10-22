@@ -1,14 +1,14 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { calcularInversion, fechaBoliviaHoy } from "@/lib/inversion-mercaderia";
+import { calcularInversion, fechaHoyChile } from "@/lib/inversion-mercaderia";
 import { timingSafeEqual } from "crypto";
 
 /**
  * POST /api/admin/inversion-mercaderia/snapshot
- * Cron diario 23:55 Bolivia (Vercel Cron). Autenticado por
+ * Cron diario (Vercel Cron). Autenticado por
  * Authorization: Bearer $CRON_SECRET — NO usa sesión NextAuth (es un proceso).
  *
- * - fecha = hoy Bolivia (UTC-4), calculada en el servidor.
+ * - fecha = hoy en Chile (America/Santiago), calculada en el servidor.
  * - Idempotente: upsert sobre UNIQUE(empresa_id, fecha); si el cron dispara dos
  *   veces el mismo día no revienta ni duplica.
  */
@@ -32,14 +32,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Bazar Naty es una sola empresa; resuelve la única fila en vez de asumir id.
+    // Es una sola empresa; resuelve la única fila en vez de asumir id.
     const empresas: any[] = await sql`SELECT id FROM empresas ORDER BY id LIMIT 1`;
     const empresaId = empresas[0]?.id;
     if (!empresaId) {
       return NextResponse.json({ error: "No hay empresa registrada" }, { status: 500 });
     }
 
-    const fecha = fechaBoliviaHoy();
+    const fecha = fechaHoyChile();
     const productos: any[] = await sql`
       SELECT codigo, detalle, saldo, costo, prcventa FROM productos WHERE activo = true
     `;

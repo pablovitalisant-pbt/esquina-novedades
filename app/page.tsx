@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { sql } from '@/lib/db';
+import { EMPRESA } from '@/lib/empresa';
 import { getLatestIngresoRealCodigos } from '@/utils/catalogo-ingreso';
 import { LandingPage } from '@/components/LandingPage';
 
@@ -19,7 +20,7 @@ function mapRows(rows: any[]) {
 
 async function getLandingProductos() {
   const [empresa] = await sql`SELECT slug FROM empresas WHERE id = 1 LIMIT 1`;
-  const empresaSlug: string = empresa?.slug ?? 'bazar-naty';
+  const empresaSlug: string = empresa?.slug ?? EMPRESA.slug;
 
   const latestCodigos = await getLatestIngresoRealCodigos(sql, 1);
 

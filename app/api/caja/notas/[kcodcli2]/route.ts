@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import type { NotaVentaConSaldo } from "@/docs/specs/caja-mayor.spec";
 
@@ -53,7 +54,7 @@ export async function GET(
       saldo_pendiente: parseFloat(r.total) - parseFloat(r.total_pagado),
       cliente_id: r.cliente_id,
       nombre_cliente: r.nombre_cliente,
-      origen: 'bazar-naty',
+      origen: EMPRESA.slug,
     }));
 
     // Order: pending first (saldo > 0), then by fecha ASC (oldest first)

@@ -23,7 +23,7 @@ jest.mock('@/lib/redirigir', () => ({
   redirigirA: (...args: any[]) => mockRedirigir(...args),
 }));
 
-const KEY = 'bazarnaty:pedido';
+const KEY = 'esquina:pedido';
 
 const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, modalidad: 'caja', precio: 30, precio_referencia: 5, cantcaja: 6 };
 const ITEM_B: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 2, modalidad: 'caja', precio: 108, precio_referencia: 9, cantcaja: 12 };

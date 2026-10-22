@@ -90,21 +90,11 @@ describe('Test 7: layout.tsx — metadata.icons', () => {
 
 // ─── Test 8: logo-texto.png ───
 
-describe('Test 8: logo-texto.png en headers', () => {
-  test('archivo existe en public/', () => {
-    expect(fs.existsSync(path.join(ROOT, 'public', 'logo-texto.png'))).toBe(true);
-  });
-
-  test('LandingPage.tsx referencia logo-texto.png', () => {
-    const content = fs.readFileSync(path.join(ROOT, 'components', 'LandingPage.tsx'), 'utf-8');
-    expect(content).toContain('logo-texto.png');
-  });
-
-  test('TopNav.tsx referencia logo-texto.png reemplazando texto "Bazar Naty"', () => {
-    const content = fs.readFileSync(path.join(ROOT, 'components', 'TopNav.tsx'), 'utf-8');
-    expect(content).toContain('logo-texto.png');
-    // El texto "Bazar Naty" ya no debe estar como texto del logo
-    // (puede seguir en comentarios, meta, etc. pero no como children del link principal)
+describe('Test 8: wordmark de texto (sin logos PNG de Bazar Naty)', () => {
+  test.each(['LandingPage.tsx', 'TopNav.tsx'])('%s usa EMPRESA.nombre y no logo-texto.png', (f) => {
+    const content = fs.readFileSync(path.join(ROOT, 'components', f), 'utf-8');
+    expect(content).toContain('EMPRESA.nombre');
+    expect(content).not.toContain('logo-texto.png');
   });
 });
 

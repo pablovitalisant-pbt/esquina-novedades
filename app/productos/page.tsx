@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import { EMPRESA } from '@/lib/empresa';
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { ProductosPublicos } from './client_page';
 
@@ -13,7 +14,7 @@ async function getProductos() {
   }
 
   const [empresa] = await sql`SELECT slug FROM empresas WHERE id = 1 LIMIT 1`;
-  const empresaSlug: string = empresa?.slug ?? 'bazar-naty';
+  const empresaSlug: string = empresa?.slug ?? EMPRESA.slug;
 
   const rows = await sql`
     SELECT

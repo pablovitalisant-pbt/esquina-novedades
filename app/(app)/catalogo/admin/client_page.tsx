@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PlusCircle, Search, Trash2, Link as LinkIcon, ExternalLink, FileDown, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
-// single-tenant — Bazar Naty (hook legacy eliminado, PRD §9.17)
+// single-tenant (hook legacy eliminado, PRD §9.17)
 import { CrearCatalogoDialog } from '@/components/CrearCatalogoDialog';
 import dynamic from 'next/dynamic';
 // ponytail: inlined from catalogos/catalogos-utils (deleted, PRD section 4).
@@ -29,7 +29,7 @@ const QRCodeSVG = dynamic(() => import('qrcode.react').then(mod => mod.QRCodeSVG
 
 // crear/editar/eliminar catálogo requieren conexión (slug server-side).
 export function CatalogoAdminClient({ session }: { session: any }) {
-  const activeEmpresaId = 1; // single-tenant — Bazar Naty
+  const activeEmpresaId = 1; // single-tenant
   const [catalogos, setCatalogos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState('');

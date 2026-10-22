@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import { CajaImputacionCreateSchema } from "@/docs/specs/caja-mayor.spec";
 import { formatCLP } from "@/lib/utils";
@@ -133,7 +134,7 @@ export async function POST(
     for (const n of notasValidadas) {
       const rows = await sql`
         INSERT INTO caja_movimiento_notas (movimiento_id, empresa, prenota_id, monto_aplicado)
-        VALUES (${movimientoId}, 'bazar-naty', ${n.prenota_id}, ${n.monto_aplicado})
+        VALUES (${movimientoId}, ${EMPRESA.slug}, ${n.prenota_id}, ${n.monto_aplicado})
         RETURNING id, empresa, prenota_id, monto_aplicado
       `;
       inserted.push(rows[0]);

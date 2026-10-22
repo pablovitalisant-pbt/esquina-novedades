@@ -213,7 +213,7 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
           <div className="space-y-4 py-4">
              <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
-                 <label className="text-sm font-medium">Documento de identidad</label>
+                 <label className="text-sm font-medium">RUT</label>
                  <Input value={rut} onChange={e => setRut(e.target.value)} placeholder="Ej: 12345678" />
                </div>
                <div className="space-y-2">

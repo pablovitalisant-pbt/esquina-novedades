@@ -172,7 +172,7 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 | # | Slice | Notas |
 |---|---|---|
 | 0 | Neon + schema desde cero | Ver §10.1. Aplicar `migrations/` en orden contra la DB vacía y verificar que el schema real cubre todo lo que el código consulta. Seed: empresa + admin |
-| 1 | Rebranding Chile | LandingPage, layout metadata, catálogo, logo, `es-BO`→`es-CL`, "Documento de identidad"→"RUT" |
+| 1 | ✅ COMPLETADO — Rebranding Chile | LandingPage, layout metadata, catálogo, logo, `es-BO`→`es-CL`, "Documento de identidad"→"RUT" |
 | 2 | ✅ COMPLETADO — CLP única moneda | ~22 archivos con USD/ARS/tipo de cambio. Probablemente sub-slices |
 | 3 | ✅ COMPLETADO — Eliminar PowerSync / offline | `lib/powersync/*`, `api/powersync/token`, `admin/powersync-status`, `admin/sync-conflictos`, flags `*-offline-*`, `app/sw.ts`, `app/offline`, `components/AlertasBell`, `contexts/AlertasContext` (revisar dependencia) |
 | 4 | ✅ COMPLETADO — Precio mayorista por caja | columna nueva en `productos`, UI de precios y edición |
@@ -212,7 +212,10 @@ genera Neon y mapearla. El driver existente es `@neondatabase/serverless`
 Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 
 ### 10.4 Pendientes de la clienta
-- Logo (PNG) y colores
+- Logo (PNG) y colores. Falta el logo real: los PNG actuales de `public/`
+  (`logo-*.png`) son de Bazar Naty y no se usan; la UI y el PDF de notas
+  muestran un wordmark de texto con `EMPRESA.nombre` hasta recibirlo.
+- Redes (Facebook, Instagram, TikTok "La Esquina de las Novedades"): faltan URLs verificadas; hoy solo texto.
 - Excel de productos (código, nombre, categoría, precio detalle, precio
   mayorista por caja, unidades por caja, stock, stock mínimo) y fotos
 - Nombres y emails de los 4 usuarios

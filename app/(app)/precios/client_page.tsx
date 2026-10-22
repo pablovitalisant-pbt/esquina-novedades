@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Search, Eye, EyeOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCLP } from '@/lib/utils';
+import { EMPRESA } from '@/lib/empresa';
 
-// ponytail: single-tenant — Bazar Naty (empresa única, migración 018)
+// ponytail: single-tenant (empresa única, migración 018)
 interface PreciosClientProps {
   session: UserSession;
 }
@@ -347,7 +348,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
             <ProductCard
               key={p.id}
               producto={p}
-              empresaSlug='bazar-naty'
+              empresaSlug={EMPRESA.slug}
               empresaNombre={(p as any).nombre_empresa}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}

@@ -7,6 +7,7 @@ import { ImageWithFallback } from "@/components/ImageWithFallback";
 import { Loader2, AlertTriangle, EyeOff, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useAlertas } from "@/contexts/AlertasContext";
+import { EMPRESA } from "@/lib/empresa";
 
 interface AlertaProducto {
   producto_id: number;
@@ -167,7 +168,7 @@ export function AlertasStockClient() {
                       <ImageWithFallback
                         src={p.imagen_url}
                         codigo={p.codigo}
-                        empresaSlug="bazar-naty"
+                        empresaSlug={EMPRESA.slug}
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                     </td>

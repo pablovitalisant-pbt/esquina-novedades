@@ -31,7 +31,7 @@ export function RegistroNotasPage({ session }: { session: any }) {
   const [debouncedFolio, setDebouncedFolio] = useState('');
 
   const [folio, setFolio] = useState('');
-  const empresaId = 1; // single-tenant — Bazar Naty (migracion 018)
+  const empresaId = 1; // single-tenant (migracion 018)
   const [observacion, setObservacion] = useState('');
   const [saving, setSaving] = useState(false);
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);

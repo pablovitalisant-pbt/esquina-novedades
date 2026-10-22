@@ -35,7 +35,7 @@ describe('TopNav — solo MVP (dropdowns abiertos)', () => {
     it('SI contiene Usuarios y Config de Caja', async () => { await waitFor(() => { expect(screen.getByText('Usuarios')).toBeInTheDocument(); expect(screen.getByText('Config de Caja')).toBeInTheDocument(); }); });
   });
   it('NO contiene enlaces directos a Garantias, Deudas, Sueldos, Seguimientos', () => { expect(screen.queryByText('GARANTÍAS')).not.toBeInTheDocument(); expect(screen.queryByText('Deudas')).not.toBeInTheDocument(); expect(screen.queryByText('Sueldos')).not.toBeInTheDocument(); expect(screen.queryByText('Seguimientos')).not.toBeInTheDocument(); });
-  it('logo dice Bazar Naty y apunta a /precios', () => { expect(screen.queryByText('VidaDigital')).not.toBeInTheDocument(); const logo = screen.getByAltText('Bazar Naty'); expect(logo.closest('a')?.getAttribute('href')).toBe('/precios'); });
+  it('wordmark dice La Esquina de las Novedades y apunta a /precios', () => { expect(screen.queryByText('VidaDigital')).not.toBeInTheDocument(); const logo = screen.getByText('La Esquina de las Novedades'); expect(logo.closest('a')?.getAttribute('href')).toBe('/precios'); });
 });
 
 describe('BottomNav — solo MVP (sheets abiertos)', () => {

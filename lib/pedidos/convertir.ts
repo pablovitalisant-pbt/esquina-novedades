@@ -18,7 +18,7 @@ export async function convertirPedido(
   usuarioId: number,
   usuarioNombre: string
 ): Promise<{ status: number; body: any }> {
-  const empresaId = 1; // single-tenant, Bazar Naty
+  const empresaId = 1; // single-tenant
 
   // 1. Pedido convertible? `pendiente` legacy descuenta stock al convertir.
   // `pagado` con stock_reservado=true ya descontó al reservar: solo crea la

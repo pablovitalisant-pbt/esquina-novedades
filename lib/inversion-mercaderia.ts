@@ -67,13 +67,12 @@ export function topProductos(
 }
 
 /**
- * Fecha "hoy" en hora de Bolivia (UTC-4, sin DST). El servidor corre en UTC:
- * a las 23:55 Bolivia son las 03:55 UTC del día siguiente, así que se resta
- * 4h y se toma la fecha UTC resultante para que el snapshot y el GET queden
- * en el día correcto de Bazar Naty.
+ * Fecha "hoy" en hora de Chile (America/Santiago, con DST). El servidor corre
+ * en UTC: se formatea en esa zona para que el snapshot y el GET queden en el
+ * día correcto de la tienda.
  */
-export function fechaBoliviaHoy(): string {
-  return new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+export function fechaHoyChile(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
 }
 
 export function calcularInversion(productos: ProductoInversion[]): {

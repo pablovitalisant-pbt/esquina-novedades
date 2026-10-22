@@ -15,6 +15,7 @@ import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
+import { EMPRESA } from '@/lib/empresa';
 
 // Convierte un Blob (de /api/share-image) a data URL base64 para doc.addImage.
 function blobToDataURL(blob: Blob): Promise<string> {
@@ -131,7 +132,7 @@ function PrenotaItemsTable({
                     <ImageWithFallback
                       src={item.imagen_url}
                       codigo={item.codigo}
-                      empresaSlug="bazar-naty"
+                      empresaSlug={EMPRESA.slug}
                       fill
                     />
                   </div>
@@ -496,35 +497,20 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
 
     // ─── Header: banda --accent (#FFB612) + logo/marca a la izquierda y
     //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).
-    let logoBase64: string | null = null;
-    try {
-      const logoRes = await fetch('/logo-nota-venta.png');
-      if (logoRes.ok) {
-        logoBase64 = await blobToDataURL(await logoRes.blob());
-      }
-    } catch {
-      // logo opcional — si falla, el header sigue con el texto
-    }
+    // Sin logo: wordmark de texto hasta recibir el logo de la clienta (PRD 10.4).
     doc.setFillColor(255, 182, 18); // --accent #FFB612
     doc.rect(0, 0, pageWidth, 4, 'F');
 
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', 14, 15, 22, 22);
-      } catch {
-        // logo inválido → se omite, el header sigue con el texto
-      }
-    }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(35, 31, 32); // heading (#231F20)
-    doc.text('Importadora Bazar Naty', 38, 20);
+    doc.text(EMPRESA.nombre, 14, 20);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
-    doc.text('Calle Narciso Campero', 38, 26);
-    doc.text('Entre Motomendez y Guadalquivir', 38, 31);
-    doc.text('Bermejo, Tarija — Bolivia', 38, 36);
+    doc.text(EMPRESA.razonSocial, 14, 26);
+    doc.text(EMPRESA.direccion, 14, 31);
+    doc.text(EMPRESA.ciudad, 14, 36);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.setTextColor(35, 31, 32);
@@ -696,9 +682,9 @@ export function PrenotaDetallePage({ session }: { session: any; params: { id: st
     doc.setTextColor(35, 31, 32); // --heading
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('+5493878236289 | +59174512563 | +59172182788', 14, footerBandY + 6);
-    doc.text('Calle Narciso Campero - Entre Motomendez y Guadalquivir | Bermejo, Tarija — Bolivia', 14, footerBandY + 10);
-    doc.text('https://bazarnaty.vercel.app/', 14, footerBandY + 14);
+    doc.text(`WhatsApp ${EMPRESA.whatsapp}`, 14, footerBandY + 6);
+    doc.text(`${EMPRESA.direccion} | ${EMPRESA.ciudad}`, 14, footerBandY + 10);
+    doc.text(`Horario: ${EMPRESA.horario}`, 14, footerBandY + 14);
 
     return doc;
   };

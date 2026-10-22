@@ -207,7 +207,7 @@ export function CategoriasClient({
 }: {
   categorias: Categoria[];
 }) {
-  const activeEmpresaId = 1; // single-tenant — Bazar Naty
+  const activeEmpresaId = 1; // single-tenant
   const [creandoCatalogoParaCategoria, setCreandoCatalogoParaCategoria] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>(initialCategorias);
   const [productos, setProductos] = useState<Producto[]>([]);

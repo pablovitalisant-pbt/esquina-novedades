@@ -132,8 +132,6 @@ describe('exportarPDF — logo, dirección e imágenes', () => {
       );
       expect(shareCalls.length).toBe(1);
     });
-    // addImage se llamó (la imagen se dibujó en el PDF)
-    await waitFor(() => expect(addImage).toHaveBeenCalled());
     // Esperar la finalización del exportPDF para que su async no filtre
     // /api/share-image al global.fetch del siguiente test.
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -160,22 +158,20 @@ describe('exportarPDF — logo, dirección e imágenes', () => {
       (c: any[]) => typeof c[0] === 'string' && c[0].startsWith('/api/share-image')
     );
     expect(shareCalls.length).toBe(0);
-    // Solo se dibuja el logo (addImage del header), no imágenes de producto.
-    // El logo se dibuja tras resolver su fetch, así que esperamos el count.
-    await waitFor(() => expect(addImage).toHaveBeenCalledTimes(1));
+    // Sin logo ni imágenes de producto: no se dibuja ninguna imagen.
+    expect(addImage).not.toHaveBeenCalled();
   });
 
-  // R1b: logo + dirección se escriben en el header (text) y addImage dibuja el logo
-  it('R1b: escribe la dirección en el header y dibuja el logo con addImage', async () => {
+  // R1b: wordmark de texto + dirección en el header (sin logo PNG)
+  it('R1b: escribe nombre y dirección en el header', async () => {
     await renderNota(mockFetchConImagenes('ok'));
 
     fireEvent.click(screen.getByText('Exportar PDF'));
 
     await waitFor(() => {
-      expect(addImage).toHaveBeenCalled(); // logo
-      // Dirección como texto plano en el header
       const todos = text.mock.calls.map((c: any[]) => c[0]);
-      expect(todos.some((t: any) => typeof t === 'string' && t.includes('Calle Narciso Campero'))).toBe(true);
+      expect(todos).toContain('La Esquina de las Novedades');
+      expect(todos).toContain('Avenida Aeropuerto 2860');
     });
     // Esperar la finalización del exportPDF para que su async no filtre
     // /api/share-image al global.fetch del siguiente test.
@@ -321,12 +317,12 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     expect(todos).toContain('Gracias por su compra');
     // "Firma autorizada" fue eliminada del contrato visual (no estaba en el pedido)
     expect(todos).not.toContain('Firma autorizada');
-    expect(todos).toContain('+5493878236289');
-    expect(todos).toContain('+59174512563');
-    expect(todos).toContain('+59172182788');
-    expect(todos).toContain('Calle Narciso Campero');
-    expect(todos).toContain('Bermejo, Tarija');
-    expect(todos).toContain('https://bazarnaty.vercel.app/');
+    expect(todos).toContain('+56 9 7340 9133');
+    expect(todos).toContain('La Esquina de las Novedades');
+    expect(todos).toContain('Avenida Aeropuerto 2860');
+    expect(todos).toContain('Iquique');
+    expect(todos).toContain('11:00 a 20:00');
+    expect(todos).not.toMatch(/bermejo|tarija|bolivia|bazar/i);
   });
 
   // R7: no se inventan secciones inexistentes — sin Tax/IVA ni Terms & Conditions.

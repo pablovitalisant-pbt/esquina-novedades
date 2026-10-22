@@ -1,7 +1,7 @@
 {
-  "name": "Bazar Naty",
-  "short_name": "BazarNaty",
-  "description": "Sistema de inventario para Importadora Bazar Naty",
+  "name": "La Esquina de las Novedades",
+  "short_name": "La Esquina",
+  "description": "Venta mayorista y al detalle en Iquique",
   "start_url": "/precios",
   "display": "standalone",
   "background_color": "#ffffff",

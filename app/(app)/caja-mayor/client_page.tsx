@@ -12,6 +12,8 @@ import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVent
 
 import type { Cuenta } from '@/types';
 
+type FormaPago = MovimientoConCuenta["forma_pago"];
+
 interface ClienteOption {
   cliente_id: string; // UUID desde 13a
   nombre: string;
@@ -103,7 +105,7 @@ export function CajaMayorClient({
   const [editEmpresa, setEditEmpresa] = useState<"bazar-naty" | "">("");
   const [editMonto, setEditMonto] = useState("");
   const [editCuentaId, setEditCuentaId] = useState("");
-  const [editFormaPago, setEditFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
+  const [editFormaPago, setEditFormaPago] = useState<FormaPago>("transferencia");
   const [editObs, setEditObs] = useState("");
   const [editEsCredito, setEditEsCredito] = useState(false);
   const [editDeleteConfirm, setEditDeleteConfirm] = useState(false);
@@ -293,7 +295,7 @@ export function CajaMayorClient({
     setEditFecha(mov.fecha);
     setEditMonto(String(mov.monto));
     setEditCuentaId(String(mov.cuenta_id));
-    setEditFormaPago(mov.forma_pago as "efectivo" | "cheque" | "transferencia");
+    setEditFormaPago(mov.forma_pago as FormaPago);
     setEditObs(mov.observaciones || "");
     setEditEsCredito(mov.es_credito ?? false);
     setEditEmpresa((mov.empresa as "bazar-naty" | "") || "");
@@ -1112,7 +1114,7 @@ export function CajaMayorClient({
                           {item.data.observaciones || "—"}
                         </td>
                         <td className="py-1.5 pr-2 text-xs w-[70px]">
-                          {item.data.forma_pago === "efectivo" ? "💵 Efectivo" : item.data.forma_pago === "cheque" ? "🔖 Cheque" : "🏦 Transf."}
+                          {item.data.forma_pago === "efectivo" ? "💵 Efectivo" : item.data.forma_pago === "cheque" ? "🔖 Cheque" : item.data.forma_pago === "mercadopago" ? "💳 Mercado Pago" : "🏦 Transf."}
                         </td>
                         <td className="py-1.5 pr-2 w-[50px]">
                           {item.data.es_credito ? (
@@ -1337,8 +1339,8 @@ export function CajaMayorClient({
             </div>
             {/* Forma de pago */}
             <div className="space-y-1"><label className="text-xs font-medium">Forma de pago</label>
-              <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as "efectivo" | "cheque" | "transferencia")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
-                <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option>
+              <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as FormaPago)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+                <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option>
               </select>
             </div>
             {/* Venta a crédito (solo cobro) */}

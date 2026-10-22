@@ -417,6 +417,28 @@ describe('GET /api/pedidos — staff', () => {
     expect(body.data[0].items[0].cantcaja).toBeNull();
   });
 
+  test('expone campos de Mercado Pago (10e)', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    sql
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{
+        id: 'b3f1-0000', cliente_id: null, origen: 'productos', origen_slug: null,
+        estado: 'revision', created_at: '2026-08-17T20:10:00Z',
+        email_contacto: null, entrega_codigo: 'retiro', entrega_costo: 0,
+        direccion_entrega: null, total: 3000, nombre: null, telefono: null,
+        mp_payment_id: '999', mp_fecha_pago: '2026-08-17T21:00:00Z', mp_revision_motivo: 'Monto distinto',
+      }])
+      .mockResolvedValueOnce([]);
+
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+
+    expect(body.data[0]).toMatchObject({
+      mp_payment_id: '999', mp_fecha_pago: '2026-08-17T21:00:00Z', mp_revision_motivo: 'Monto distinto',
+    });
+    expect(sql.mock.calls[1][0].join('')).toMatch(/mp_revision_motivo/);
+  });
+
   test('con ?estado=pendiente filtra la query', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
     sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);

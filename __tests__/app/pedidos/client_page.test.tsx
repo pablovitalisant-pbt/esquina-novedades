@@ -60,6 +60,25 @@ describe('PedidosPage — detalle del pedido (7f)', () => {
     await screen.findByText('Total: $5.000');
   });
 
+  it('revisión: label, pago MP y motivo; filtro "Requieren revisión" (10e)', async () => {
+    const mp = { mp_payment_id: '999', mp_fecha_pago: '2026-08-17T21:00:00Z' };
+    renderPage([
+      { ...PEDIDO, id: 'r1', estado: 'revision', ...mp, mp_revision_motivo: 'Monto distinto', cliente: { id: 'c', nombre: 'Rev', telefono: null } },
+      { ...PEDIDO, id: 'r2', estado: 'pagado_tardio', ...mp, mp_revision_motivo: null, cliente: { id: 'c', nombre: 'Tarde', telefono: null } },
+      { ...PEDIDO, id: 'r3', estado: 'pagado', ...mp, mp_revision_motivo: null, cliente: { id: 'c', nombre: 'Ok', telefono: null } },
+    ]);
+    await screen.findByText('Rev');
+    expect(screen.getByText('En revisión')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Rev'));
+    expect(screen.getByText(/Monto distinto/)).toBeInTheDocument();
+    expect(screen.getByText(/999/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Requieren revisión/ }));
+    expect(screen.getByText('Rev')).toBeInTheDocument();
+    expect(screen.getByText('Tarde')).toBeInTheDocument();
+    expect(screen.queryByText('Ok')).not.toBeInTheDocument();
+  });
+
   it('muestra modalidad y subtotal por ítem', async () => {
     renderPage();
     await screen.findByText('Pablo');

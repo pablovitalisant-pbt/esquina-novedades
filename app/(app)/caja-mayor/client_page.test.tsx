@@ -69,6 +69,18 @@ describe('app/(app)/caja-mayor — CLP', () => {
     expect(screen.getAllByRole('option', { name: 'Banco' }).length).toBeGreaterThan(0);
   });
 
+  it('forma de pago mercadopago se muestra como "Mercado Pago" (10e)', async () => {
+    const original = responder;
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () => String(url).includes('/api/caja/movimientos?')
+        ? { ...conDatos, data: [{ tipo_fila: 'movimiento', data: { ...mov, forma_pago: 'mercadopago' } }] }
+        : original(url),
+    }));
+    render(<CajaMayorClient {...props} />);
+    expect(await screen.findByText('💳 Mercado Pago')).toBeInTheDocument();
+  });
+
   it('POST de cobro no envía moneda y manda monto entero', async () => {
     render(<CajaMayorClient {...props} />);
     await screen.findByText('$12.345');

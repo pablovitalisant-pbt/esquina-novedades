@@ -165,3 +165,9 @@ Fecha: 2026-10-22.
 **Archivos:** `app/api/mercadopago/webhook/route.ts` (nuevo), `__tests__/api/mercadopago-webhook.test.ts` (nuevo, 14).
 **Tests:** firma ausente/ajena/ts fuera de ventana -> 401 sin tocar nada; secret ausente 500; type != payment 200; external_reference no UUID / pedido inexistente 200; approved convierte y cobra una vez, replay no duplica; monto distinto -> revision; rejected/cancelled -> 200 sin cambios (modificado por DT: intento fallido, no libera stock; solo expiración 36 h o fallo 9c) y secuencia rejected -> approved termina convertido (una conversión); pending/in_process sin cambios; Payment.get o DB fallan -> 500 sin loguear secret. Firma real (validador del SDK), `Payment.get` mockeado.
 **Resultado:** Fase B roja (ruta inexistente). Fase D: 14/14 verdes (tras ajuste DT); tests co-ubicados (pago-aprobado, rechazar) sin cambios (no se tocaron). `tsc`: sin errores nuevos fuera de tests.
+
+## Sub-slice 10e — visibilidad staff + `mercadopago` en Caja Mayor
+
+**Archivos:** `app/api/pedidos/route.ts` (GET: mp_payment_id/mp_fecha_pago/mp_revision_motivo), `app/(app)/pedidos/client_page.tsx` (label `revision`, bloque pago MP/motivo, filtro "Requieren revisión"), `app/(app)/caja-mayor/client_page.tsx` + `docs/specs/caja-mayor.spec.ts` (`mercadopago` en enums/tipo, display "Mercado Pago", select de edición), `PRD.md` §9 filas 9 y 10 completadas (pendiente de credenciales reales).
+**Tests:** +1 GET pedidos (campos MP), +1 pedidos UI (label, motivo, filtro revision/pagado_tardio/motivo), +1 caja-mayor UI (display).
+**Resultado:** Fase B roja (3 fallos por la razón correcta). Fase D: 15 suites / 179 tests verdes (corte + co-ubicados + referenciantes). `tsc`: 2 errores fuera de tests (no sube).

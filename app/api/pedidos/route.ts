@@ -377,6 +377,7 @@ export async function GET(request: NextRequest) {
     const pedidos = await sql`
       SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
              p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
+             p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
              c.nombre, c.telefono
       FROM public.pedidos p
       LEFT JOIN public.clientes c ON c.id = p.cliente_id
@@ -424,6 +425,9 @@ export async function GET(request: NextRequest) {
       direccion_entrega: p.direccion_entrega,
       total: p.total,
       created_at: p.created_at,
+      mp_payment_id: p.mp_payment_id ?? null,
+      mp_fecha_pago: p.mp_fecha_pago ?? null,
+      mp_revision_motivo: p.mp_revision_motivo ?? null,
       items: itemsPorPedido.get(p.id) ?? [],
     }));
 

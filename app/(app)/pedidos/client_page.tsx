@@ -28,6 +28,9 @@ interface Pedido {
   direccion_entrega: string | null;
   total: number;
   created_at: string;
+  mp_payment_id?: string | null;
+  mp_fecha_pago?: string | null;
+  mp_revision_motivo?: string | null;
   items: PedidoItem[];
 }
 
@@ -36,6 +39,7 @@ const ESTADO_LABEL: Record<string, string> = {
   pendiente_pago: 'Pendiente de pago',
   pagado: 'Pagado',
   pagado_tardio: 'Pagado tarde',
+  revision: 'En revisión',
   convertido: 'Convertido',
   descartado: 'Descartado',
   expirado: 'Expirado',
@@ -76,6 +80,10 @@ export function PedidosPage({ session }: { session: any }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [convirtiendo, setConvirtiendo] = useState<string | null>(null);
+  const [soloRevision, setSoloRevision] = useState(false);
+  const visibles = soloRevision
+    ? pedidos.filter((p) => p.estado === 'revision' || p.estado === 'pagado_tardio' || p.mp_revision_motivo)
+    : pedidos;
 
   const cargar = useCallback(async () => {
     try {
@@ -154,6 +162,14 @@ export function PedidosPage({ session }: { session: any }) {
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight">Pedidos</h1>
         <p className="text-[var(--body)] mt-1">Solicitudes recibidas desde el catálogo y /productos</p>
+        <Button
+          variant={soloRevision ? 'default' : 'outline'}
+          size="sm"
+          className="mt-3"
+          onClick={() => setSoloRevision((v) => !v)}
+        >
+          Requieren revisión
+        </Button>
       </div>
 
       {loading ? (
@@ -168,7 +184,7 @@ export function PedidosPage({ session }: { session: any }) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {pedidos.map((p) => (
+          {visibles.map((p) => (
             <div key={p.id} className="border rounded-card bg-[var(--card)] shadow-sm">
               <button
                 onClick={() => toggle(p.id)}
@@ -205,6 +221,19 @@ export function PedidosPage({ session }: { session: any }) {
                       {p.direccion_entrega ? ` · ${p.direccion_entrega}` : ''}
                     </span>
                   </div>
+                  {(p.mp_payment_id || p.mp_revision_motivo) && (
+                    <div className="text-sm text-[var(--body)] flex flex-col gap-0.5">
+                      {p.mp_payment_id && (
+                        <span>
+                          Pago MP #{p.mp_payment_id}
+                          {p.mp_fecha_pago ? ` · ${formatFecha(p.mp_fecha_pago)}` : ''}
+                        </span>
+                      )}
+                      {p.mp_revision_motivo && (
+                        <span className="text-[var(--warning)]">Revisión: {p.mp_revision_motivo}</span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-col gap-2">
                     {p.items.map((it, i) => (
                       <div key={i} className="flex justify-between gap-3 text-sm">

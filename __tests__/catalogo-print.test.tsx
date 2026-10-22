@@ -9,8 +9,7 @@ jest.mock('@/components/ImageWithFallback', () => ({
 
 jest.mock('@/lib/utils', () => ({
   ...jest.requireActual('@/lib/utils'),
-  formatUSD: (value: number) => String(value),
-  formatArsEquivalente: () => null,
+  formatCLP: (value: number) => String(value),
 }));
 
 describe('PublicCatalogoClient print support', () => {
@@ -40,7 +39,7 @@ describe('PublicCatalogoClient print support', () => {
       ],
     };
 
-    render(<PublicCatalogoClient data={data} slug="demo" dolarDia={0} />);
+    render(<PublicCatalogoClient data={data} slug="demo" />);
     jest.advanceTimersByTime(900);
 
     expect(window.print).toHaveBeenCalled();
@@ -56,7 +55,7 @@ describe('PublicCatalogoClient print support', () => {
       ],
     };
 
-    render(<PublicCatalogoClient data={data} slug="demo" dolarDia={0} />);
+    render(<PublicCatalogoClient data={data} slug="demo" />);
     jest.advanceTimersByTime(900);
 
     expect(window.print).not.toHaveBeenCalled();
@@ -72,7 +71,7 @@ describe('PublicCatalogoClient print support', () => {
       ],
     };
 
-    const { container } = render(<PublicCatalogoClient data={data} slug="demo" dolarDia={0} />);
+    const { container } = render(<PublicCatalogoClient data={data} slug="demo" />);
 
     expect(container.querySelectorAll('.print-page')).toHaveLength(3);
   });

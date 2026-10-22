@@ -48,7 +48,7 @@ describe('app/(app)/clientes — saldo a favor (3c)', () => {
   it('TEST 4: saldo_favor > 0.005 → texto "Saldo a favor: $X.XX" visible', async () => {
     renderCon([{ ...CLIENTE, nombre: 'Juana', saldo_favor: 40 }]);
     await screen.findByText('Juana');
-    expect(screen.getByText('Saldo a favor: $40.00')).toBeInTheDocument();
+    expect(screen.getByText('Saldo a favor: $40')).toBeInTheDocument();
   });
 
   it('TEST 5: saldo_favor en 0 → texto NO se renderiza', async () => {
@@ -70,7 +70,7 @@ describe('app/(app)/clientes — saldo a favor (3c)', () => {
     ]);
     await screen.findByText('Juana');
     await screen.findByText('Pedro');
-    expect(screen.getByText('Saldo a favor: $40.00')).toBeInTheDocument();
+    expect(screen.getByText('Saldo a favor: $40')).toBeInTheDocument();
     expect(screen.queryByText(/Saldo a favor:/i)).toBeInTheDocument();
     // Solo una fila muestra el saldo.
     expect(screen.getAllByText(/Saldo a favor:/i)).toHaveLength(1);

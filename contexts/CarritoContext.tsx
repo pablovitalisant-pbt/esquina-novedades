@@ -23,7 +23,6 @@ type CarritoContextValue = {
   items: ItemCarrito[];
   origen: 'productos' | 'catalogo';
   origen_slug: string | null;
-  dolarDia: number;
   totalItems: number;
   setContacto: (c: ContactoCarrito) => void;
   agregarItem: (item: ItemCarrito) => void;
@@ -53,12 +52,10 @@ export function CarritoProvider({
   children,
   origen,
   origen_slug,
-  dolarDia,
 }: {
   children: ReactNode;
   origen: 'productos' | 'catalogo';
   origen_slug?: string | null;
-  dolarDia: number;
 }) {
   // Hydration-safe: estado inicial vacío en render; localStorage se lee solo
   // en effect (ponytail: leerlo en render rompería la hidratación SSR).
@@ -123,7 +120,6 @@ export function CarritoProvider({
         items,
         origen,
         origen_slug: origen_slug ?? null,
-        dolarDia,
         totalItems,
         setContacto,
         agregarItem,

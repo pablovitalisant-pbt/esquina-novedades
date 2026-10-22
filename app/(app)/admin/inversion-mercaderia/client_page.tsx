@@ -8,8 +8,9 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
-  formatUsd, filtrarConStock, topProductos, TOP_METRICAS, TopMetrica,
+  filtrarConStock, topProductos, TOP_METRICAS, TopMetrica,
 } from '@/lib/inversion-mercaderia';
+import { formatCLP } from '@/lib/utils';
 
 type Resumen = {
   costoTotal: number;
@@ -33,7 +34,7 @@ type Detalle = {
 type Data = { resumen: Resumen; detalle: Detalle[] } | { sinSnapshot: true };
 
 const hoy = () => new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
-const fmtNum = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtNum = formatCLP;
 
 const METRICA_DESCRIPCION: Record<TopMetrica, string> = {
   ganancia: 'Si vendieras todo el stock de estos productos al precio de venta actual, esta es la ganancia que te dejaría cada uno.',
@@ -68,8 +69,8 @@ export function ChartTooltip({ active, payload }: any) {
         <span className="font-medium text-sm">{p.codigo}</span>
       </div>
       <div className="text-xs space-y-0.5">
-        <div>Costo: {formatUsd(p.costoTotal)}</div>
-        <div>Venta potencial: {formatUsd(p.ventaPotencial)}</div>
+        <div>Costo: {formatCLP(p.costoTotal)}</div>
+        <div>Venta potencial: {formatCLP(p.ventaPotencial)}</div>
       </div>
     </div>
   );
@@ -131,7 +132,7 @@ export function InversionMercaderiaClient() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--body)] dark:text-[var(--body)]">Inversión en Mercadería</h1>
-          <p className="text-sm text-[var(--body)]/60">Cuánto dinero hay invertido hoy en stock y su venta potencial. Montos en USD.</p>
+          <p className="text-sm text-[var(--body)]/60">Cuánto dinero hay invertido hoy en stock y su venta potencial. Montos en CLP.</p>
         </div>
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-[var(--body)]/60" />
@@ -177,16 +178,16 @@ export function InversionMercaderiaClient() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardHeader><CardTitle className="text-sm text-[var(--body)]/60">Invertido en stock</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">{formatUsd(data.resumen.costoTotal)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold">{formatCLP(data.resumen.costoTotal)}</p></CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm text-[var(--body)]/60">Venta potencial</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">{formatUsd(data.resumen.ventaPotencialTotal)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold">{formatCLP(data.resumen.ventaPotencialTotal)}</p></CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm text-[var(--body)]/60">Ganancia proyectada</CardTitle></CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-[var(--primary)]">{formatUsd(data.resumen.gananciaProyectada)}</p>
+                <p className="text-2xl font-bold text-[var(--primary)]">{formatCLP(data.resumen.gananciaProyectada)}</p>
                 <p className="text-xs text-[var(--body)]/60 mt-1">
                   {data.resumen.productosSinCosto > 0
                     ? `${data.resumen.productosSinCosto} producto(s) sin costo registrado (excluidos)`
@@ -250,7 +251,7 @@ export function InversionMercaderiaClient() {
                         <span className="font-medium">{p.codigo}</span>
                         <span className="text-[var(--body)]/60 truncate max-w-[40ch]">{p.detalle ?? ''}</span>
                       </span>
-                      <span className="font-semibold">{formatUsd(p[metrica])}</span>
+                      <span className="font-semibold">{formatCLP(p[metrica])}</span>
                     </li>
                   ))}
                 </ol>
@@ -299,9 +300,9 @@ export function InversionMercaderiaClient() {
                         <td className="py-2 pr-4 text-right">{d.saldo}</td>
                         <td className="py-2 pr-4 text-right">{d.costo === null ? '—' : fmtNum(d.costo)}</td>
                         <td className="py-2 pr-4 text-right">{d.prcventa === null ? '—' : fmtNum(d.prcventa)}</td>
-                        <td className="py-2 pr-4 text-right">{formatUsd(d.costoTotal)}</td>
-                        <td className="py-2 pr-4 text-right">{formatUsd(d.ventaPotencial)}</td>
-                        <td className="py-2 text-right">{formatUsd(d.ganancia)}</td>
+                        <td className="py-2 pr-4 text-right">{formatCLP(d.costoTotal)}</td>
+                        <td className="py-2 pr-4 text-right">{formatCLP(d.ventaPotencial)}</td>
+                        <td className="py-2 text-right">{formatCLP(d.ganancia)}</td>
                       </tr>
                     ))}
                   </tbody>

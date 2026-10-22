@@ -35,13 +35,7 @@ async function getProductos() {
   return { productos, empresaSlug };
 }
 
-// Tipo de cambio del día (caja_config), mismo patrón que GET /api/caja/config.
-async function getDolarDia() {
-  const rows = await sql`SELECT valor FROM caja_config WHERE clave = 'dolar_dia'`;
-  return parseFloat(rows[0]?.valor ?? '0') || 0;
-}
-
 export default async function ProductosPage() {
-  const [{ productos, empresaSlug }, dolarDia] = await Promise.all([getProductos(), getDolarDia()]);
-  return <ProductosPublicos productos={productos} empresaSlug={empresaSlug} dolarDia={dolarDia} />;
+  const { productos, empresaSlug } = await getProductos();
+  return <ProductosPublicos productos={productos} empresaSlug={empresaSlug} />;
 }

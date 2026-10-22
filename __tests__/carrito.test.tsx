@@ -65,7 +65,7 @@ describe('R1 — Hydration (localStorage solo en effect)', () => {
     // si el componente leyera localStorage durante el render, habría un
     // mismatch de hidratación y esto fallaría (>1< en vez de >0<).
     const ssrHtml = renderToString(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <TotalProbe />
       </CarritoProvider>
     );
@@ -73,7 +73,7 @@ describe('R1 — Hydration (localStorage solo en effect)', () => {
 
     // En el cliente, el effect de hidratación restaura lo persistido.
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <TotalProbe />
       </CarritoProvider>
     );
@@ -95,7 +95,7 @@ describe('R3 — Merge por producto', () => {
       );
     }
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Harness />
       </CarritoProvider>
     );
@@ -113,7 +113,7 @@ describe('R3 — Merge por producto', () => {
 describe('Gate obligatorio (BotonAgregarPedido)', () => {
   it('sin contacto: abre el modal, no agrega hasta confirmar; luego agrega directo', async () => {
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <BotonAgregarPedido item={ITEM_A} />
         <TotalProbe />
       </CarritoProvider>
@@ -140,7 +140,7 @@ describe('Gate obligatorio (BotonAgregarPedido)', () => {
 
   it('el gate valida campos vacíos y no confirma', async () => {
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <BotonAgregarPedido item={ITEM_A} />
         <TotalProbe />
       </CarritoProvider>
@@ -162,7 +162,7 @@ describe('R2 — Guard contra doble envío (CarritoDrawer)', () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {})); // nunca resuelve
 
     render(
-      <CarritoProvider origen="catalogo" origen_slug="juegos" dolarDia={1100}>
+      <CarritoProvider origen="catalogo" origen_slug="juegos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, ITEM_B]} />
         <CarritoDrawer />
       </CarritoProvider>
@@ -190,7 +190,7 @@ describe('R4 — Error del POST conserva los items', () => {
     });
 
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, ITEM_B]} />
         <CarritoDrawer />
         <TotalProbe />
@@ -216,7 +216,7 @@ describe('R4 — Error del POST conserva los items', () => {
     });
 
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A]} />
         <CarritoDrawer />
         <TotalProbe />
@@ -243,7 +243,7 @@ describe('Precio por item en el Drawer', () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
 
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A]} />
         <CarritoDrawer />
       </CarritoProvider>
@@ -253,11 +253,8 @@ describe('Precio por item en el Drawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
     // ITEM_A: precio_referencia 5 * cantcaja 6 = 30 → "$30.00 / caja"
-    await screen.findByText('$30.00 / caja');
-    // formatArsEquivalente(30, 1100) → "≈ AR$ 33,000.00".
-    // Con ITEM_A solo, el ARS aparece dos veces: en el precio por item y en el
-    // total de la compra (30 → ARS 33,000 en ambos).
-    expect(screen.getAllByText('≈ AR$ 33,000.00')).toHaveLength(2);
+    await screen.findByText('$30 / caja');
+    expect(screen.queryByText(/AR\$|≈/)).not.toBeInTheDocument();
     // cantidad 1 caja → "1 caja" · "= 6 unidades"
     expect(screen.getByText('1 caja')).toBeInTheDocument();
     expect(screen.getByText('= 6 unidades')).toBeInTheDocument();
@@ -270,7 +267,7 @@ describe('Total de la compra en el Drawer', () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
 
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, ITEM_B]} />
         <CarritoDrawer />
       </CarritoProvider>
@@ -280,7 +277,7 @@ describe('Total de la compra en el Drawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
     // ITEM_A 5*6*1=30, ITEM_B 9*12*2=216 → total 246 → "$246.00"
-    await screen.findByText('$246.00');
+    await screen.findByText('$246');
   });
 
   it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
@@ -290,7 +287,7 @@ describe('Total de la compra en el Drawer', () => {
     };
 
     render(
-      <CarritoProvider origen="productos" dolarDia={1100}>
+      <CarritoProvider origen="productos">
         <Seed contacto={{ nombre: 'Juana', telefono: '1' }} items={[ITEM_A, SIN_PRECIO]} />
         <CarritoDrawer />
       </CarritoProvider>
@@ -300,7 +297,7 @@ describe('Total de la compra en el Drawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
     // Solo ITEM_A cuenta: 5*6*1=30 → "$30.00"
-    await screen.findByText('$30.00');
+    await screen.findByText('$30');
     expect(screen.getByText(/algunos productos sin precio no incluidos/i)).toBeInTheDocument();
   });
 });

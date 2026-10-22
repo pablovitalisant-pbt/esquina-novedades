@@ -50,8 +50,8 @@ describe('PedidosPage — total de la compra en el detalle', () => {
     await screen.findByText('Pablo');
     fireEvent.click(screen.getByText('Pablo'));
 
-    // total = 4 × 30 × 2 = 240 → línea "Total: $240.00"
-    await screen.findByText('Total: $240.00');
+    // total = 4 × 30 × 2 = 240 → línea "Total: $240"
+    await screen.findByText('Total: $240');
   });
 
   it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
@@ -68,7 +68,7 @@ describe('PedidosPage — total de la compra en el detalle', () => {
     fireEvent.click(screen.getByText('Pablo'));
 
     // solo cuenta el item con precio: 4 × 30 × 2 = 240
-    await screen.findByText('Total: $240.00');
+    await screen.findByText('Total: $240');
     expect(screen.getByText(/algunos productos sin precio no incluidos/i)).toBeInTheDocument();
   });
 });

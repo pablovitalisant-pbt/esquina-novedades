@@ -9,7 +9,8 @@
  *    respeta el filtro de stock (un producto sin stock no desplaza a uno con valor).
  */
 
-import { formatUsd, filtrarConStock, topProductos } from '@/lib/inversion-mercaderia';
+import { filtrarConStock, topProductos } from '@/lib/inversion-mercaderia';
+import { formatCLP } from '@/lib/utils';
 import { DetalleInversion } from '@/lib/inversion-mercaderia';
 
 function d(codigo: string, saldo: number, costoTotal: number, ventaPotencial: number): DetalleInversion {
@@ -28,11 +29,11 @@ const DETALLE: DetalleInversion[] = [
   d('D', 10, 1000, 1200),    // ganancia 200
 ];
 
-describe('formatUsd — moneda fija USD', () => {
-  test('1 — formato con etiqueta USD, separador de miles y 2 decimales', () => {
-    expect(formatUsd(377072.91)).toBe('USD 377,072.91');
-    expect(formatUsd(0)).toBe('USD 0.00');
-    expect(formatUsd(195885.19)).toBe('USD 195,885.19');
+describe('formatCLP — moneda única CLP', () => {
+  test('1 — entero, separador de miles con punto', () => {
+    expect(formatCLP(377072.91)).toBe('$377.073');
+    expect(formatCLP(0)).toBe('$0');
+    expect(formatCLP(195885.19)).toBe('$195.885');
   });
 });
 

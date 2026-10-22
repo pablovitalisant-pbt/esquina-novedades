@@ -71,11 +71,11 @@ describe('calcularInversion — productos legacy con costo NULL', () => {
 });
 
 describe('calcularInversion — precisión y bordes', () => {
-  test('6 — redondea a 2 decimales (saldo * costo con decimales)', () => {
+  test('6 — redondea a entero CLP (saldo * costo con decimales)', () => {
     const { resumen } = calcularInversion([p('A-1', 3, 12.345, 18.987)]);
-    // 3 * 12.345 = 37.035 → 37.04 (redondeo bancario estándar JS Math.round)
-    expect(resumen.costoTotal).toBe(37.04);
-    expect(resumen.ventaPotencialTotal).toBe(56.96); // 3 * 18.987 = 56.961 → 56.96
+    // 3 * 12.345 = 37.035 → 37
+    expect(resumen.costoTotal).toBe(37);
+    expect(resumen.ventaPotencialTotal).toBe(57); // 3 * 18.987 = 56.961 → 57
   });
 
   test('7 — ganancia proyectada NEGATIVA no se fuerza a 0', () => {

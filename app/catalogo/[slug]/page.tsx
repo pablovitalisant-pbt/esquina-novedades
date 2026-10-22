@@ -153,9 +153,5 @@ export default async function PublicCatalogoPage({ params }: { params: { slug: s
     return <div className="p-8 text-center mt-20 font-bold text-[var(--destructive)]">Error cargando el catálogo.</div>;
   }
 
-  // Tipo de cambio del día (caja_config), mismo patrón que GET /api/caja/config.
-  const rows = await sql`SELECT valor FROM caja_config WHERE clave = 'dolar_dia'`;
-  const dolarDia = parseFloat(rows[0]?.valor ?? '0') || 0;
-
-  return <PublicCatalogoClient data={data} slug={slug} dolarDia={dolarDia} />;
+  return <PublicCatalogoClient data={data} slug={slug} />;
 }

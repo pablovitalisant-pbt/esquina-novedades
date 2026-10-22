@@ -43,7 +43,7 @@ const RESPUESTA = {
 async function renderPage() {
   (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => RESPUESTA });
   const utils = render(<InversionMercaderiaClient />);
-  await screen.findByText('USD 800.00'); // resumen cargado
+  await screen.findByText('$800'); // resumen cargado
   return utils;
 }
 
@@ -99,21 +99,21 @@ describe('InversionMercaderiaClient — Top 10', () => {
 describe('InversionMercaderiaClient — montos en USD', () => {
   test('5 — USD en las 3 cards de resumen', async () => {
     await renderPage();
-    expect(screen.getByText('USD 800.00')).toBeInTheDocument();
-    expect(screen.getByText('USD 1,320.00')).toBeInTheDocument();
-    expect(screen.getByText('USD 520.00')).toBeInTheDocument();
+    expect(screen.getByText('$800')).toBeInTheDocument();
+    expect(screen.getByText('$1.320')).toBeInTheDocument();
+    expect(screen.getByText('$520')).toBeInTheDocument();
   });
 
   test('6 — USD en la tabla de detalle (valores únicos: costo total y venta potencial de A-1)', async () => {
     await renderPage();
-    expect(screen.getByText('USD 500.00')).toBeInTheDocument(); // A-1 costoTotal
-    expect(screen.getByText('USD 720.00')).toBeInTheDocument(); // A-1 ventaPotencial
+    expect(screen.getByText('$500')).toBeInTheDocument(); // A-1 costoTotal
+    expect(screen.getByText('$720')).toBeInTheDocument(); // A-1 ventaPotencial
   });
 
   test('7 — USD en el Top 10 (valor de la métrica default ganancia)', async () => {
     const { container } = await renderPage();
     const ol = container.querySelector('ol')!;
-    expect(ol.textContent).toContain('USD 300.00'); // C-1 ganancia
+    expect(ol.textContent).toContain('$300'); // C-1 ganancia
   });
 });
 
@@ -136,8 +136,8 @@ describe('InversionMercaderiaClient — imágenes de producto', () => {
     );
     expect(activo.container.querySelector('img')?.getAttribute('src')).toBe('https://img/a1.jpg');
     expect(activo.container.textContent).toContain('A-1');
-    expect(activo.container.textContent).toContain('USD 500.00');
-    expect(activo.container.textContent).toContain('USD 720.00');
+    expect(activo.container.textContent).toContain('$500');
+    expect(activo.container.textContent).toContain('$720');
 
     const inactivo = render(<ChartTooltip active={false} payload={[]} />);
     expect(inactivo.container.firstChild).toBeNull();

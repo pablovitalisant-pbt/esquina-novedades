@@ -24,8 +24,7 @@ jest.mock('@/components/ImageWithFallback', () => ({
 }));
 
 jest.mock('@/lib/utils', () => ({
-  formatUSD: (value: number) => String(value),
-  formatArsEquivalente: () => null,
+  formatCLP: (value: number) => String(value),
 }));
 
 const CATALOGO_DATA = {
@@ -36,7 +35,7 @@ const CATALOGO_DATA = {
   productos: [],
 };
 
-const PRODUCTOS_PROPS = { productos: [], empresaSlug: 'demo', dolarDia: 0 };
+const PRODUCTOS_PROPS = { productos: [], empresaSlug: 'demo' };
 
 function assertFooter(superficie: string) {
   const links = screen.getAllByRole('link');
@@ -59,7 +58,7 @@ function assertFooter(superficie: string) {
 
 describe('Footer CTA en catálogos públicos', () => {
   test('catálogo /[slug] renderiza un único CTA (sin footer de marca)', () => {
-    render(<PublicCatalogoClient data={CATALOGO_DATA} slug="demo" dolarDia={0} />);
+    render(<PublicCatalogoClient data={CATALOGO_DATA} slug="demo" />);
     assertFooter('catálogo');
   });
 

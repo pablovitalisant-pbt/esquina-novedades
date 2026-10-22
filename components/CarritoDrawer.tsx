@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import { ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCarrito } from '@/contexts/CarritoContext';
-import { formatUSD, formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 
 /**
  * Carrito: trigger flotante (solo visible con items) + Sheet lateral con el
@@ -20,7 +20,7 @@ import { formatUSD, formatArsEquivalente } from '@/lib/utils';
  * /api/pedidos; ante error conserva los items del visitante.
  */
 export function CarritoDrawer() {
-  const { contacto, items, origen, origen_slug, dolarDia, totalItems, actualizarCantidad, quitarItem, limpiar } =
+  const { contacto, items, origen, origen_slug, totalItems, actualizarCantidad, quitarItem, limpiar } =
     useCarrito();
   const [open, setOpen] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -107,12 +107,7 @@ export function CarritoDrawer() {
                     <div className="font-mono text-xs text-[var(--body-subtle)]">{item.codigo}</div>
                     <div className="font-medium text-sm line-clamp-2">{item.detalle}</div>
                     {precioPorCaja != null && (
-                      <>
-                        <div className="text-xs text-[var(--body-subtle)]">{formatUSD(precioPorCaja)} / caja</div>
-                        {formatArsEquivalente(precioPorCaja, dolarDia) && (
-                          <div className="text-xs">{formatArsEquivalente(precioPorCaja, dolarDia)}</div>
-                        )}
-                      </>
+                      <div className="text-xs text-[var(--body-subtle)]">{formatCLP(precioPorCaja)} / caja</div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -157,10 +152,7 @@ export function CarritoDrawer() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-[var(--body-subtle)]">Total de la compra</span>
               <div className="text-right">
-                <div className="text-lg font-bold">{formatUSD(total)}</div>
-                {formatArsEquivalente(total, dolarDia) && (
-                  <div className="text-xs">{formatArsEquivalente(total, dolarDia)}</div>
-                )}
+                <div className="text-lg font-bold">{formatCLP(total)}</div>
               </div>
             </div>
             {haySinPrecio && (

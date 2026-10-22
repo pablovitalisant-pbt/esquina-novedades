@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { formatCLP } from '@/lib/utils';
 import { PlusCircle, Search, Pencil, Trash2, X, Check } from 'lucide-react';
 
 interface Cliente {
@@ -169,7 +170,7 @@ export function ClientesPage() {
                     {c.direccion && <div className="text-xs text-[var(--body)]">{c.direccion}</div>}
                     {Number(c.saldo_favor) > 0.005 && (
                       <div className="text-xs text-[var(--success)] font-medium">
-                        Saldo a favor: ${Number(c.saldo_favor).toFixed(2)}
+                        Saldo a favor: {formatCLP(Number(c.saldo_favor))}
                       </div>
                     )}
                   </td>

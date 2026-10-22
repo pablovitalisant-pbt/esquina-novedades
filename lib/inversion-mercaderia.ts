@@ -34,16 +34,7 @@ export type DetalleInversion = ProductoInversion & {
   ganancia: number;
 };
 
-const round2 = (n: number): number => Math.round(n * 100) / 100;
-
-/**
- * Formatea un monto en USD (moneda única y fija de Bazar Naty — no hay columna
- * moneda en productos; decisión cerrada por Pablo). Sufijo/prefix USD, 2
- * decimales, separador de miles en-US.
- */
-export function formatUsd(n: number): string {
-  return `USD ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+const round2 = Math.round; // CLP entero (formato: formatCLP en lib/utils)
 
 /** Filtra el detalle por saldo > 0. Default ON: solo productos con stock. */
 export function filtrarConStock(detalle: DetalleInversion[], soloStock: boolean): DetalleInversion[] {

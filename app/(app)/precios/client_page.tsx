@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Search, Eye, EyeOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatCLP } from '@/lib/utils';
 
 // ponytail: single-tenant — Bazar Naty (empresa única, migración 018)
 interface PreciosClientProps {
@@ -29,7 +30,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
   const [soloNuevo, setSoloNuevo] = useState(false);
 
   const [ocultarPrecios, setOcultarPrecios] = useState(false);
-  const [dolarDia, setDolarDia] = useState(0);
 
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -69,19 +69,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
   useEffect(() => { localStorage.setItem('precios_soloStock', soloStock.toString()); }, [soloStock]);
   useEffect(() => { localStorage.setItem('precios_soloNuevo', soloNuevo.toString()); }, [soloNuevo]);
   useEffect(() => { localStorage.setItem('ocultar_precios', ocultarPrecios.toString()); }, [ocultarPrecios]);
-
-  // Dólar del día para el equivalente en AR$ — lo usan card y drawer.
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/caja/config');
-        const configData = await res.json();
-        setDolarDia(parseFloat(configData?.data?.valor || '0'));
-      } catch {
-        // sin dólar configurado / sin conexión → no se muestra la línea AR$
-      }
-    })();
-  }, []);
 
   // Fetch logic
   useEffect(() => {
@@ -249,7 +236,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
                   <div>
                     <label className="text-sm font-medium">Precio de venta</label>
                     <div className="h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] flex items-center text-sm text-[var(--body)]">
-                      {precioCalculado !== null ? `$${precioCalculado.toFixed(2)}` : 'Ingresa costo y % de ganancia'}
+                      {precioCalculado !== null ? formatCLP(precioCalculado) : 'Ingresa costo y % de ganancia'}
                     </div>
                   </div>
                   <div>
@@ -354,7 +341,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
               empresaNombre={(p as any).nombre_empresa}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
-              dolarDia={dolarDia}
               mostrarPrecioVenta={PRECIO_VENTA}
               rol={(session as any)?.user?.rol ?? session?.rol}
             />
@@ -370,7 +356,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
         empresaNombre={(selectedProduct as any)?.nombre_empresa || ''}
         onUpdated={handleProductUpdate}
         ocultarPrecios={ocultarPrecios}
-        dolarDia={dolarDia}
         mostrarPrecioEnShare={COMPARTIR_PRECIO}
       />
     </div>

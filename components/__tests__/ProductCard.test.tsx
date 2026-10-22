@@ -71,10 +71,10 @@ describe('ProductCard - Cantidad por Caja', () => {
   });
 });
 
-describe('ProductCard - Precio de venta (ARS)', () => {
+describe('ProductCard - Precio de venta (CLP)', () => {
   const setup = (
     overrides: Partial<Producto> = {},
-    props: { ocultarPrecios?: boolean; dolarDia?: number } = {}
+    props: { ocultarPrecios?: boolean } = {}
   ) => {
     const producto = { ...mockProduct, ...overrides };
     render(
@@ -85,32 +85,31 @@ describe('ProductCard - Precio de venta (ARS)', () => {
         onClick={() => {}}
         mostrarPrecioVenta
         ocultarPrecios={props.ocultarPrecios}
-        dolarDia={props.dolarDia}
       />
     );
   };
 
   test('prcventa=0 → "—", sin línea ARS', () => {
-    setup({ prcventa: 0 }, { dolarDia: 980 });
+    setup({ prcventa: 0 });
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByText(/AR\$/)).not.toBeInTheDocument();
   });
 
-  test('dolarDia=0 → muestra formatUSD(prcventa), sin línea ARS', () => {
-    setup({ prcventa: 20 }, { dolarDia: 0 });
-    expect(screen.getByText('$20.00')).toBeInTheDocument();
+  test('muestra formatCLP(prcventa), sin línea ARS', () => {
+    setup({ prcventa: 20 });
+    expect(screen.getByText('$20')).toBeInTheDocument();
     expect(screen.queryByText(/AR\$/)).not.toBeInTheDocument();
   });
 
   test('ocultarPrecios=true → "••••", sin línea ARS aunque haya precio y dólar válidos', () => {
-    setup({ prcventa: 20 }, { ocultarPrecios: true, dolarDia: 980 });
+    setup({ prcventa: 20 }, { ocultarPrecios: true });
     expect(screen.getByText('••••')).toBeInTheDocument();
     expect(screen.queryByText(/AR\$/)).not.toBeInTheDocument();
   });
 
-  test('caso feliz: prcventa=20, dolarDia=980 → "$20.00" + "≈ AR$ 19,600.00"', () => {
-    setup({ prcventa: 20 }, { dolarDia: 980 });
-    expect(screen.getByText('$20.00')).toBeInTheDocument();
-    expect(screen.getByText('≈ AR$ 19,600.00')).toBeInTheDocument();
+  test('caso feliz: prcventa=12345 → "$12.345", sin ARS', () => {
+    setup({ prcventa: 12345 });
+    expect(screen.getByText('$12.345')).toBeInTheDocument();
+    expect(screen.queryByText(/AR\$|≈/)).not.toBeInTheDocument();
   });
 });

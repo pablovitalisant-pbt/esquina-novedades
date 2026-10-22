@@ -222,14 +222,13 @@ describe('Test 6: /productos page', () => {
   test('renderiza lista completa sin límite (todos con saldo > 0)', async () => {
     mockSql
       .mockResolvedValueOnce([{ slug: 'bazar-naty' }])       // empresa_slug
-      .mockResolvedValueOnce(PRODUCTOS_MOCK)                 // productos
-      .mockResolvedValueOnce([{ valor: '0' }]);              // dolar_dia
+      .mockResolvedValueOnce(PRODUCTOS_MOCK);                // productos
 
     const ProductosPage = (await import('@/app/productos/page')).default;
     await ProductosPage();
 
-    // Debe haber llamado sql tres veces (empresa_slug + productos + dolar_dia)
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    // Debe haber llamado sql dos veces (empresa_slug + productos), sin caja_config
+    expect(mockSql).toHaveBeenCalledTimes(2);
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ImageWithFallback } from './ImageWithFallback';
-import { formatUSD, formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
 import { useShareImage } from '@/hooks/useShareImage';
@@ -24,11 +24,10 @@ interface ProductDrawerProps {
   onOpenChange: (open: boolean) => void;
   onUpdated: (updatedProduct: Producto) => void;
   ocultarPrecios?: boolean;
-  dolarDia?: number;
   mostrarPrecioEnShare?: boolean;
 }
 
-export function ProductDrawer({ producto, empresaNombre, session, open, onOpenChange, onUpdated, ocultarPrecios, dolarDia = 0, mostrarPrecioEnShare = false }: ProductDrawerProps) {
+export function ProductDrawer({ producto, empresaNombre, session, open, onOpenChange, onUpdated, ocultarPrecios, mostrarPrecioEnShare = false }: ProductDrawerProps) {
   void empresaNombre;
   const { shareImage } = useShareImage();
   const [isEditing, setIsEditing] = useState(false);
@@ -305,17 +304,10 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
 
   if (!producto) return null;
 
-  // Texto a compartir junto a la imagen: solo líneas de precio (USD + equivalente
-  // AR$). Sin precio/oculto/flag off → undefined.
+  // Texto a compartir junto a la imagen: solo el precio CLP. Sin precio/oculto → undefined.
   const armarTextoCompartir = () => {
-    if (ocultarPrecios) return undefined;
-    if (producto.prcventa <= 0) return undefined;
-
-    const ars = formatArsEquivalente(producto.prcventa, dolarDia);
-    const lineas = [`USD ${formatUSD(producto.prcventa)}`];
-    if (ars) lineas.push(ars);
-
-    return lineas.join('\n');
+    if (ocultarPrecios || producto.prcventa <= 0) return undefined;
+    return formatCLP(producto.prcventa);
   };
 
   return (
@@ -470,7 +462,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
           {!ocultarPrecios && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold uppercase tracking-wider text-xs text-[var(--body)]">Precios (USD)</h3>
+              <h3 className="font-semibold uppercase tracking-wider text-xs text-[var(--body)]">Precios (CLP)</h3>
               {canEditPrices && !isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -499,7 +491,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                     <div>
                       <Label className="text-xs">Precio de venta</Label>
                       <div className="h-9 px-3 rounded-md border border-[var(--border)] bg-background flex items-center text-sm">
-                        {precioCalculado !== null ? `$${precioCalculado.toFixed(2)}` : 'Ingresa costo y % de ganancia'}
+                        {precioCalculado !== null ? formatCLP(precioCalculado) : 'Ingresa costo y % de ganancia'}
                       </div>
                     </div>
                   </>
@@ -522,7 +514,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                 <TableBody>
                   <TableRow>
                     <TableCell className="font-medium">Costo</TableCell>
-                    <TableCell className="text-right">{producto.costo ? formatUSD(producto.costo) : '—'}</TableCell>
+                    <TableCell className="text-right">{producto.costo ? formatCLP(producto.costo) : '—'}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">Margen</TableCell>
@@ -530,7 +522,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">Precio venta</TableCell>
-                    <TableCell className="text-right font-bold">{formatUSD(producto.prcventa)}</TableCell>
+                    <TableCell className="text-right font-bold">{formatCLP(producto.prcventa)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

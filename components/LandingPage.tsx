@@ -1,7 +1,7 @@
 'use client';
 
 import { ImageWithFallback } from '@/components/ImageWithFallback';
-import { formatUSD } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 import { ShoppingBag, MessageCircle } from 'lucide-react';
 
 interface LandingProducto {
@@ -86,7 +86,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
               Nuestros Productos
             </h2>
             <p className="text-lg leading-relaxed text-[var(--body)] max-w-[65ch] mx-auto mt-4">
-              Productos disponibles con stock inmediato para tu negocio. Precios en USD.
+              Productos disponibles con stock inmediato para tu negocio. Precios en CLP.
             </p>
           </div>
           {!productos?.length ? (
@@ -131,7 +131,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
                         Precio
                       </span>
                       <div className="text-2xl font-black text-[var(--landing-primary)] leading-none">
-                        {formatUSD(p.precio)}
+                        {formatCLP(p.precio)}
                       </div>
                     </div>
                   </div>

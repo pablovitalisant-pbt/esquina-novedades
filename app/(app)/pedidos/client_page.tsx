@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatUSD } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 
 interface PedidoItem {
   codigo: string;
@@ -191,7 +191,7 @@ export function PedidosPage({ session }: { session: any }) {
                     const sinPrecio = p.items.some((it) => it.precio_referencia == null || it.cantcaja == null);
                     return (
                       <div className="flex justify-between items-center pt-2 border-t border-border">
-                        <span className="text-sm font-semibold">Total: {formatUSD(total)}</span>
+                        <span className="text-sm font-semibold">Total: {formatCLP(total)}</span>
                         {sinPrecio && (
                           <span className="text-xs text-[var(--body-subtle)]">
                             algunos productos sin precio no incluidos

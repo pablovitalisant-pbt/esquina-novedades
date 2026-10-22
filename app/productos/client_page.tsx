@@ -4,7 +4,7 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { CarritoProvider } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { CarritoDrawer } from '@/components/CarritoDrawer';
-import { formatUSD, formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
 import Link from 'next/link';
@@ -23,9 +23,9 @@ interface ProductoItem {
 }
 
 // ponytail: flag carrito-pedidos-ui — con false (default) la página se renderiza
-// igual que antes de 2a/2b (sin botón, sin ARS, sin drawer). Mismo patrón que
+// igual que antes de 2a/2b (sin botón, sin drawer). Mismo patrón que
 // PreciosClient (provider montado solo si el flag está activo).
-export function ProductosPublicos({ productos, empresaSlug, dolarDia }: { productos: ProductoItem[]; empresaSlug: string; dolarDia: number }) {
+export function ProductosPublicos({ productos, empresaSlug }: { productos: ProductoItem[]; empresaSlug: string }) {
   const CARRITO = (flags as any)['carrito-pedidos-ui'] === true;
 
   const grid = (
@@ -84,10 +84,7 @@ export function ProductosPublicos({ productos, empresaSlug, dolarDia }: { produc
                     )}
                     <div className="mt-2 pt-3 border-t border-[var(--border-default)]">
                       <span className="text-[10px] uppercase font-bold text-[var(--body-subtle)] tracking-wider">Precio</span>
-                      <div className="text-2xl font-black text-[var(--primary)] leading-none">{formatUSD(p.precio)}</div>
-                      {CARRITO && formatArsEquivalente(p.precio, dolarDia) && (
-                        <div className="text-xs text-[var(--body)]">{formatArsEquivalente(p.precio, dolarDia)}</div>
-                      )}
+                      <div className="text-2xl font-black text-[var(--primary)] leading-none">{formatCLP(p.precio)}</div>
                     </div>
                     {CARRITO && (
                       <div className="mt-3">
@@ -111,7 +108,7 @@ export function ProductosPublicos({ productos, empresaSlug, dolarDia }: { produc
   if (!CARRITO) return grid;
 
   return (
-    <CarritoProvider origen="productos" dolarDia={dolarDia}>
+    <CarritoProvider origen="productos">
       {grid}
       <CarritoDrawer />
     </CarritoProvider>

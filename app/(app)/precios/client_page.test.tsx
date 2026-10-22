@@ -24,11 +24,11 @@ async function typeSearch(term: string) {
 }
 
 describe('app/(app)/precios — carga por API', () => {
-  it('busca en /api/productos y lee el dólar de /api/caja/config', async () => {
+  it('busca en /api/productos y ya no consulta /api/caja/config', async () => {
     await typeSearch('GL8');
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(call => String(call[0]).includes('/api/productos?search=GL8'))).toBe(true);
     }, { timeout: 2000 });
-    expect(fetchMock.mock.calls.some(call => call[0] === '/api/caja/config')).toBe(true);
+    expect(fetchMock.mock.calls.some(call => call[0] === '/api/caja/config')).toBe(false);
   });
 });

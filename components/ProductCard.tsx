@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ImageWithFallback } from './ImageWithFallback';
 import { ClipboardList } from 'lucide-react';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
-import { formatUSD, formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 
 interface ProductCardProps {
   producto: Producto;
@@ -15,11 +15,10 @@ interface ProductCardProps {
   onClick: (producto: Producto) => void;
   ocultarPrecios?: boolean;
   rol?: string;
-  dolarDia?: number;
   mostrarPrecioVenta?: boolean;
 }
 
-export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocultarPrecios, rol, dolarDia = 0, mostrarPrecioVenta = false }: ProductCardProps) {
+export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocultarPrecios, rol, mostrarPrecioVenta = false }: ProductCardProps) {
   void empresaNombre;
   const [showPrenota, setShowPrenota] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -73,13 +72,8 @@ export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocu
               {mostrarPrecioVenta ? 'Precio de venta' : 'Precio máx. venta'}
             </div>
             <div className="text-xl font-semibold text-[var(--heading)] leading-none">
-              {ocultarPrecios ? '••••' : mostrarPrecioVenta && producto.prcventa > 0 ? formatUSD(producto.prcventa) : '—'}
+              {ocultarPrecios ? '••••' : mostrarPrecioVenta && producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
             </div>
-            {mostrarPrecioVenta && !ocultarPrecios && producto.prcventa > 0 && formatArsEquivalente(producto.prcventa, dolarDia) && (
-              <div className="text-[11px] text-[var(--body-subtle)] mt-1 leading-none">
-                {formatArsEquivalente(producto.prcventa, dolarDia)}
-              </div>
-            )}
           </div>
 
           <div className="w-px bg-border flex-shrink-0 mx-3" />

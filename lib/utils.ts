@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function formatCLP(value: number): string {
+  const n = Number(value);
+  if (value == null || !Number.isFinite(n)) return '—';
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+// ponytail: formatUSD/formatArsEquivalente siguen hasta 2e (aún tienen usuarios).
 export function formatUSD(value: number, decimals: number = 2): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

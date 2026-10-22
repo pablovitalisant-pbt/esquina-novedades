@@ -5,16 +5,16 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { CarritoProvider } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { CarritoDrawer } from '@/components/CarritoDrawer';
-import { formatUSD, formatArsEquivalente } from '@/lib/utils';
+import { formatCLP } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingBag } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
 import flags from '@/config/feature-flags.json';
 
 // ponytail: flag carrito-pedidos-ui — con false (default) la página se renderiza
-// igual que antes de 2a/2b (sin botón, sin ARS, sin drawer). Mismo patrón que
+// igual que antes de 2a/2b (sin botón, sin drawer). Mismo patrón que
 // PreciosClient (provider montado solo si el flag está activo).
-export function PublicCatalogoClient({ data, slug, dolarDia }: { data: any; slug: string; dolarDia: number }) {
+export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }) {
   const CARRITO = (flags as any)['carrito-pedidos-ui'] === true;
 
   useEffect(() => {
@@ -74,11 +74,8 @@ export function PublicCatalogoClient({ data, slug, dolarDia }: { data: any; slug
                     <div className="mt-2">
                       <div className="text-[10px] uppercase font-bold text-[var(--body)] tracking-wider">Precio</div>
                       <div className="text-2xl font-black text-[var(--primary)] dark:text-[var(--primary)] leading-none">
-                        {formatUSD(p.precio_catalogo)}
+                        {formatCLP(p.precio_catalogo)}
                       </div>
-                      {CARRITO && formatArsEquivalente(p.precio_catalogo, dolarDia) && (
-                        <div className="text-xs text-[var(--body)]">{formatArsEquivalente(p.precio_catalogo, dolarDia)}</div>
-                      )}
                     </div>
                   )}
                   {CARRITO && (
@@ -102,7 +99,7 @@ export function PublicCatalogoClient({ data, slug, dolarDia }: { data: any; slug
   if (!CARRITO) return grid;
 
   return (
-    <CarritoProvider origen="catalogo" origen_slug={slug} dolarDia={dolarDia}>
+    <CarritoProvider origen="catalogo" origen_slug={slug}>
       {grid}
       <CarritoDrawer />
     </CarritoProvider>

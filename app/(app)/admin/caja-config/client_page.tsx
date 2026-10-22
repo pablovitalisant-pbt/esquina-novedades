@@ -20,48 +20,29 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Pencil, Plus, Save, Loader2, Trash2 } from "lucide-react";
+import { Pencil, Plus, Loader2, Trash2 } from "lucide-react";
 import { formatMonto } from "@/docs/specs/caja-mayor.spec";
 
 import type { Cuenta } from '@/types';
-
-interface ConfigData {
-  dolar_dia: number;
-  updated_at: string | null;
-  updated_por: string;
-}
 
 interface SaldoInicial {
   id: number;
   cuenta_id: number;
   cuenta_nombre: string;
-  cuenta_moneda: "USD" | "ARS";
   fecha: string;
   saldo: number;
   observaciones: string | null;
 }
 
 export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: string }) {
-  // ─── Dólar del día ──────────────────────────────────────
-  const [dolarDia, setDolarDia] = useState("");
-  const [dolarSaving, setDolarSaving] = useState(false);
-  const [dolarInfo, setDolarInfo] = useState<ConfigData>({ dolar_dia: 0, updated_at: null, updated_por: "" });
-
-  // ─── Carga inicial (3 fetch) ───
+  // ─── Carga inicial (2 fetch) ───
   useEffect(() => {
     (async () => {
       try {
-        const [cfgRes, cuentasRes, saldosRes] = await Promise.all([
-          fetch("/api/caja/config"),
+        const [cuentasRes, saldosRes] = await Promise.all([
           fetch("/api/caja/cuentas"),
           fetch("/api/caja/saldos-iniciales"),
         ]);
-        if (cfgRes.ok) {
-          const json = await cfgRes.json();
-          const v = parseFloat(json.data?.valor);
-          if (v > 0) setDolarDia(String(v));
-          setDolarInfo({ dolar_dia: v, updated_at: json.data?.updated_at ?? null, updated_por: json.data?.updated_por ?? "" });
-        }
         if (cuentasRes.ok) {
           const json = await cuentasRes.json();
           setCuentas(json.data || []);
@@ -74,39 +55,11 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
     })();
   }, []);
 
-  const handleSaveDolar = async () => {
-    const num = parseFloat(dolarDia);
-    if (isNaN(num) || num < 0) {
-      toast.error("Ingresa un valor válido para el dólar");
-      return;
-    }
-    setDolarSaving(true);
-    const res = await fetch("/api/caja/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dolar_dia: num }),
-    });
-    if (res.ok) {
-      const json = await res.json();
-      setDolarInfo({
-        dolar_dia: parseFloat(json.data.valor),
-        updated_at: json.data.updated_at,
-        updated_por: json.data.updated_por,
-      });
-      toast.success(`Dólar actualizado a $${num}`);
-    } else {
-      const err = await res.json();
-      toast.error(err.error?.fieldErrors?.dolar_dia?.[0] || err.error || "Error al guardar");
-    }
-    setDolarSaving(false);
-  };
-
   // ─── Cuentas ────────────────────────────────────────────
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCuenta, setEditingCuenta] = useState<Cuenta | null>(null);
   const [formNombre, setFormNombre] = useState("");
-  const [formMoneda, setFormMoneda] = useState<"USD" | "ARS">("USD");
   const [formOrden, setFormOrden] = useState("0");
   const [formSaving, setFormSaving] = useState(false);
 
@@ -196,7 +149,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
   const openCreate = () => {
     setEditingCuenta(null);
     setFormNombre("");
-    setFormMoneda("USD");
     setFormOrden(String(cuentas.length + 1));
     setModalOpen(true);
   };
@@ -204,7 +156,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
   const openEdit = (c: Cuenta) => {
     setEditingCuenta(c);
     setFormNombre(c.nombre);
-    setFormMoneda(c.moneda);
     setFormOrden(String(c.orden));
     setModalOpen(true);
   };
@@ -224,7 +175,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
 
     const body = {
       nombre: formNombre.trim(),
-      moneda: formMoneda,
       orden: parseInt(formOrden, 10) || 0,
     };
 
@@ -294,62 +244,13 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
     }
   };
 
-  const monedaBadge = (m: string) =>
-    m === "USD" ? (
-      <Badge variant="default" className="text-xs">
-        USD
-      </Badge>
-    ) : (
-      <Badge variant="secondary" className="text-xs">
-        ARS
-      </Badge>
-    );
-
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Caja Mayor — Configuración</h1>
         <p className="text-sm text-[var(--body)] mt-1">
-          Dólar del día y cajas. Solo visible para administradores.
+          Cuentas y saldos iniciales. Solo visible para administradores.
         </p>
-      </div>
-
-      {/* ─── Dólar del día ──────────────────────────────── */}
-      <div className="border rounded-card p-5 space-y-3">
-        <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--body)]">
-          Dólar del día
-        </h2>
-        <div className="flex gap-2 items-end">
-          <div className="flex-1 space-y-1">
-            <label className="text-xs text-[var(--body)]">Valor USD a ARS</label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={dolarDia}
-                onChange={(e) => setDolarDia(e.target.value)}
-                placeholder="Ej: 980.50"
-                className="flex-1"
-              />
-            </div>
-          </div>
-          <Button onClick={handleSaveDolar} disabled={dolarSaving}>
-            {dolarSaving ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            Guardar
-          </Button>
-        </div>
-        {dolarInfo.updated_at && (
-          <p className="text-xs text-[var(--body-subtle)]">
-            Última actualización:{" "}
-            {new Date(dolarInfo.updated_at).toLocaleString("es-BO")} por{" "}
-            {dolarInfo.updated_por}
-          </p>
-        )}
       </div>
 
       {/* ─── Cuentas bancarias ───────────────────────────── */}
@@ -372,7 +273,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Moneda</TableHead>
                 <TableHead>Orden</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-[80px]">Acciones</TableHead>
@@ -385,7 +285,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
                   className={c.activa ? "" : "opacity-50"}
                 >
                   <TableCell className="font-medium">{c.nombre}</TableCell>
-                  <TableCell>{monedaBadge(c.moneda)}</TableCell>
                   <TableCell className="text-[var(--body)]">{c.orden}</TableCell>
                   <TableCell>
                     <button
@@ -442,7 +341,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
             <TableHeader>
               <TableRow>
                 <TableHead>Cuenta</TableHead>
-                <TableHead>Moneda</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
                 <TableHead>Obs.</TableHead>
@@ -453,12 +351,8 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
               {saldos.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.cuenta_nombre}</TableCell>
-                  <TableCell>{monedaBadge(s.cuenta_moneda)}</TableCell>
                   <TableCell>{s.fecha}</TableCell>
-                  <TableCell className="text-right">
-                    {s.cuenta_moneda === "ARS" ? "$" : ""}
-                    {formatMonto(s.saldo, s.cuenta_moneda)}
-                  </TableCell>
+                  <TableCell className="text-right">${formatMonto(s.saldo)}</TableCell>
                   <TableCell className="text-[var(--body)] max-w-[120px] truncate">
                     {s.observaciones || "—"}
                   </TableCell>
@@ -501,7 +395,7 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
                   const yaTieneSaldo = saldos.find((s) => s.cuenta_id === c.id && s.id !== editingSaldo?.id);
                   return (
                     <option key={c.id} value={c.id} disabled={!!yaTieneSaldo}>
-                      {c.nombre} ({c.moneda}){yaTieneSaldo ? " — ya tiene saldo" : ""}
+                      {c.nombre}{yaTieneSaldo ? " — ya tiene saldo" : ""}
                     </option>
                   );
                 })}
@@ -564,17 +458,6 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
                 placeholder="Ej: Caja chica"
                 autoFocus
               />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Moneda</label>
-              <select
-                value={formMoneda}
-                onChange={(e) => setFormMoneda(e.target.value as "USD" | "ARS")}
-                className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
-              >
-                <option value="USD">USD — Dólares</option>
-                <option value="ARS">ARS — Pesos argentinos</option>
-              </select>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Orden</label>

@@ -7,7 +7,6 @@ export type RouteContext<T extends Record<string, string> = { id: string }> = {
 export interface Cuenta {
   id: number;
   nombre: string;
-  moneda: "USD" | "ARS"; // legado: el backend ya no lo manda; se quita en 2d/2e
   activa: boolean;
   orden: number;
   created_at?: string;

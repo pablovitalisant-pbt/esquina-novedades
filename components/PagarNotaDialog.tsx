@@ -25,10 +25,8 @@ interface Props {
 export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, onSuccess }: Props) {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentasLoading, setCuentasLoading] = useState(false);
-  const [dolarDia, setDolarDia] = useState(0);
   const [pagoForm, setPagoForm] = useState({
     cuenta_id: 0,
-    moneda: 'USD' as 'USD' | 'ARS',
     monto: 0,
     forma_pago: 'efectivo' as 'efectivo' | 'cheque' | 'transferencia',
     observaciones: '',
@@ -40,25 +38,14 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
     (async () => {
       setCuentasLoading(true);
       try {
-        const [cuentasRes, configRes] = await Promise.all([
-          fetch('/api/caja/cuentas?activas=true'),
-          fetch('/api/caja/config'),
-        ]);
+        const cuentasRes = await fetch('/api/caja/cuentas?activas=true');
         const cuentasData = await cuentasRes.json();
-        const configData = await configRes.json();
         const lista = cuentasData.data || [];
-        const dolar = parseFloat(configData.data?.valor || '0');
         setCuentas(lista);
-        setDolarDia(dolar);
         if (lista.length > 0) {
-          const primera = lista[0];
-          const defaultMonto = primera.moneda === 'USD'
-            ? saldoPendiente
-            : Math.floor(saldoPendiente * dolar);
           setPagoForm({
-            cuenta_id: primera.id,
-            moneda: primera.moneda,
-            monto: defaultMonto,
+            cuenta_id: lista[0].id,
+            monto: Math.round(saldoPendiente),
             forma_pago: 'efectivo',
             observaciones: '',
           });
@@ -72,12 +59,8 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
   }, [open, notaId, saldoPendiente]);
 
   const cambiarCuenta = (cuentaId: number) => {
-    const cuenta = cuentas.find(c => c.id === cuentaId);
-    if (!cuenta) return;
-    const defaultMonto = cuenta.moneda === 'USD'
-      ? saldoPendiente
-      : Math.floor(saldoPendiente * dolarDia);
-    setPagoForm(prev => ({ ...prev, cuenta_id: cuenta.id, moneda: cuenta.moneda, monto: defaultMonto }));
+    if (!cuentas.some(c => c.id === cuentaId)) return;
+    setPagoForm(prev => ({ ...prev, cuenta_id: cuentaId }));
   };
 
   const confirmarPago = async () => {
@@ -127,19 +110,17 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
               ) : (
                 cuentas.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.nombre} ({c.moneda})
+                    {c.nombre}
                   </option>
                 ))
               )}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-[var(--body)]">
-              Monto ({pagoForm.moneda})
-            </label>
+            <label className="text-sm font-medium text-[var(--body)]">Monto (CLP)</label>
             <Input
               type="number"
-              step={pagoForm.moneda === 'ARS' ? 1 : 0.01}
+              step={1}
               min={0}
               value={pagoForm.monto}
               onChange={e => setPagoForm(prev => ({ ...prev, monto: Number(e.target.value) }))}

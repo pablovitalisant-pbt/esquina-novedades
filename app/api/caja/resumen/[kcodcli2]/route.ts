@@ -73,7 +73,7 @@ export async function GET(
           movimiento_id: r.pago_mov_id, // UUID (string) desde 11a
           fecha: r.pago_fecha,
           monto_original: parseFloat(r.pago_monto_original),
-          monto_usd: Number(r.pago_monto_aplicado), // transitorio hasta 2d (UI aún lo lee)
+          monto: Number(r.pago_monto_aplicado),
           forma_pago: r.pago_forma_pago,
         });
         nota.total_pagado += Number(r.pago_monto_aplicado);

@@ -17,7 +17,7 @@ jest.mock('@/components/ui/dialog', () => {
   const R = require('react');
   return { Dialog: ({ children }: any) => R.createElement('div', null, children), DialogContent: ({ children }: any) => R.createElement('div', null, children), DialogHeader: ({ children }: any) => R.createElement('div', null, children), DialogTitle: ({ children }: any) => R.createElement('div', null, children), DialogFooter: ({ children }: any) => R.createElement('div', null, children) };
 });
-jest.mock('@/docs/specs/caja-mayor.spec', () => ({ formatMonto: (v: number, m: string) => `${v}${m}` }));
+jest.mock('@/docs/specs/caja-mayor.spec', () => ({ formatMonto: (v: number) => `${v}` }));
 
 const fetchMock = jest.fn();
 global.fetch = fetchMock as any;
@@ -36,11 +36,14 @@ beforeEach(() => {
 });
 
 describe('app/(app)/admin/caja-config — carga por API y guard sin conexión', () => {
-  it('carga con 3 fetch y muestra la cuenta activa', async () => {
+  it('carga con 2 fetch (sin /api/caja/config) y muestra la cuenta activa sin moneda ni dólar', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
-    await screen.findByText('Caja chica');
+    await screen.findAllByText('Caja chica');
     expect(screen.getByText('Activa')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some((c: any[]) => c[0] === '/api/caja/config')).toBe(false);
+    expect(screen.queryByText(/USD|ARS|Moneda/)).toBeNull();
+    expect(screen.queryByText('Valor USD a ARS')).toBeNull();
   });
 
   it('sin conexión: crear cuenta nueva muestra mensaje claro y NO hace POST', async () => {

@@ -1,19 +1,5 @@
 import { z } from "zod";
 
-// ─── Configuración ───────────────────────────────────────────────
-
-export const CajaConfigSchema = z.object({
-  dolar_dia: z.number().min(0, "El valor del dólar no puede ser negativo"),
-});
-
-export type CajaConfig = z.infer<typeof CajaConfigSchema>;
-
-export interface CajaConfigResponse {
-  dolar_dia: number;
-  updated_at: string;
-  updated_por: string;
-}
-
 // ─── Cuentas bancarias ───────────────────────────────────────────
 
 export const CajaCuentaCreateSchema = z.object({
@@ -37,7 +23,6 @@ export type CajaCuentaUpdate = z.infer<typeof CajaCuentaUpdateSchema>;
 export interface CajaCuenta {
   id: number;
   nombre: string;
-  moneda: "USD" | "ARS"; // legado: el backend ya no lo manda; se quita en 2d/2e
   activa: boolean;
   orden: number;
   created_at: string;
@@ -84,16 +69,8 @@ export const CajaMovimientoUpdateSchema = z.object({
 
 export type CajaMovimientoUpdate = z.infer<typeof CajaMovimientoUpdateSchema>;
 
-// Transitorio: lo usa caja-mayor/client_page (2d); se borra en 2e.
-export function roundUpToHalf(value: number): number {
-  return Math.ceil(value * 2) / 2;
-}
-
-/**
- * Formatea un monto CLP entero (es-CL): 1200000 → "1.200.000".
- * El 2º arg es transitorio (llamadores aún lo pasan; se borra en 2e).
- */
-export function formatMonto(n: number, _moneda?: string): string {
+/** Formatea un monto CLP entero (es-CL): 1200000 → "1.200.000". */
+export function formatMonto(n: number): string {
   return n.toLocaleString("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
@@ -111,10 +88,7 @@ export interface CajaMovimiento {
   nombre_cliente: string | null;
   cuenta_id: number;
   cuenta_nombre?: string;
-  moneda: "USD" | "ARS"; // legado: el backend ya no lo manda; se quita en 2d/2e
   monto: number;
-  monto_usd: number | null; // legado (2d/2e)
-  tipo_cambio: number | null;
   forma_pago: "efectivo" | "cheque" | "transferencia";
   observaciones: string | null;
   empresa?: string | null;
@@ -190,9 +164,7 @@ export interface PagoDetalle {
   movimiento_id: string; // UUID desde 11a
   fecha: string;
   monto_original: number;
-  moneda_original?: "USD" | "ARS"; // legado (2d/2e)
-  tipo_cambio?: number | null;
-  monto_usd: number; // transitorio: = monto aplicado en CLP hasta 2d
+  monto: number; // monto aplicado a la nota (CLP)
   forma_pago: string;
 }
 
@@ -234,7 +206,6 @@ export interface MovimientosPaginados {
 export interface SaldoCuenta {
   cuenta_id: number;
   cuenta_nombre: string;
-  moneda?: "USD" | "ARS"; // legado (2d/2e)
   total_cobros: number;
   total_gastos: number;
   total_reembolsos: number;
@@ -254,7 +225,6 @@ export interface CajaSaldoInicial {
   id: number;
   cuenta_id: number;
   cuenta_nombre: string;
-  cuenta_moneda?: "USD" | "ARS"; // legado (2d/2e)
   fecha: string;
   saldo: number;
   observaciones: string | null;
@@ -266,7 +236,6 @@ export interface CajaSaldoInicial {
 export interface CuentaCierreResumen {
   cuenta_id: number;
   cuenta_nombre: string;
-  moneda?: "USD" | "ARS"; // legado (2d/2e)
   saldo_anterior: number;
   total_cobros: number;
   total_gastos: number;

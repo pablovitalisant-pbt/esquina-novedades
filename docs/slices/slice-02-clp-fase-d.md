@@ -33,3 +33,10 @@
 **Tests:** `app/(app)/caja-mayor/client_page.test.tsx` reescrito (4: sin fetch a `/api/caja/config`; CLP sin USD/ARS/Dólar/Moneda; POST sin `moneda` y monto entero; Excel con columna Monto y sin ARS/USD). `__tests__/caja-mayor-bug054-ui.test.tsx`: se quita prop `dolarDia`.
 **Resultado:** Fase B roja 4/4 (config 1≠0, sin `$12.345`). Fase D: 9 suites (corte + co-ubicados + menciones: bug054, fetchmovimientos, slice-03, slice19, slice13, permisos, bug010, slice35e) 128/128 verdes. `tsc --noEmit` fuera de tests: 3 (igual). Sin flag.
 **Pendiente / legado:** `page.tsx` aún selecciona `moneda` de `caja_cuentas` (el tipo `Cuenta` la exige; se quita en 2e con `types/index.ts`). `client_page` lee `PagoDetalle.monto_usd` (= monto aplicado, transitorio de 2c) para el detalle de pagos. Tolerancias `0.005` se dejan (inocuas con enteros).
+
+## Sub-slice 2e — cierre (caja-config, PagarNotaDialog, limpieza de legado)
+
+**Archivos (prod):** `app/(app)/admin/caja-config/client_page.tsx` (sin bloque dólar, sin moneda en cuentas/saldos, 2 fetch), `components/PagarNotaDialog.tsx` (sin `/api/caja/config`, sin moneda, monto entero), `app/(app)/caja-mayor/{client_page,page}.tsx` (`PagoDetalle.monto`; page sin `moneda`), `app/api/caja/resumen/[kcodcli2]/route.ts` (devuelve `monto`, no `monto_usd`), `docs/specs/caja-mayor.spec.ts` (sin `CajaConfig*`, `roundUpToHalf`, 2º arg de `formatMonto`, campos `moneda`/`monto_usd`/`tipo_cambio`), `types/index.ts` (`Cuenta` sin `moneda`), `lib/utils.ts` (sin `formatUSD`/`formatArsEquivalente`).
+**Borrados (`git rm`):** `app/api/caja/config/route.ts`, `__tests__/format-ars-equivalente.test.ts` (`slice4-clp-ars-smoke` no existía).
+**Tests:** nuevo `__tests__/slice2-clp-guard.test.ts` (contrato §4 test 1 + config borrada); reescritos `__tests__/caja-config-client_page.test.tsx`, `__tests__/slice4-formatMonto.test.ts`, `app/(app)/admin/caja-config/client_page.test.tsx`.
+**Resultado:** Fase B roja (guard con ~60 hallazgos). Fase D verde en corte + co-ubicados + menciones. Fallos heredados en archivos no tocados (`useParams` sin mock en `notas-venta/[id]`, `api/prenotas`, `api/catalogos-crud`). Sin flag.

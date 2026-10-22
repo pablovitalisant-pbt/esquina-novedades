@@ -18,7 +18,7 @@ export default async function CajaMayorPage() {
 
   // Fetch active accounts for the dropdown
   const cuentas = await sql`
-    SELECT id, nombre, moneda, activa, orden, created_at::text
+    SELECT id, nombre, activa, orden, created_at::text
     FROM caja_cuentas
     WHERE activa = true
     ORDER BY orden ASC, id ASC

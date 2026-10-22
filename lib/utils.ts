@@ -15,16 +15,6 @@ export function formatCLP(value: number): string {
   }).format(n);
 }
 
-// ponytail: formatUSD/formatArsEquivalente siguen hasta 2e (aún tienen usuarios).
-export function formatUSD(value: number, decimals: number = 2): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-}
-
 // Saldo pendiente formateado para la lista de Notas de Venta. Retorna el
 // string SOLO si hay pago parcial (total_pagado > 0 y saldo_pendiente > 0).
 // Sin pago → null (redundante con el Total); pagada completa → null. El guard
@@ -36,14 +26,5 @@ export function formatSaldoPendiente(total_pagado?: number, saldo_pendiente?: nu
     return formatCLP(pendiente);
   }
   return null;
-}
-
-// Equivalente en ARS de un monto en USD usando el dolar_dia de caja_config.
-// Retorna null si dolarDia <= 0 o si algún valor es inválido (evita mostrar
-// "≈ AR$ 0" cuando el tipo de cambio no está configurado).
-export function formatArsEquivalente(usd: number, dolarDia: number): string | null {
-  if (!Number.isFinite(usd) || !Number.isFinite(dolarDia) || dolarDia <= 0) return null;
-  const ars = usd * dolarDia;
-  return `≈ AR$ ${ars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 

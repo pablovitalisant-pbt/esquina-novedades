@@ -1234,7 +1234,7 @@ export function CajaMayorClient({
                                   <div key={i} className="text-xs text-[var(--body)] mt-1">
                                     Mov #{p.movimiento_id} — {p.fecha} — {p.forma_pago}
                                     {" · "}
-                                    {formatCLP(p.monto_usd)}
+                                    {formatCLP(p.monto)}
                                   </div>
                                 ))}
                               </div>

@@ -138,3 +138,9 @@ Fecha: 2026-10-22.
 - Líneas: producción 151 (bajo el límite de 200); con tests nuevos/modificados
   el diff total es ~320, excedido por el volumen de tests del corte.
 
+
+## Sub-slice 10a — extraer `convertir` + usuario sistema + descartar `revision`
+
+**Archivos:** `lib/pedidos/convertir.ts` (nuevo, núcleo sin sesión: `convertirPedido(id, usuarioId, usuarioNombre)` → `{status, body}`, lógica idéntica incl. `FOR UPDATE` y condición repetida en el UPDATE), `lib/pedidos/usuario-sistema.ts` (nuevo, resuelve por rut `SISTEMA-MP`; lanza si no existe), `app/api/pedidos/[id]/convertir/route.ts` (envoltorio con sesión), `app/api/pedidos/[id]/route.ts` (`revision` descartable; la devolución de stock ya exige `stock_reservado = true`).
+**Tests:** `__tests__/api/pedidos-convertir-lib.test.ts` (nuevo, 6), `__tests__/api/pedidos-id.test.ts` (+1 caso `revision`); `pedidos-convertir.test.ts` sin cambios.
+**Resultado:** Fase B roja (módulo inexistente / guard sin `revision`); Fase D verde: 26 tests del corte + 24 de tests que mencionan lo tocado. `tsc`: sin errores nuevos en archivos tocados. `lib/auth.ts` filtra `activo = true` (SISTEMA-MP no puede iniciar sesión).

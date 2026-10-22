@@ -126,6 +126,18 @@ describe('PATCH /api/pedidos/[id]', () => {
   // Slice 8d corrección: el guard de estado va en el WHERE del propio UPDATE
   // (que toma el lock de la fila), no en un SELECT previo. Así la segunda
   // transacción espera, reevalúa y devuelve 0 filas: no hay doble devolución.
+  // Slice 10a: un pedido en revisión se puede descartar.
+  test("el guard de estado incluye 'revision'", async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    let query = '';
+    sql.mockImplementationOnce((...args: any[]) => {
+      query = args[0].join('');
+      return [{ id: 'pedido-1', estado: 'descartado' }];
+    });
+    await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
+    expect(query).toMatch(/estado IN \([^)]*'revision'/);
+  });
+
   test('el guard de estado vive en el UPDATE único (sin SELECT previo)', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     let query = '';

@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       WITH obj AS (
         UPDATE public.pedidos
         SET estado = 'descartado', stock_reservado = false
-        WHERE id = ${id} AND estado IN ('pendiente', 'pendiente_pago', 'pagado')
+        WHERE id = ${id} AND estado IN ('pendiente', 'pendiente_pago', 'pagado', 'revision')
         RETURNING id, estado
       ), devoluciones AS (
         -- Se devuelve lo reservado (pi.unidades), no cantcaja actual.

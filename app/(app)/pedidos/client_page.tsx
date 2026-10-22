@@ -11,29 +11,55 @@ interface PedidoItem {
   codigo: string;
   detalle: string | null;
   cantidad: number;
-  precio_referencia: number | null;
+  modalidad: 'unidad' | 'caja';
+  precio: number;
+  subtotal: number | null;
   cantcaja: number | null;
 }
 
 interface Pedido {
   id: string;
   cliente: { id: string | null; nombre: string | null; telefono: string | null };
+  email_contacto: string | null;
   origen: string;
   estado: string;
+  entrega_codigo: string | null;
+  entrega_costo: number;
+  direccion_entrega: string | null;
+  total: number;
   created_at: string;
   items: PedidoItem[];
 }
 
 const ESTADO_LABEL: Record<string, string> = {
   pendiente: 'Pendiente',
+  pendiente_pago: 'Pendiente de pago',
+  pagado: 'Pagado',
+  pagado_tardio: 'Pagado tarde',
   convertido: 'Convertido',
   descartado: 'Descartado',
+  expirado: 'Expirado',
+  rechazado: 'Rechazado',
+};
+
+const ENTREGA_LABEL: Record<string, string> = {
+  retiro: 'Retiro en tienda',
+  delivery_iquique: 'Delivery Iquique',
+  delivery_alto_hospicio: 'Delivery Alto Hospicio',
+  envio_arica: 'Envío a Arica',
 };
 
 function badgeClass(estado: string): string {
-  if (estado === 'convertido') return 'bg-[var(--success-soft)] text-[var(--success)]';
-  if (estado === 'descartado') return 'bg-[var(--muted)] text-[var(--body-subtle)]';
+  if (estado === 'convertido' || estado === 'pagado') return 'bg-[var(--success-soft)] text-[var(--success)]';
+  if (estado === 'descartado' || estado === 'expirado' || estado === 'rechazado') {
+    return 'bg-[var(--muted)] text-[var(--body-subtle)]';
+  }
   return 'bg-[var(--warning-soft)] text-[var(--warning)]';
+}
+
+function etiquetaCantidad(it: PedidoItem): string {
+  if (it.modalidad === 'caja') return `${it.cantidad} caja${it.cantidad !== 1 ? 's' : ''}`;
+  return `${it.cantidad} unidad${it.cantidad !== 1 ? 'es' : ''}`;
 }
 
 function formatFecha(value: string): string {
@@ -170,6 +196,15 @@ export function PedidosPage({ session }: { session: any }) {
 
               {expanded.has(p.id) && (
                 <div className="border-t border-border px-4 py-3 flex flex-col gap-3">
+                  <div className="text-sm text-[var(--body)] flex flex-col gap-0.5">
+                    <span>{p.email_contacto || 'Sin email'}</span>
+                    <span>
+                      {p.entrega_codigo
+                        ? ENTREGA_LABEL[p.entrega_codigo] ?? p.entrega_codigo
+                        : 'Sin entrega'}
+                      {p.direccion_entrega ? ` · ${p.direccion_entrega}` : ''}
+                    </span>
+                  </div>
                   <div className="flex flex-col gap-2">
                     {p.items.map((it, i) => (
                       <div key={i} className="flex justify-between gap-3 text-sm">
@@ -178,28 +213,18 @@ export function PedidosPage({ session }: { session: any }) {
                           <div className="text-[var(--heading)] truncate">{it.detalle}</div>
                         </div>
                         <div className="text-right text-[var(--body)] shrink-0">
-                          {it.cantidad} caja{it.cantidad !== 1 ? 's' : ''}
+                          <div>{etiquetaCantidad(it)}</div>
+                          <div className="text-xs text-[var(--body-subtle)]">
+                            {formatCLP(it.subtotal ?? it.precio * it.cantidad)}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                  {(() => {
-                    const total = p.items.reduce((acc, it) => {
-                      if (it.precio_referencia == null || it.cantcaja == null) return acc;
-                      return acc + it.precio_referencia * it.cantcaja * it.cantidad;
-                    }, 0);
-                    const sinPrecio = p.items.some((it) => it.precio_referencia == null || it.cantcaja == null);
-                    return (
-                      <div className="flex justify-between items-center pt-2 border-t border-border">
-                        <span className="text-sm font-semibold">Total: {formatCLP(total)}</span>
-                        {sinPrecio && (
-                          <span className="text-xs text-[var(--body-subtle)]">
-                            algunos productos sin precio no incluidos
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <div className="flex flex-col gap-1 pt-2 border-t border-border text-sm">
+                    <span className="text-[var(--body)]">Entrega: {formatCLP(p.entrega_costo)}</span>
+                    <span className="font-semibold">Total: {formatCLP(p.total)}</span>
+                  </div>
                   {p.estado === 'pendiente' && (
                     <div className="flex gap-2 self-end">
                       <Button variant="outline" size="sm" onClick={() => descartar(p.id)}>

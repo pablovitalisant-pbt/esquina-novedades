@@ -1,14 +1,12 @@
 /**
  * @jest-environment jsdom
  *
- * Fase B — Slice "Total de la compra": vista staff de pedidos.
- * Smoke: el detalle expandido muestra el total (Σ precio×cantcaja×cantidad).
- * Caso de riesgo: item sin precio_referencia se excluye del total y muestra el
- * indicador "(algunos productos sin precio no incluidos)".
+ * Fase B — Slice 7f: vista staff de pedidos muestra estado, modalidad,
+ * subtotal, entrega, dirección, email y el total calculado en el servidor.
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PedidosPage } from '@/app/(app)/pedidos/client_page';
 
 jest.mock('next/navigation', () => ({
@@ -22,11 +20,17 @@ jest.mock('sonner', () => ({
 const PEDIDO = {
   id: 'p1',
   cliente: { id: 'c1', nombre: 'Pablo', telefono: '+56920948874' },
+  email_contacto: 'pablo@example.com',
   origen: 'productos',
-  estado: 'pendiente',
+  estado: 'pendiente_pago',
   created_at: '2026-08-17T20:10:00Z',
+  entrega_codigo: 'delivery_iquique',
+  entrega_costo: 3000,
+  direccion_entrega: 'Av. Prat 123',
+  total: 5000,
   items: [
-    { codigo: '1055', detalle: 'gallinita', cantidad: 2, precio_referencia: 4, cantcaja: 30 },
+    { codigo: '1055', detalle: 'gallinita', cantidad: 2, modalidad: 'caja', precio: 4, subtotal: 8, cantcaja: 30 },
+    { codigo: '2000', detalle: 'pelota', cantidad: 1, modalidad: 'unidad', precio: 1992, subtotal: 1992, cantcaja: 6 },
   ],
 };
 
@@ -38,37 +42,33 @@ function renderPage(data: any[] = [PEDIDO]) {
   render(<PedidosPage session={{}} />);
 }
 
-describe('PedidosPage — total de la compra en el detalle', () => {
+describe('PedidosPage — detalle del pedido (7f)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('muestra el total del pedido en el detalle expandido (formatUSD)', async () => {
+  it('muestra estado, email, entrega, dirección y total del servidor', async () => {
     renderPage();
-
-    // esperar carga y abrir el detalle
     await screen.findByText('Pablo');
     fireEvent.click(screen.getByText('Pablo'));
 
-    // total = 4 × 30 × 2 = 240 → línea "Total: $240"
-    await screen.findByText('Total: $240');
+    expect(screen.getByText('Pendiente de pago')).toBeInTheDocument();
+    expect(screen.getByText(/pablo@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/Delivery Iquique/)).toBeInTheDocument();
+    expect(screen.getByText(/Av\. Prat 123/)).toBeInTheDocument();
+    // total viene del servidor (5000), no se recalcula de los ítems
+    await screen.findByText('Total: $5.000');
   });
 
-  it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
-    const conSinPrecio = {
-      ...PEDIDO,
-      items: [
-        { codigo: '1055', detalle: 'gallinita', cantidad: 2, precio_referencia: 4, cantcaja: 30 },
-        { codigo: '999', detalle: 'sin precio', cantidad: 1, precio_referencia: null, cantcaja: 6 },
-      ],
-    };
-    renderPage([conSinPrecio]);
-
+  it('muestra modalidad y subtotal por ítem', async () => {
+    renderPage();
     await screen.findByText('Pablo');
     fireEvent.click(screen.getByText('Pablo'));
 
-    // solo cuenta el item con precio: 4 × 30 × 2 = 240
-    await screen.findByText('Total: $240');
-    expect(screen.getByText(/algunos productos sin precio no incluidos/i)).toBeInTheDocument();
+    expect(screen.getByText('2 cajas')).toBeInTheDocument();
+    expect(screen.getByText('1 unidad')).toBeInTheDocument();
+    expect(screen.getByText('$8')).toBeInTheDocument();
+    expect(screen.getByText('$1.992')).toBeInTheDocument();
+    expect(screen.getByText('Entrega: $3.000')).toBeInTheDocument();
   });
 });

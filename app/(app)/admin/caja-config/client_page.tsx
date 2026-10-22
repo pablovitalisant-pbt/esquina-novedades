@@ -34,14 +34,21 @@ interface SaldoInicial {
   observaciones: string | null;
 }
 
+interface OpcionEntrega {
+  codigo: string;
+  nombre: string;
+  costo: number;
+}
+
 export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: string }) {
   // ─── Carga inicial (2 fetch) ───
   useEffect(() => {
     (async () => {
       try {
-        const [cuentasRes, saldosRes] = await Promise.all([
+        const [cuentasRes, saldosRes, entregaRes] = await Promise.all([
           fetch("/api/caja/cuentas"),
           fetch("/api/caja/saldos-iniciales"),
+          fetch("/api/entrega/opciones"),
         ]);
         if (cuentasRes.ok) {
           const json = await cuentasRes.json();
@@ -51,9 +58,34 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
           const json = await saldosRes.json();
           setSaldos(json.data || []);
         }
+        if (entregaRes.ok) {
+          const json = await entregaRes.json();
+          setOpciones(json.data || []);
+        }
       } catch { /* mantener vacío */ }
     })();
   }, []);
+
+  // ─── Opciones de entrega (admin de costos) ──────────────
+  const [opciones, setOpciones] = useState<OpcionEntrega[]>([]);
+  const [costos, setCostos] = useState<Record<string, string>>({});
+
+  const guardarCosto = async (o: OpcionEntrega) => {
+    const costo = parseInt(costos[o.codigo] ?? String(o.costo), 10) || 0;
+    const res = await fetch(`/api/entrega/opciones/${o.codigo}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ costo }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      toast.error(err.error || "Error al guardar el costo");
+      return;
+    }
+    const json = await res.json();
+    setOpciones((prev) => prev.map((x) => (x.codigo === o.codigo ? json.data : x)));
+    toast.success("Costo de entrega actualizado");
+  };
 
   // ─── Cuentas ────────────────────────────────────────────
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -365,6 +397,53 @@ export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: str
                         <Trash2 className="w-3.5 h-3.5 text-[var(--destructive)]" />
                       </Button>
                     </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* ─── Opciones de entrega ────────────────────────── */}
+      <div className="border rounded-card p-5 space-y-4">
+        <h2 className="font-semibold text-sm uppercase tracking-wide text-[var(--body)]">
+          Opciones de entrega
+        </h2>
+        {opciones.length === 0 ? (
+          <p className="text-sm text-[var(--body-subtle)] italic">
+            No hay opciones de entrega configuradas.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Opción</TableHead>
+                <TableHead>Costo (CLP)</TableHead>
+                <TableHead className="w-[100px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {opciones.map((o) => (
+                <TableRow key={o.codigo}>
+                  <TableCell className="font-medium">{o.nombre}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="0"
+                      aria-label={`Costo de ${o.nombre}`}
+                      value={costos[o.codigo] ?? String(o.costo)}
+                      onChange={(e) => setCostos((prev) => ({ ...prev, [o.codigo]: e.target.value }))}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      aria-label={`Guardar costo de ${o.nombre}`}
+                      onClick={() => guardarCosto(o)}
+                    >
+                      Guardar
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

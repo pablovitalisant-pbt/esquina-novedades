@@ -22,6 +22,8 @@ jest.mock('@/docs/specs/caja-mayor.spec', () => ({ formatMonto: (v: number) => `
 const fetchMock = jest.fn();
 global.fetch = fetchMock as any;
 
+const OPCION = { codigo: 'delivery_iquique', nombre: 'Delivery Iquique', costo: 3000 };
+
 beforeEach(() => {
   jest.clearAllMocks();
   fetchMock.mockImplementation(async (url: string) => ({
@@ -29,21 +31,34 @@ beforeEach(() => {
     json: async () => ({
       data: url === '/api/caja/cuentas'
         ? [{ id: 3, nombre: 'Caja chica', moneda: 'USD', activa: true, orden: 1, created_at: null }]
-        : [],
+        : url === '/api/entrega/opciones' ? [OPCION] : [],
     }),
   }));
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
 
 describe('app/(app)/admin/caja-config — carga por API y guard sin conexión', () => {
-  it('carga con 2 fetch (sin /api/caja/config) y muestra la cuenta activa sin moneda ni dólar', async () => {
+  it('carga con 3 fetch (sin /api/caja/config) y muestra la cuenta activa sin moneda ni dólar', async () => {
     render(<CajaConfigClient currentUserNombre="Admin" />);
     await screen.findAllByText('Caja chica');
-    expect(screen.getByText('Activa')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText('Activa').length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls.some((c: any[]) => c[0] === '/api/caja/config')).toBe(false);
     expect(screen.queryByText(/USD|ARS|Moneda/)).toBeNull();
     expect(screen.queryByText('Valor USD a ARS')).toBeNull();
+  });
+
+  it('admin de entregas: edita costo y hace PATCH a la opción', async () => {
+    render(<CajaConfigClient currentUserNombre="Admin" />);
+    await screen.findByText('Delivery Iquique');
+
+    fireEvent.change(screen.getByLabelText('Costo de Delivery Iquique'), { target: { value: '5000' } });
+    fireEvent.click(screen.getByLabelText('Guardar costo de Delivery Iquique'));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/entrega/opciones/delivery_iquique',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ costo: 5000 }) }),
+    ));
   });
 
   it('sin conexión: crear cuenta nueva muestra mensaje claro y NO hace POST', async () => {

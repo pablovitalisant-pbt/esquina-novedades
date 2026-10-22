@@ -119,3 +119,24 @@
 - `__tests__/api/pedidos.test.ts` | modificado | Nuevos: producto fuera del catálogo → 400, producto dentro por palabra clave → 201 con precio de catálogo, costo NULL sin override → 400.
 
 **Resultados:** rojo confirmado (el caso "fuera del catálogo" devolvía 201). Verde: `npx jest __tests__/api/pedidos.test.ts app/api/catalogos/public` (39 tests), más `filter-products`, `catalogo-codigos-incluir`, `catalogo-solo-nuevo*` (16 tests). `npx tsc --noEmit` sin errores nuevos en los archivos tocados.
+
+## Sub-slice 7f — UI staff de pedidos + admin de costos de entrega
+
+**Contrato:** `docs/slices/slice-07-08-tienda-fase-a.md` §7 (fila 7f) y §9 (tests UI).
+
+### Archivos
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `app/(app)/pedidos/client_page.tsx` | modificado | El detalle muestra email, opción de entrega (con dirección) y el `total` calculado por el servidor; ítems con `modalidad` ("2 cajas" / "1 unidad") y su `subtotal`; badge de estados nuevos (`pendiente_pago`, `pagado`, `pagado_tardio`, `expirado`, `rechazado`) con fallback al código. Se elimina el recálculo local con `precio_referencia`. |
+| `app/(app)/admin/caja-config/client_page.tsx` | modificado | Sección "Opciones de entrega": carga desde `GET /api/entrega/opciones` y edita el costo por fila con `PATCH /api/entrega/opciones/[codigo]`. |
+| `app/(app)/admin/caja-config/client_page.test.tsx` | modificado | 3 fetch iniciales y caso de edición de costo con PATCH. |
+| `__tests__/app/pedidos/client_page.test.tsx` | modificado | Casos 7f: total del servidor (no recalculado), estado, email, entrega/dirección, modalidad y subtotal por ítem. |
+| `PRD.md` | modificado | §9 fila 7 marcada como completada. |
+
+### Resultados
+
+- Fase B: los tests del corte fallaron por la razón correcta (la vista no tenía modalidad/subtotal/entrega y caja-config no cargaba opciones de entrega).
+- Fase D (`npx jest` sobre tests del corte + co-ubicados/relacionados `caja-config-client_page`, `slice-03-sin-powersync`, `slice14-cajas-smoke`, `slice2-build-smoke`, `slice2a-clp`): **7 suites, 97 tests, verde**.
+- `npx tsc --noEmit`: sin errores nuevos fuera de tests (se mantienen los preexistentes de `.next/types` y `app/page.tsx`).
+- Simplificación deliberada: el admin de caja-config edita solo el costo; `activa`/`requiere_direccion`/`nota` siguen disponibles por el PATCH pero no se exponen aún. El GET usado es el público (solo activas), por lo que no se reactivan opciones inactivas desde esta pantalla. Suite completa: la corre el Director Técnico.

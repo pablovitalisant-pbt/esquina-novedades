@@ -5,5 +5,5 @@
   "clientes-etiqueta": true,
   "tienda-pago-online": true,
   "mp-webhook-ignorar-ipn-legacy": true,
-  "pedido-confetti": false
+  "pedido-confetti": true
 }

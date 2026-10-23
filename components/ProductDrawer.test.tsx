@@ -236,10 +236,10 @@ describe('ProductDrawer', () => {
     });
   });
 
-  describe('Share con precio (drawer-compartir-precio)', () => {
+  describe('Share con precio', () => {
     const renderShare = (
       overrides: Partial<Producto> = {},
-      props: { ocultarPrecios?: boolean; mostrarPrecioEnShare?: boolean } = {}
+      props: { ocultarPrecios?: boolean } = {}
     ) => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -258,7 +258,6 @@ describe('ProductDrawer', () => {
           onOpenChange={() => {}}
           onUpdated={() => {}}
           ocultarPrecios={props.ocultarPrecios}
-          mostrarPrecioEnShare={props.mostrarPrecioEnShare}
         />
       );
       return mockShare;
@@ -269,28 +268,22 @@ describe('ProductDrawer', () => {
       await waitFor(() => expect(mockShare).toHaveBeenCalled());
     };
 
-    it('flag on, prcventa=12345 → solo línea de precio CLP', async () => {
-      const mockShare = renderShare({ prcventa: 12345 }, { mostrarPrecioEnShare: true });
+    it('prcventa=12345 → solo línea de precio CLP', async () => {
+      const mockShare = renderShare({ prcventa: 12345 });
       await clickShare(mockShare);
       expect(mockShare.mock.calls[0][0]).toEqual(expect.objectContaining({
         text: '$12.345',
       }));
     });
 
-    it('flag on, prcventa=0 → sin text', async () => {
-      const mockShare = renderShare({ prcventa: 0 }, { mostrarPrecioEnShare: true });
+    it('prcventa=0 → sin text', async () => {
+      const mockShare = renderShare({ prcventa: 0 });
       await clickShare(mockShare);
       expect(mockShare.mock.calls[0][0].text).toBeUndefined();
     });
 
-    it('flag on, ocultarPrecios=true → sin text aunque haya precio y dólar', async () => {
-      const mockShare = renderShare({ prcventa: 20 }, { ocultarPrecios: true, mostrarPrecioEnShare: true });
-      await clickShare(mockShare);
-      expect(mockShare.mock.calls[0][0].text).toBeUndefined();
-    });
-
-    it('flag off (mostrarPrecioEnShare=false) → sin text, comportamiento actual', async () => {
-      const mockShare = renderShare({ prcventa: 20 }, { mostrarPrecioEnShare: false });
+    it('ocultarPrecios=true → sin text aunque haya precio y dólar', async () => {
+      const mockShare = renderShare({ prcventa: 20 }, { ocultarPrecios: true });
       await clickShare(mockShare);
       expect(mockShare.mock.calls[0][0].text).toBeUndefined();
     });

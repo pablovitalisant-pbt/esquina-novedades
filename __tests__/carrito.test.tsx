@@ -216,7 +216,7 @@ describe('R2 — Guard contra doble envío (CarritoDrawer)', () => {
 
 // ─── R4 API falla → no pierde items ───────────────────────────────────
 describe('R4 — Error del POST conserva los items', () => {
-  it('respuesta 400/500 → toast.error y los items siguen en el carrito', async () => {
+  it('respuesta 400/500 → error inline y los items siguen en el carrito', async () => {
     mockFetch(Promise.resolve({
       ok: false,
       status: 400,
@@ -238,8 +238,7 @@ describe('R4 — Error del POST conserva los items', () => {
     const enviar = await screen.findByRole('button', { name: /enviar pedido/i });
     fireEvent.click(enviar);
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
-    // El error queda visible dentro del carrito, no solo en un toast efímero.
+    // El error queda visible dentro del carrito.
     expect(await screen.findByRole('alert')).toHaveTextContent('Telefono requerido');
     // Items intactos (total = 1+2 = 3), el drawer sigue abierto
     expect(screen.getByTestId('total').textContent).toBe('3');

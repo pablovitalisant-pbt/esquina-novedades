@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ok = () => NextResponse.json({ received: true });
-const TOPICS_IPN_LEGACY = new Set(['payment', 'merchant_order']);
 const fail = (status: number) => NextResponse.json({ error: status === 401 ? 'Firma inválida' : 'Error' }, { status });
 
 // Contrato §4.3. Nunca se loguea token, secret ni body; nunca se lee estado/monto del body.
@@ -25,7 +24,7 @@ export async function POST(req: NextRequest) {
   // IPN legacy ("MercadoPago Feed v2.0", vía notification_url): sin data.id ni firma.
   // No se procesa nada (el cobro entra solo por la notificación firmada); 200 corta los reintentos.
   const topic = req.nextUrl.searchParams.get('topic');
-  if (!dataId && topic && TOPICS_IPN_LEGACY.has(topic) && flags['mp-webhook-ignorar-ipn-legacy'] === true) {
+  if (!dataId && topic && ['payment', 'merchant_order'].includes(topic) && flags['mp-webhook-ignorar-ipn-legacy'] === true) {
     return ok();
   }
   // Los tres son obligatorios: el SDK omitiría un par faltante y aceptaría una firma más débil.

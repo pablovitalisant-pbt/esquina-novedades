@@ -350,7 +350,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
               empresaNombre={(p as any).nombre_empresa}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
-              mostrarPrecioVenta
               rol={(session as any)?.user?.rol ?? session?.rol}
             />
           ))}
@@ -365,7 +364,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
         empresaNombre={(selectedProduct as any)?.nombre_empresa || ''}
         onUpdated={handleProductUpdate}
         ocultarPrecios={ocultarPrecios}
-        mostrarPrecioEnShare
       />
     </div>
   );

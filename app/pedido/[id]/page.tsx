@@ -33,7 +33,6 @@ const ESTADOS: Record<string, { label: string; titulo: string; mensaje: string; 
   revision: { label: 'Pago en revisión', titulo: 'Estamos revisando tu pago', mensaje: 'Estamos revisando tu pago. La tienda te contactará.', tono: 'revision' },
   descartado: { label: 'Pedido cancelado', titulo: 'Pedido cancelado', mensaje: 'Este pedido fue cancelado.', tono: 'error' },
 };
-const CON_CONFETTI = new Set(['pagado', 'convertido']);
 
 function fechaCorta(valor: string | null): string {
   if (!valor) return '';
@@ -97,7 +96,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const entregaCosto = Number(pedido.entrega_costo) || 0;
   const vencido = !pedido.expira_en || new Date(pedido.expira_en).getTime() <= Date.now();
   const puedePagar = pedido.estado === 'pendiente_pago' && !!pedido.mp_init_point && !vencido;
-  const confetti = flags['pedido-confetti'] === true && CON_CONFETTI.has(pedido.estado);
+  const confetti = flags['pedido-confetti'] === true && ['pagado', 'convertido'].includes(pedido.estado);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)] font-sans text-[var(--body)]">

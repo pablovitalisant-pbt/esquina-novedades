@@ -16,10 +16,9 @@ interface ProductCardProps {
   onClick: (producto: Producto) => void;
   ocultarPrecios?: boolean;
   rol?: string;
-  mostrarPrecioVenta?: boolean;
 }
 
-export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocultarPrecios, rol, mostrarPrecioVenta = false }: ProductCardProps) {
+export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocultarPrecios, rol }: ProductCardProps) {
   void empresaNombre;
   const [showPrenota, setShowPrenota] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -70,10 +69,10 @@ export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocu
         <div className="flex items-stretch gap-0">
           <div className="flex-1 flex flex-col justify-center">
             <div className="text-[10px] uppercase tracking-wide text-[var(--body-subtle)] font-medium mb-0.5">
-              {mostrarPrecioVenta ? 'Precio de venta' : 'Precio máx. venta'}
+              Precio de venta
             </div>
             <div className="text-xl font-semibold text-[var(--heading)] leading-none">
-              {ocultarPrecios ? '••••' : mostrarPrecioVenta && producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
+              {ocultarPrecios ? '••••' : producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
             </div>
             {(flags as any)['precio-mayorista-ui'] === true && !ocultarPrecios && producto.precio_mayor != null && (
               <div className="text-xs text-[var(--body)] mt-1">Caja: {formatCLP(producto.precio_mayor)}</div>

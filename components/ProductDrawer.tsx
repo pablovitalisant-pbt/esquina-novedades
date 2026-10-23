@@ -26,10 +26,9 @@ interface ProductDrawerProps {
   onOpenChange: (open: boolean) => void;
   onUpdated: (updatedProduct: Producto) => void;
   ocultarPrecios?: boolean;
-  mostrarPrecioEnShare?: boolean;
 }
 
-export function ProductDrawer({ producto, empresaNombre, session, open, onOpenChange, onUpdated, ocultarPrecios, mostrarPrecioEnShare = false }: ProductDrawerProps) {
+export function ProductDrawer({ producto, empresaNombre, session, open, onOpenChange, onUpdated, ocultarPrecios }: ProductDrawerProps) {
   void empresaNombre;
   const { shareImage } = useShareImage();
   const [isEditing, setIsEditing] = useState(false);
@@ -402,7 +401,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                   currentImageUrl || producto.imagen_url || '',
                   `${producto.codigo}.jpg`,
                   `${producto.codigo} — ${producto.detalle || ''}`,
-                  mostrarPrecioEnShare ? armarTextoCompartir() : undefined
+                  armarTextoCompartir()
                 )}
                 className="absolute top-2 right-2 bg-white/80 dark:bg-[var(--muted)]/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white dark:hover:bg-[var(--muted)] transition-colors z-10"
               >

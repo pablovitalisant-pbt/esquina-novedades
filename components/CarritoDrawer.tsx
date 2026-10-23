@@ -91,15 +91,11 @@ export function CarritoDrawer() {
           toast.success('Pedido enviado');
         }
       } else {
-        const mensaje = mensajeError(body);
-        setErrorEnvio(mensaje);
-        toast.error(mensaje);
+        setErrorEnvio(mensajeError(body));
         // items intactos ante error
       }
     } catch {
-      const mensaje = 'No pudimos conectarnos con la tienda. Revisa tu conexión e intenta de nuevo; tu pedido se conservó.';
-      setErrorEnvio(mensaje);
-      toast.error(mensaje);
+      setErrorEnvio('No pudimos conectarnos con la tienda. Revisa tu conexión e intenta de nuevo; tu pedido se conservó.');
     } finally {
       setEnviando(false);
     }

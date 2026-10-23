@@ -83,7 +83,6 @@ describe('ProductCard - Precio de venta (CLP)', () => {
         empresaSlug="test-empresa"
         empresaNombre="IMPORT EXPORT SANJH LTDA."
         onClick={() => {}}
-        mostrarPrecioVenta
         ocultarPrecios={props.ocultarPrecios}
       />
     );

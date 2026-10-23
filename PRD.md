@@ -228,3 +228,9 @@ Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 |-----------------|--------|--------------------------|
 | (se completa durante el desarrollo) | | |
 | scripts/migrations-order.ts | Toda migración nueva debe agregarse al final de MIGRATION_ORDER (el test lo exige) | No reordenar ni editar migraciones aplicadas |
+| app/api/mercadopago/webhook/route.ts + `MP_WEBHOOK_SECRET` | BUG-005: la firma se valida con la clave de la app DUEÑA de las credenciales que cobran (hoy TestApp-126a11e4 del seller Test User). "Simular notificación" firma con la clave de la app desde donde se envía y NO prueba pagos reales | Cambiar token/clave siempre en pareja (misma app y modo) + redeploy + pago real como criterio |
+| app/api/mercadopago/webhook/route.ts (IPN legacy) | Notificaciones `Feed v2.0` (`?id=&topic=`) sin firma: se responden 200 sin procesar (flag `mp-webhook-ignorar-ipn-legacy`). Si se procesaran, sería un bypass de la firma | No procesar nada sin `data.id` firmado |
+| lib/pedidos/reserva-stock.ts | BUG-003: el guard `1 / (SELECT COUNT(*) FROM upd)` es lo que aborta la reserva sin stock; `CASE ... ELSE 1/0` se pliega en Postgres y falla siempre | Probar cualquier cambio contra Postgres real (`__tests__/integration/reserva-stock-guard.test.ts`) |
+| lib/precio-catalogo.ts | El precio de catálogo se usa para mostrar Y para cobrar (`/api/pedidos`); la preferencia MP redondea cada ítem a entero | Mantener CLP entero; cualquier cambio de fórmula afecta cobros |
+| config/feature-flags.json en tests | BUG-004: tests que leen el JSON real se rompen al activar flags | Mockear flags explícitamente en cada test |
+| instrumentation.ts / lib/env.ts | Valida variables al arrancar y solo loguea (no tumba la app) | No imprimir valores; mantener listas al día al agregar variables |

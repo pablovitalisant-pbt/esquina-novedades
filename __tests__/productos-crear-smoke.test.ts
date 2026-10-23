@@ -135,7 +135,7 @@ describe('crear productos — smoke', () => {
 
     test('modal tiene input "Unidades por caja" (crearCantCaja) con min 1 y step 1', () => {
       expect(content).toMatch(/crearCantCaja/);
-      expect(content).toMatch(/Unidades por caja/i);
+      expect(content).toMatch(/unidades hay en cada caja/i);
       expect(content).toMatch(/min="1"/);
       expect(content).toMatch(/step="1"/);
     });

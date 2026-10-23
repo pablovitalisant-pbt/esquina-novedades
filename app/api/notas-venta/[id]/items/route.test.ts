@@ -27,10 +27,12 @@ beforeAll(async () => {
   POST = routeMod.POST;
 });
 
-function mockFlujo(nuevoId: string | null) {
+function mockFlujo(nuevoId: string | null, conIdempotencia = false) {
   // Orden de las queries del POST:
+  // -1) SELECT de idempotencia (solo si el body trae id)
   // 0) nota activa  1) liberación perezosa (8c)  2) UPDATE stock
   // 3) UPDATE ubicaciones  4) INSERT  5) UPDATE prenotas updated_at
+  if (conIdempotencia) sqlMock.mockResolvedValueOnce([] as any);
   sqlMock
     .mockResolvedValueOnce([{ estado: 'activa' }] as any)
     .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }] as any)
@@ -55,7 +57,8 @@ async function post(body: any) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  sqlMock.mockReset();
+  getServerSession.mockReset();
 });
 
 describe('app/api/notas-venta/[id]/items POST — id UUID opcional (Slice 10a)', () => {
@@ -74,10 +77,10 @@ describe('app/api/notas-venta/[id]/items POST — id UUID opcional (Slice 10a)',
   });
 
   it('con id (UUID) en el body: INSERT usa ese id vía COALESCE', async () => {
-    mockFlujo('uuid-local-abc');
+    mockFlujo('uuid-local-abc', true);
     const res = await post({ ...baseBody, id: 'uuid-local-abc' });
     expect(res.status).toBe(200);
-    const insertCall = sqlMock.mock.calls[4];
+    const insertCall = sqlMock.mock.calls[5];
     // param 0 = id (uuid-local-abc), param 1 = prenota_id (40)
     expect(insertCall[1]).toBe('uuid-local-abc');
     expect(insertCall[2]).toBe(40);

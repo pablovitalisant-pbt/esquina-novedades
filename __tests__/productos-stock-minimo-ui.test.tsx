@@ -174,7 +174,7 @@ describe('T7-B — PreciosClient Dialog "Nuevo producto" envia stock_minimo', ()
     fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '20' } }); // margen
 
     // Stock minimo — placeholder no fijo, buscar por label
-    const stockMinimoInput = screen.getByLabelText(/Stock m[ií]nimo/i);
+    const stockMinimoInput = screen.getByLabelText(/alerta de Stock Bajo/i);
     fireEvent.change(stockMinimoInput, { target: { value: '5' } });
 
     // Click "Crear producto"

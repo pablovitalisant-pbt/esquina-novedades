@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:seed": "tsx scripts/seed-test-integration.ts",
     "migrate": "tsx --env-file=.env.local scripts/apply-migrations.ts",
     "seed": "tsx --env-file=.env.local scripts/seed.ts"
   },

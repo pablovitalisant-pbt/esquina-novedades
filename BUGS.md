@@ -25,3 +25,13 @@ Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protoc
 - Causa raiz: ambos tests leian `config/feature-flags.json` real y asumian los flags en false.
 - Fix: mock explicito de flags en cada test; slice5cd cubre ahora ambos estados del flag.
 - Verificacion: suite completa vuelve a las 5 suites heredadas (18 tests), igual que antes de activar los flags.
+
+## BUG-005 — Pago MP aprobado no actualizaba el pedido: webhook 401 (2026-10-23)
+- Tipo: C (integracion externa) + E (solo en produccion).
+- Sintoma: pago de prueba aprobado (operacion 185721852894, pedido afb8e9f4-0c9c-495d-9216-b1b4276b8613) y el pedido seguia `pendiente_pago`, sin nota de venta ni cobro en caja.
+- Evidencia: Vercel Runtime Logs 12:53:53 -> 2 x `[mp-webhook] firma invalida SignatureMismatch`; panel MP (app 7942165158596026, Webhooks, ambiente Prueba) -> `payment.created` 185721852894 `401 - Fallida`. SDK mercadopago 3.6.1: manifest `id;request-id;ts` correcto. Suite `__tests__/api/mercadopago-webhook.test.ts` (validador real del SDK) 16/16 verde -> el codigo no era la causa.
+- Causa raiz: `MP_WEBHOOK_SECRET` en Vercel no era la "Clave secreta" de la pestana **Modo de prueba** (Webhooks > Configurar notificaciones). Cada modo (prueba / productivo) tiene su propia clave.
+- Fix aplicado: sin cambio de codigo. Pablo reemplazo `MP_WEBHOOK_SECRET` (Production) por la clave del Modo de prueba; redeploy de ead2bec.
+- Verificacion: "Simular notificacion" (payment, 185721852894) -> 200 OK; DB: pedido `convertido`, mp_payment_id 185721852894, prenota_id 1, caja_movimiento_id 089f3eb5-... (cobro 56990 CLP, cuenta 1, forma_pago mercadopago); sin warnings/errores de webhook en logs tras el redeploy.
+- Zona fragil: al pasar a la app productiva de la clienta, `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` deben salir de la MISMA app y del MISMO modo, y despues hacer redeploy (Vercel no aplica variables a deploys existentes). La URL del Modo productivo de la app demo esta incompleta (`/api`).
+- Commit: (este commit)

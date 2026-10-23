@@ -102,6 +102,6 @@ config de Tailwind/CSS antes de usarlos. Colores de marca: los de la clienta
 
 ## Debugging
 
-Debugging: protocolo en ~/.claude/skills/pbt-ia-debugging.md
+Debugging: protocolo en ~/.claude/PBT-IA-DEBUGGING.md
 Se activa con: "hay un bug", "se rompio", "dejo de funcionar", "sigue pasando"
 Registro: BUGS.md en la raiz del proyecto

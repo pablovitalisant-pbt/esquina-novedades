@@ -10,7 +10,8 @@
     "test": "jest",
     "test:seed": "tsx scripts/seed-test-integration.ts",
     "migrate": "tsx --env-file=.env.local scripts/apply-migrations.ts",
-    "seed": "tsx --env-file=.env.local scripts/seed.ts"
+    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "limpiar-prueba": "tsx --env-file=.env.local scripts/limpiar-datos-prueba.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

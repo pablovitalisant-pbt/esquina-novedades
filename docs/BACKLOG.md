@@ -1,6 +1,6 @@
 # BACKLOG — La Esquina de las Novedades
 
-Actualizado: 2026-10-23. Orden = orden de ejecución sugerido. Lo que depende de Paola va al final.
+Actualizado: 2026-10-23 (tarde, modo autónomo; detalle por slice en `AUTO-LOG.md`). Orden = orden de ejecución sugerido. Lo que depende de Paola va al final.
 Fuentes: `PRD.md` (§9 slice 11, §10), `CONTEXT-CLAUDE-CHAT.md`, `docs/TRASPASO-2026-10-23.md`, `BUGS.md`.
 Cada ítem de código se ejecuta como ciclo PBT-IA (o protocolo de debugging si es bug). Estado: ⬜ pendiente · 🟨 en curso · ✅ hecho.
 
@@ -14,16 +14,18 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 
 | # | Ítem | Por qué | Criterio de hecho | Estado |
 |---|------|---------|-------------------|--------|
-| A1 | Actualizar documentación desfasada | PRD §8.4 dice que un pago rechazado devuelve stock (la decisión vigente es NO liberarlo; solo expiración 36 h). PRD §9 no marca el slice 0 como ✅. Contador de ponytail en CONTEXT no se actualizó desde el 22/10 | PRD y CONTEXT reflejan lo implementado; contador al día | ⬜ |
-| A2 | Ponytail audit | Señal 2 cerca (≥3 ciclos desde el audit del 22/10) y es requisito 1 de la Señal 3 | Audit en `docs/audits/` + slice de limpieza si hace falta | ⬜ |
-| A3 | Validar variables de entorno requeridas al arrancar | PRD §10.3. Hoy solo hay chequeos al usar cada variable (p. ej. config de MP) | La app falla al iniciar con mensaje claro si falta una requerida; test | ⬜ |
-| A4 | `tsc --noEmit` limpio | 108 errores (línea base; casi todos en tests, 1 en `.next/types`) | 0 errores. Probablemente en sub-slices por carpeta | ⬜ |
-| A5 | Build estricto | `next.config` ignora errores de tipos y lint (`ignoreBuildErrors` / `ignoreDuringBuilds`). Señal 3 pide build sin errores ni warnings | Flags removidos; `npm run build` y `npm run lint` sin errores ni warnings. Depende de A4 | ⬜ |
-| A6 | Fixtures para la rama Neon `test-integration` | 5 suites heredadas en rojo (18 tests): `catalogo-precio-override`, `debug/42p18-handler`, `productos-crear-smoke`, `productos-stock-minimo-ui`, `app/api/notas-venta/[id]/items/route.test.ts` | Suite completa 100 % verde | ⬜ |
-| A7 | Catálogo público redondea a 1 decimal (herencia USD) | Listado en CONTEXT como pendiente; **no verificado si sigue ocurriendo** | Verificar; si ocurre, CLP entero en todo el catálogo | ⬜ |
-| A8 | Completar "Zonas de riesgo conocidas" del PRD | Hoy solo tiene `scripts/migrations-order.ts`. Faltan: webhook MP (clave = app dueña de las credenciales; simulador no prueba pagos reales), IPN legacy, reserva de stock (BUG-003), flags leídos por tests (BUG-004) | Tabla completa | ⬜ |
-| A9 | Smoke E2E de todos los flujos | Requisito 2 de la Señal 3 | Checklist ejecutado con evidencia: login, notas de venta (unidad/caja/mixta), precios, clientes, caja mayor, bodega, alertas, catálogo admin/público, tienda + pago MP, pedidos staff, deudores | ⬜ |
-| A10 | Diff de variables de entorno prod vs dev | Requisito 4 de la Señal 3 | Lista de keys (sin valores) por entorno, sin faltantes | ⬜ |
+| A1 | Actualizar documentación desfasada | PRD §8.4 dice que un pago rechazado devuelve stock (la decisión vigente es NO liberarlo; solo expiración 36 h). PRD §9 no marca el slice 0 como ✅. Contador de ponytail en CONTEXT no se actualizó desde el 22/10 | PRD y CONTEXT reflejan lo implementado; contador al día | ✅ |
+| A2 | Ponytail audit | Señal 2 cerca (≥3 ciclos desde el audit del 22/10) y es requisito 1 de la Señal 3 | Audit en `docs/audits/` + slice de limpieza si hace falta | ✅ |
+| A3 | Validar variables de entorno requeridas al arrancar | PRD §10.3. Hoy solo hay chequeos al usar cada variable (p. ej. config de MP) | La app falla al iniciar con mensaje claro si falta una requerida; test | ✅ |
+| A4 | `tsc --noEmit` limpio | 108 errores (línea base; casi todos en tests, 1 en `.next/types`) | 0 errores. Probablemente en sub-slices por carpeta | ✅ |
+| A5 | Build estricto | `next.config` ignora errores de tipos y lint (`ignoreBuildErrors` / `ignoreDuringBuilds`). Señal 3 pide build sin errores ni warnings | Flags removidos; `npm run build` y `npm run lint` sin errores ni warnings. Depende de A4 | ✅ |
+| A6 | Fixtures para la rama Neon `test-integration` | 5 suites heredadas en rojo (18 tests): `catalogo-precio-override`, `debug/42p18-handler`, `productos-crear-smoke`, `productos-stock-minimo-ui`, `app/api/notas-venta/[id]/items/route.test.ts` | Suite completa 100 % verde | ✅ |
+| A7 | Catálogo público redondea a 1 decimal (herencia USD) | Listado en CONTEXT como pendiente; **no verificado si sigue ocurriendo** | Verificar; si ocurre, CLP entero en todo el catálogo | ✅ |
+| A8 | Completar "Zonas de riesgo conocidas" del PRD | Hoy solo tiene `scripts/migrations-order.ts`. Faltan: webhook MP (clave = app dueña de las credenciales; simulador no prueba pagos reales), IPN legacy, reserva de stock (BUG-003), flags leídos por tests (BUG-004) | Tabla completa | ✅ |
+| A9 | Smoke E2E de todos los flujos | Requisito 2 de la Señal 3 | Checklist ejecutado con evidencia: login, notas de venta (unidad/caja/mixta), precios, clientes, caja mayor, bodega, alertas, catálogo admin/público, tienda + pago MP, pedidos staff, deudores | 🟨 público OK (2026-10-23); falta smoke de flujos de staff con login de Pablo |
+| A10 | Diff de variables de entorno prod vs dev | Requisito 4 de la Señal 3 | Lista de keys (sin valores) por entorno, sin faltantes | ✅ |
+
+| A11 | Tipar los `any` heredados de Bazar Naty | 385 `any` en 99 archivos; `no-explicit-any` quedó desactivado en A5 para tener build estricto | Regla reactivada y lint 0/0. Deuda, no bloquea go-live | ⬜ |
 
 ## Bloque B — Infraestructura (no depende de Paola, sí de accesos)
 

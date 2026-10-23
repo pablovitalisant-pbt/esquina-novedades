@@ -146,7 +146,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
           body: JSON.stringify({ codigo: data.codigo, imageBase64: base64 }),
         });
         if (!imgRes.ok) {
-          toast.warning('Producto creado, pero la imagen no se pudo subir. Podés agregarla después desde el detalle del producto.');
+          toast.warning('Producto creado, pero la imagen no se pudo subir. Puedes agregarla después desde el detalle del producto.');
         }
       }
 

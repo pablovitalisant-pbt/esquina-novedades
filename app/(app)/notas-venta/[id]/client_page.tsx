@@ -747,7 +747,7 @@ export function PrenotaDetallePage({ session }: { session: any; params?: { id: s
 
       // Fallback obligatorio (sin soporte de canShare con archivos, p.ej. Firefox).
       doc.save(filename);
-      toast.warning('Tu navegador no soporta compartir el PDF directo. Adjuntalo manualmente en WhatsApp.');
+      toast.warning('Tu navegador no soporta compartir el PDF directo. Adjúntalo manualmente en WhatsApp.');
     } finally {
       setEnviandoWhatsapp(false);
     }

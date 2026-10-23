@@ -38,7 +38,7 @@ const fmtNum = formatCLP;
 
 const METRICA_DESCRIPCION: Record<TopMetrica, string> = {
   ganancia: 'Si vendieras todo el stock de estos productos al precio de venta actual, esta es la ganancia que te dejaría cada uno.',
-  costoTotal: 'Estos son los productos en los que tenés más plata invertida ahora mismo (costo x stock).',
+  costoTotal: 'Estos son los productos en los que tienes más plata invertida ahora mismo (costo x stock).',
   ventaPotencial: 'Si vendieras todo el stock de estos productos hoy, son los que más generarían en dólares.',
 };
 

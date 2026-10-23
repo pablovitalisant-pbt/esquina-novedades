@@ -118,7 +118,7 @@ export function ClientesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-sm text-[var(--body)] mt-1">Gestioná tus clientes</p>
+          <p className="text-sm text-[var(--body)] mt-1">Gestiona tus clientes</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}>
           <PlusCircle className="w-4 h-4 mr-2" /> Nuevo cliente

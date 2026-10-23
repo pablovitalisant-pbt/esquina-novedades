@@ -48,7 +48,9 @@ export function DeudoresClient({ session }: { session: any }) {
     });
 
   const abrirWhatsApp = (d: Deudor) => {
-    const telefono = (d.telefono || '').replace(/\D/g, '');
+    let telefono = (d.telefono || '').replace(/\D/g, '');
+    // Celular chileno guardado sin código de país (9 XXXX XXXX): wa.me exige el 56.
+    if (/^9\d{8}$/.test(telefono)) telefono = `56${telefono}`;
     if (!telefono) return;
     const monto = formatCLP(d.deuda_total);
     const titulos = d.notas.map((n) => n.titulo).join(', ');

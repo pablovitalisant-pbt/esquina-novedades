@@ -80,7 +80,7 @@ describe('Gate con email obligatorio', () => {
     fireEvent.change(screen.getByLabelText(/^nombre$/i), { target: { value: 'Juana' } });
     fireEvent.change(screen.getByLabelText(/^teléfono$/i), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
-    expect(screen.getByText(/completá tu nombre, teléfono y email/i)).toBeInTheDocument();
+    expect(screen.getByText(/completa tu nombre, teléfono y email/i)).toBeInTheDocument();
     expect(screen.queryByText(/a qué nombre armamos el pedido/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/^email$/i), { target: { value: 'juana@mail.com' } });
@@ -104,7 +104,7 @@ describe('Checkout en el drawer', () => {
 
     fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'delivery_iquique' } });
     fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
-    expect(screen.getByText(/ingresá la dirección/i)).toBeInTheDocument();
+    expect(screen.getByText(/ingresa la dirección/i)).toBeInTheDocument();
     expect(postCalls(fetchMock)).toBe(0);
 
     fireEvent.change(screen.getByLabelText(/dirección/i), { target: { value: 'Av. Costanera 123' } });

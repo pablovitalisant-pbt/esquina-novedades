@@ -16,6 +16,10 @@ jest.mock('next-auth', () => ({
   getServerSession: (...args: any[]) => getServerSession(...args),
 }));
 
+// Este archivo cubre el camino SIN pago online; el camino con pago online está en
+// pedidos-reserva.test.ts y pedidos-mercadopago.test.ts. No depender del JSON real.
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': false }));
+
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
   mockSql.transaction = (...args: any[]) => sqlTransaction(...args);

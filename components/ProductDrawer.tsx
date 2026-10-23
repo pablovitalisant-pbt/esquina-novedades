@@ -660,7 +660,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
             <DialogTitle>Eliminar producto</DialogTitle>
             <DialogDescription>
               El producto dejará de aparecer en listados y búsquedas. No se borra
-              el historial. Para confirmar, escribí el código exacto{' '}
+              el historial. Para confirmar, escribe el código exacto{' '}
               <span className="font-mono font-semibold">{producto?.codigo}</span>.
             </DialogDescription>
           </DialogHeader>

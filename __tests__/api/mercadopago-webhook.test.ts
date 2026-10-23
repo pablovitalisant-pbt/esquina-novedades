@@ -138,7 +138,20 @@ test('pending/in_process -> sin cambios', async () => {
     expect(hubo('UPDATE')).toBe(false);
   }
 });
-test('Payment.get lanza -> 500, sin cambios', async () => {
+test('pago inexistente en MP (404) -> 200 sin tocar la DB, para que MP no reintente', async () => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  paymentGet.mockRejectedValue(Object.assign(new Error('Payment not found'), { status: 404, error: 'not_found' }));
+  expect((await POST(req())).status).toBe(200);
+  expect(sql).not.toHaveBeenCalled();
+  expect(convertir).not.toHaveBeenCalled();
+  warn.mockRestore();
+});
+test('Payment.get con error 5xx de MP -> 500 (MP debe reintentar)', async () => {
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  paymentGet.mockRejectedValue(Object.assign(new Error('internal'), { status: 502 }));
+  expect((await POST(req())).status).toBe(500);
+  log.mockRestore();
+});test('Payment.get lanza -> 500, sin cambios', async () => {
   paymentGet.mockRejectedValue(new Error('boom'));
   expect((await POST(req())).status).toBe(500);
   expect(hubo('UPDATE')).toBe(false);

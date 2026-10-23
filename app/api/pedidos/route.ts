@@ -7,6 +7,7 @@ import { calcularPedido, ErrorPrecio, type OpcionEntrega, type Origen, type Prod
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { crearPreferenciaPedido } from '@/lib/pedidos/preferencia';
 import { rechazarPedido } from '@/lib/pedidos/rechazar';
+import { reservarStockLinea } from '@/lib/pedidos/reserva-stock';
 import { mpAccessToken, siteUrl } from '@/lib/mercadopago/config';
 import { precioCatalogoBase } from '@/lib/precio-catalogo';
 import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
@@ -278,23 +279,9 @@ export async function POST(request: NextRequest) {
     }
     if (pagoOnline) {
       for (const linea of calculado.lineas) {
-        // UPDATE condicionado + guard 1/0: si falta stock la transacción entera
-        // aborta con 22012, sin pedido ni descuento parcial.
-        queries.push(sql`
-          WITH upd AS (
-            UPDATE public.productos
-            SET saldo = saldo - ${linea.unidades}, updated_at = NOW()
-            WHERE id = ${linea.producto_id} AND saldo >= ${linea.unidades}
-            RETURNING id, codigo, empresa_id
-          ), ub AS (
-            UPDATE public.ubicaciones_bodega u
-            SET saldo = u.saldo - ${linea.unidades}, updated_at = NOW()
-            FROM upd
-            WHERE u.codigo = upd.codigo AND u.empresa_id = upd.empresa_id
-            RETURNING u.id
-          )
-          SELECT CASE WHEN EXISTS (SELECT 1 FROM upd) THEN 1 ELSE 1 / 0 END AS ok
-        `);
+        // Guard 1/COUNT (lib/pedidos/reserva-stock): si falta stock la transacción
+        // entera aborta con 22012, sin pedido ni descuento parcial.
+        queries.push(reservarStockLinea(linea.producto_id, linea.unidades));
       }
     }
 

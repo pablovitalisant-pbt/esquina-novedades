@@ -33,7 +33,7 @@ window.open = openSpy as any;
 const deudorConTel = {
   cliente_id: '1',
   cliente_nombre: 'Juana Pérez',
-  telefono: '591 712-34567',
+  telefono: '+56 9 7340-1234',
   num_notas: 1,
   deuda_total: 1450.0,
   notas: [{ id: 12, titulo: 'Nota de Venta #12' }],
@@ -75,11 +75,18 @@ describe('DeudoresClient — botón WhatsApp', () => {
     fireEvent.click(btn);
     expect(openSpy).toHaveBeenCalledTimes(1);
     const url = openSpy.mock.calls[0][0] as string;
-    expect(url.startsWith('https://wa.me/59171234567?text=')).toBe(true);
+    expect(url.startsWith('https://wa.me/56973401234?text=')).toBe(true);
   });
 
-  test('TEST 3: mensaje decodificado preserva nombre, monto y títulos', async () => {
-    renderCon([deudorConTel]);
+  test('TEST 2b: celular chileno sin código de país → wa.me con 56', async () => {
+    renderCon([{ ...deudorConTel, telefono: '9 7340 1234' }]);
+    const row = await screen.findByText('Juana Pérez').then(el => el.closest('tr')!);
+    fireEvent.click(within(row).getByTestId('btn-whatsapp'));
+    const url = openSpy.mock.calls[0][0] as string;
+    expect(url.startsWith('https://wa.me/56973401234?text=')).toBe(true);
+  });
+
+  test('TEST 3: mensaje decodificado preserva nombre, monto y títulos', async () => {    renderCon([deudorConTel]);
     const row = await screen.findByText('Juana Pérez').then(el => el.closest('tr')!);
     fireEvent.click(within(row).getByTestId('btn-whatsapp'));
     const url = openSpy.mock.calls[0][0] as string;

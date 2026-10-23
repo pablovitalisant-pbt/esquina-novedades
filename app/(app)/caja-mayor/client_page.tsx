@@ -652,7 +652,7 @@ export function CajaMayorClient({
             onClick={() => setCierreModalOpen(true)}
             variant="default"
             disabled={!online}
-            title={!online ? "Necesitás conexión para cerrar caja" : undefined}
+            title={!online ? "Necesitas conexión para cerrar caja" : undefined}
           >
             🔒 Cierre de Período
           </Button>
@@ -1065,11 +1065,11 @@ export function CajaMayorClient({
                             {userRol === "admin" && (
                               <div className="flex gap-1">
                                 {cierreEditId !== item.data.id && (
-                                  <Button variant="ghost" size="icon-sm" onClick={() => handleOpenCierreEdit(item.data as CierrePeriodo)} title={!online ? "Necesitás conexión para cerrar caja" : "Editar fechas"} disabled={!online}>
+                                  <Button variant="ghost" size="icon-sm" onClick={() => handleOpenCierreEdit(item.data as CierrePeriodo)} title={!online ? "Necesitas conexión para cerrar caja" : "Editar fechas"} disabled={!online}>
                                     <Pencil className="w-3.5 h-3.5" />
                                   </Button>
                                 )}
-                                <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteCierre(item.data.id)} title={!online ? "Necesitás conexión para cerrar caja" : "Eliminar cierre"} disabled={!online}>
+                                <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteCierre(item.data.id)} title={!online ? "Necesitas conexión para cerrar caja" : "Eliminar cierre"} disabled={!online}>
                                   <Trash2 className="w-3.5 h-3.5 text-[var(--destructive)]" />
                                 </Button>
                               </div>

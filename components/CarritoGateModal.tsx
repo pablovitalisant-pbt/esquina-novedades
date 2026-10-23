@@ -39,11 +39,11 @@ export function CarritoGateModal({
     const t = telefono.trim();
     const m = email.trim();
     if (!n || !t || !m) {
-      setError('Completá tu nombre, teléfono y email para continuar.');
+      setError('Completa tu nombre, teléfono y email para continuar.');
       return;
     }
     if (!m.includes('@')) {
-      setError('Ingresá un email válido.');
+      setError('Ingresa un email válido.');
       return;
     }
     onConfirm({ nombre: n, telefono: t, email: m });
@@ -81,7 +81,7 @@ export function CarritoGateModal({
                 id="gate-telefono"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
-                placeholder="+591 700 12345"
+                placeholder="+56 9 1234 5678"
                 inputMode="tel"
                 autoComplete="tel"
               />

@@ -160,7 +160,7 @@ describe('InversionMercaderiaClient — descripción dinámica del Top 10', () =
     // default ganancia
     expect(screen.getByText(/esta es la ganancia que te dejaría cada uno/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'costoTotal' } });
-    expect(screen.getByText(/tenés más plata invertida/)).toBeInTheDocument();
+    expect(screen.getByText(/tienes más plata invertida/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ventaPotencial' } });
     expect(screen.getByText(/más generarían en dólares/)).toBeInTheDocument();
   });

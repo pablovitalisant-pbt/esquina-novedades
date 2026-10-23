@@ -86,7 +86,9 @@ test('reserva: descuenta ambas tablas, guarda unidades y deja pendiente_pago 36 
   const prod = txQuery('UPDATE public.productos');
   expect(prod.strings.join('')).toMatch(/saldo\s*=\s*saldo\s*-/);
   expect(prod.strings.join('')).toMatch(/saldo\s*>=\s*/);
-  expect(prod.strings.join('')).toMatch(/1\s*\/\s*0/);
+  // BUG-003: el divisor debe depender de upd; un `1 / 0` constante se pliega al planificar.
+  expect(prod.strings.join('')).toMatch(/1\s*\/\s*\(SELECT COUNT\(\*\) FROM upd\)/);
+  expect(prod.strings.join('')).not.toMatch(/ELSE\s+1\s*\/\s*0/);
   expect(prod.values).toContain(12); // 2 cajas * cantcaja 6
 
   expect(txQuery('UPDATE public.ubicaciones_bodega').values).toContain(12);

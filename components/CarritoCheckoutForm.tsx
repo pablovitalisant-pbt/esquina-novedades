@@ -52,10 +52,10 @@ export function CarritoCheckoutForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!datos.nombre || !datos.telefono) return setError('Completá tu nombre y teléfono.');
-    if (!datos.email.includes('@')) return setError('Ingresá un email válido.');
-    if (!opcion) return setError('Elegí una opción de entrega.');
-    if (opcion.requiere_direccion && !datos.direccion_entrega) return setError('Ingresá la dirección de entrega.');
+    if (!datos.nombre || !datos.telefono) return setError('Completa tu nombre y teléfono.');
+    if (!datos.email.includes('@')) return setError('Ingresa un email válido.');
+    if (!opcion) return setError('Elige una opción de entrega.');
+    if (opcion.requiere_direccion && !datos.direccion_entrega) return setError('Ingresa la dirección de entrega.');
     setError(null);
     onSubmit(datos);
   }
@@ -83,7 +83,7 @@ export function CarritoCheckoutForm({
           onChange={(e) => setEntregaCodigo(e.target.value)}
           className="h-10 w-full rounded-pill border border-[var(--border-default)] bg-[var(--neutral-primary-soft)] px-3 text-sm text-[var(--heading)] outline-none focus-visible:border-[var(--brand-strong)]"
         >
-          <option value="">Elegí una opción</option>
+          <option value="">Elige una opción</option>
           {opciones.map((o) => (
             <option key={o.codigo} value={o.codigo}>{o.nombre} — {formatCLP(o.costo)}</option>
           ))}

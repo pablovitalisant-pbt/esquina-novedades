@@ -9,6 +9,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
+// Flags controlados por el test (no el JSON real, que cambia según el despliegue).
+jest.mock('@/config/feature-flags.json', () => ({}));
+const mockFlags = (): Record<string, boolean> => require('@/config/feature-flags.json');
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 
@@ -92,10 +95,17 @@ describe('5c — totales, modalidad y edición', () => {
   });
 
   it('deriva el tipo de nota en el encabezado (mixta) y respeta tipo explícito', async () => {
+    mockFlags()['notas-venta-modalidad'] = false;
     await renderNota([caja, unidad]);
     expect(screen.getByText('Tipo: mixta')).toBeInTheDocument();
   });
 
+  it('con notas-venta-modalidad activo, el tipo derivado se muestra como badge', async () => {
+    mockFlags()['notas-venta-modalidad'] = true;
+    await renderNota([caja, unidad]);
+    expect(screen.getByText('mixta')).toBeInTheDocument();
+    expect(screen.queryByText('Tipo: mixta')).toBeNull();
+  });
   it('PATCH de item caja NO envía unidades y deriva la razón congelada', async () => {
     await renderNota([caja]);
     fireEvent.click(screen.getByRole('button', { name: /editar/i }));

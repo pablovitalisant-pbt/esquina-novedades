@@ -29,6 +29,8 @@ export function CarritoDrawer() {
   const [enviando, setEnviando] = useState(false);
   const [opciones, setOpciones] = useState<OpcionEntrega[]>([]);
   const [checkout, setCheckout] = useState<DatosCheckout | null>(null);
+  // Error visible dentro del carrito: un toast dura segundos y puede quedar tapado.
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
 
   useEffect(() => {
     // Las opciones solo hacen falta al abrir el checkout.
@@ -57,6 +59,7 @@ export function CarritoDrawer() {
     // Guard contra doble envío: ignora si ya hay un envío en curso.
     if (items.length === 0 || enviando) return;
     setEnviando(true);
+    setErrorEnvio(null);
     try {
       const res = await fetch('/api/pedidos', {
         method: 'POST',
@@ -88,11 +91,15 @@ export function CarritoDrawer() {
           toast.success('Pedido enviado');
         }
       } else {
-        toast.error(body?.error ?? 'No se pudo enviar el pedido');
+        const mensaje = mensajeError(body);
+        setErrorEnvio(mensaje);
+        toast.error(mensaje);
         // items intactos ante error
       }
     } catch {
-      toast.error('Error de red. Tu pedido se conservó.');
+      const mensaje = 'No pudimos conectarnos con la tienda. Revisa tu conexión e intenta de nuevo; tu pedido se conservó.';
+      setErrorEnvio(mensaje);
+      toast.error(mensaje);
     } finally {
       setEnviando(false);
     }
@@ -201,6 +208,15 @@ export function CarritoDrawer() {
               <span className="text-sm font-medium text-[var(--body-subtle)]">Total estimado</span>
               <div className="text-lg font-bold" data-testid="total-estimado">{formatCLP(total)}</div>
             </div>
+            {errorEnvio && (
+              <p
+                role="alert"
+                data-testid="error-envio"
+                className="text-sm rounded-lg border border-red-300 bg-red-50 text-red-700 px-3 py-2"
+              >
+                {errorEnvio}
+              </p>
+            )}
             {haySinPrecio && (
               <p className="text-xs text-[var(--body-subtle)]">algunos productos sin precio no incluidos</p>
             )}
@@ -217,4 +233,18 @@ export function CarritoDrawer() {
       </Sheet>
     </>
   );
+}
+
+/** Mensaje para el cliente a partir de la respuesta de error de POST /api/pedidos. */
+function mensajeError(body: any): string {
+  const sinStock = Array.isArray(body?.items) ? body.items : [];
+  if (sinStock.length > 0) {
+    const detalle = sinStock
+      .map((i: any) => `${i.codigo} (quedan ${i.disponible}, pediste ${i.solicitado})`)
+      .join(', ');
+    return `No hay stock suficiente: ${detalle}. Ajusta las cantidades e intenta de nuevo.`;
+  }
+  return typeof body?.error === 'string' && body.error
+    ? body.error
+    : 'No se pudo enviar el pedido. Intenta de nuevo en unos minutos.';
 }

@@ -158,7 +158,7 @@ describe('Gate obligatorio (BotonAgregarPedido)', () => {
 
     // Confirmar el gate con nombre+teléfono+email
     fireEvent.change(screen.getByPlaceholderText('Tu nombre'), { target: { value: 'Juana Pérez' } });
-    fireEvent.change(screen.getByPlaceholderText('+591 700 12345'), { target: { value: '+591 700 12345' } });
+    fireEvent.change(screen.getByPlaceholderText('+56 9 1234 5678'), { target: { value: '+56 9 1234 5678' } });
     fireEvent.change(screen.getByPlaceholderText('tu@email.com'), { target: { value: 'juana@mail.com' } });
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
 
@@ -184,7 +184,7 @@ describe('Gate obligatorio (BotonAgregarPedido)', () => {
 
     // Submit con todo vacío → error, no se agrega
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
-    expect(screen.getByText(/completá tu nombre, teléfono y email/i)).toBeInTheDocument();
+    expect(screen.getByText(/completa tu nombre, teléfono y email/i)).toBeInTheDocument();
     expect(screen.getByTestId('total').textContent).toBe('0');
   });
 });
@@ -239,12 +239,57 @@ describe('R4 — Error del POST conserva los items', () => {
     fireEvent.click(enviar);
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    // El error queda visible dentro del carrito, no solo en un toast efímero.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Telefono requerido');
     // Items intactos (total = 1+2 = 3), el drawer sigue abierto
     expect(screen.getByTestId('total').textContent).toBe('3');
   });
 
-  it('respuesta 201 → toast.success, limpia items y conserva contacto', async () => {
+  it('409 sin stock → el carrito muestra un mensaje visible con el detalle y conserva los items', async () => {
     mockFetch(Promise.resolve({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: 'Stock insuficiente', items: [{ codigo: 'A', disponible: 2, solicitado: 6 }] }),
+    }));
+
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A]} />
+        <CarritoDrawer />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
+    fireEvent.click(await screen.findByRole('button', { name: /enviar pedido/i }));
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent(/no hay stock suficiente/i);
+    expect(alerta).toHaveTextContent('A (quedan 2, pediste 6)');
+    expect(screen.getByTestId('total').textContent).toBe('1');
+  });
+
+  it('error de red → mensaje visible en el carrito', async () => {
+    mockFetch(Promise.reject(new Error('offline')));
+
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A]} />
+        <CarritoDrawer />
+      </CarritoProvider>
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+    await elegirRetiro();
+    fireEvent.click(await screen.findByRole('button', { name: /enviar pedido/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos conectarnos/i);
+  });
+
+  it('respuesta 201 → toast.success, limpia items y conserva contacto', async () => {    mockFetch(Promise.resolve({
       ok: true,
       status: 201,
       json: async () => ({ data: { id: 'x' } }),

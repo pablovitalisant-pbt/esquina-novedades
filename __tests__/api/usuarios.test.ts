@@ -89,8 +89,7 @@ describe('GET /api/admin/usuarios', () => {
       { usuario_id: 1, empresa_id: 1 },
     ]);
 
-    const req = {} as Request;
-    const res = await GET(req);
+    const res = await GET();
 
     expect(res.status).toBe(200);
     const body = await res.json();

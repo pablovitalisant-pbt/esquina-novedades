@@ -30,7 +30,6 @@ export async function GET(request: Request) {
     // Zero-pad to 6 digits if input looks like a number
     const isNumeric = /^\d+$/.test(q);
     // ponytail: Slice 13 — repunte movidcto -> prenotas.
-    const padded6 = isNumeric ? q.padStart(6, "0") : q;
     const pattern = `%${q}%`;
     const idSearch = isNumeric ? parseInt(q, 10) : null;
 

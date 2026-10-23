@@ -23,7 +23,6 @@ jest.mock("@/lib/cloudinary", () => ({
 }));
 
 import { getServerSession } from "next-auth";
-import { sql } from "@/lib/db";
 import { uploadImage } from "@/lib/cloudinary";
 
 // We'll use require to load it more dynamically

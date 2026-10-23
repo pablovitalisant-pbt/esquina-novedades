@@ -27,7 +27,6 @@ export function CajaMayorClient({
   cuentas,
   userName,
   userRol,
-  userId,
 }: {
   cuentas: Cuenta[];
   userName: string;
@@ -630,7 +629,7 @@ export function CajaMayorClient({
       URL.revokeObjectURL(url);
 
       toast.success("Excel descargado");
-    } catch (e) {
+    } catch {
       toast.error("Error al generar Excel");
     } finally {
       setExporting(false);

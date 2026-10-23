@@ -35,7 +35,6 @@ export async function GET() {
   `;
 
   // Filtrar deudas (saldo > 0.005, mismo criterio que notas-venta) y agrupar.
-  const deudas: any[] = [];
   const map = new Map<string, any>();
 
   for (const r of rows as any[]) {

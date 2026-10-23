@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
-import { cn } from '@/lib/utils';
 import { EMPRESA } from '@/lib/empresa';
 
 export function BodegaClient({ session }: any) {

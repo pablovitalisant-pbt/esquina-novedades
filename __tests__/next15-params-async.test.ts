@@ -37,7 +37,7 @@ beforeEach(() => {
 describe.each(variantes({ id: '5' }))('notas-venta page (%s)', (_n, params) => {
   test('pasa session al cliente sin lanzar y sin params Promise', async () => {
     mockSession.mockResolvedValue({ user: { rol: 'admin' } });
-    const el: any = await PrenotaDetalleRoute({ params });
+    const el: any = await PrenotaDetalleRoute();
     expect(el.props.session).toBeDefined();
     expect(typeof el.props.params?.then).not.toBe('function');
   });

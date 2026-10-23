@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
-export async function GET(request: Request) {
+export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });

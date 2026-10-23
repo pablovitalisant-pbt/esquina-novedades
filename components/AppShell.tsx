@@ -10,9 +10,6 @@ import { AlertasProvider } from '@/contexts/AlertasContext';
 import { EMPRESA } from '@/lib/empresa';
 
 export function AppShell({ children, session }: { children: React.ReactNode, session: any }) {
-  const rol = (session?.user as any)?.rol as string;
-  const isAdmin = rol === 'admin';
-
   return (
     <SessionProvider session={session}>
     <AlertasProvider>

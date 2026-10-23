@@ -4,9 +4,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BodegaClient } from './client_page';
 
-var toastMock: any;
+let toastMock: any;
 
-jest.mock('next/image', () => ({ fill, ...props }: any) =>
+jest.mock('next/image', () => ({ ...props }: any) =>
   require('react').createElement('img', { ...props, alt: '' })
 );
 jest.mock('sonner', () => ({

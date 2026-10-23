@@ -163,7 +163,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
       setCrearPreview(null);
       setSearch('');
       setDebouncedSearch('');
-    } catch (err) {
+    } catch {
       toast.error('Error de red al crear producto');
     } finally {
       setCrearLoading(false);
@@ -260,6 +260,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
                     <label className="text-sm font-medium">Imagen del producto</label>
                     <div className="mt-1 flex items-center gap-3">
                       {crearPreview && (
+                        // eslint-disable-next-line @next/next/no-img-element -- preview local de FileReader antes de subir a Cloudinary
                         <img src={crearPreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover border" />
                       )}
                       <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border)] border-[var(--border)]700 hover:bg-[var(--muted)] dark:hover:bg-[var(--muted)] transition-colors">

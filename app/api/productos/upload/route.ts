@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { productoId, imageBase64, codigo } = await request.json();
+    const { imageBase64, codigo } = await request.json();
 
     if (!imageBase64 || !codigo) {
       return NextResponse.json({ error: "Faltan datos (imageBase64, codigo)" }, { status: 400 });

@@ -60,13 +60,12 @@ describe('ProductCard - Cantidad por Caja', () => {
   });
 
   test('No renderiza el bloque "Cantidad por Caja" cuando cantcaja es null', () => {
-    // @ts-ignore
+    // @ts-expect-error -- el componente debe tolerar el null que llega de la DB heredada
     setup({ cantcaja: null, umed: 'UN' });
     expect(screen.queryByText(/Caja/)).not.toBeInTheDocument();
   });
 
   test('No renderiza el bloque "Cantidad por Caja" cuando cantcaja es undefined', () => {
-    // @ts-ignore
     setup({ cantcaja: undefined, umed: 'UN' });
     expect(screen.queryByText(/Caja/)).not.toBeInTheDocument();
   });

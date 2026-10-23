@@ -381,6 +381,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
                     className="flex items-center gap-3 bg-[var(--muted)] bg-[var(--muted)]800 rounded-lg p-3"
                   >
                     {item.imagen_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- preview de item en modal de edición; el tamaño real se sirve desde Cloudinary
                       <img
                         src={item.imagen_url}
                         alt={item.detalle}

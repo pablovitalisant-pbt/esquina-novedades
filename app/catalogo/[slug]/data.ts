@@ -143,7 +143,7 @@ export async function getCatalogData(slug: string) {
         productos,
       }
     };
-  } catch (e: any) {
+  } catch {
     return { status: 500, data: null };
   }
 }

@@ -30,5 +30,11 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Contrato: solo cambios de tipos en tests (sin tocar aserciones) + mover `getCatalogData` de la página a `app/catalogo/[slug]/data.ts` (export no permitido en páginas de Next).
 - Tests: tsc 39 → 0; suite completa = línea base (mismas 5 suites); build OK. DT verificó: movimiento literal (134 líneas, 0 diferencias), diff de tests solo casts/anotaciones + 1 prop de fixture exigida por el tipo.
 - Verificación DT: claude-deep listó mal las suites en rojo (nombró productos-softdelete, que pasa).
+- Commit: 92136ac
+- Gates disparados: ninguno
+## 2026-10-23 - Slice: A5 build estricto
+- Contrato: quitar `ignoreBuildErrors`/`ignoreDuringBuilds`; lint 0/0. Decisión DT: `no-explicit-any` off (385 `any` heredados en 99 archivos → deuda A11 en el backlog); `no-require-imports` off solo en tests (patrón jest.mock + require).
+- Tests: lint 0 errores / 0 warnings; tsc 0; suite completa = línea base; `npm run build` con lint y tipos activos OK, sin warnings.
+- Verificación DT: revisados los 3 cambios de dependencias de hooks (fetch inicial duplicado eliminado; `categoriaFiltro` en el observer corrige closure obsoleto; `onAutoFocusConsumed` protegido por ref). 4 `eslint-disable-next-line no-img-element` con motivo (previews locales / thumbnail recharts).
 - Commit: (este)
 - Gates disparados: ninguno

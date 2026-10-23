@@ -72,7 +72,7 @@ function PrenotaItemsTable({
         onAutoFocusConsumed?.();
       }
     }
-  }, [items, autoFocusItemId]);
+  }, [items, autoFocusItemId, onAutoFocusConsumed]);
 
   // Focus and select the Cajas input when editing opens via auto-focus
   useEffect(() => {
@@ -251,7 +251,7 @@ function PrenotaItemsTable({
   );
 }
 
-export function PrenotaDetallePage({ session }: { session: any; params?: { id: string } }) {
+export function PrenotaDetallePage({}: { session: any; params?: { id: string } }) {
   const router = useRouter();
   // El id se lee de la URL real (useParams), no del prop `params` horneado en el
   // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta
@@ -679,7 +679,7 @@ export function PrenotaDetallePage({ session }: { session: any; params?: { id: s
     doc.text(`Pendiente: ${formatCLP(pendiente)}`, pageWidth - 14, yResumen, { align: 'right' });
 
     // ─── Footer: agradecimiento + banda de contacto ───
-    let fy = yResumen + 10;
+    const fy = yResumen + 10;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(35, 31, 32);
@@ -910,7 +910,7 @@ export function PrenotaDetallePage({ session }: { session: any; params?: { id: s
           </div>
         )}
         {showResults && !productoLoading && productoQuery.trim().length >= 2 && productoResults.length === 0 && (
-          <p className="text-sm text-[var(--body-subtle)]">Sin resultados para "{productoQuery}"</p>
+          <p className="text-sm text-[var(--body-subtle)]">Sin resultados para &quot;{productoQuery}&quot;</p>
         )}
       </div>
 

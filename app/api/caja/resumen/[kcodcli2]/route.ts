@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
-import type { NotaConPagos, PagoDetalle, ResumenClienteResponse } from "@/docs/specs/caja-mayor.spec";
+import type { NotaConPagos, ResumenClienteResponse } from "@/docs/specs/caja-mayor.spec";
 
 function guard(session: any) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });

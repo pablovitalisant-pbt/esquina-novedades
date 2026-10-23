@@ -225,7 +225,6 @@ export function CategoriasClient({
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
   const [nuevaCategoriaInput, setNuevaCategoriaInput] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const dividerDragRef = useRef(false);
@@ -273,12 +272,9 @@ export function CategoriasClient({
     }
   }, []);
 
-  // Initial load
-  useEffect(() => {
-    fetchProductos('', 0, false, categoriaFiltro);
-  }, [fetchProductos]);
+  // Carga inicial y cambios de búsqueda/categoría (un solo efecto: el segundo
+  // corre también al montar, el inicial era un fetch duplicado).
 
-  // On search or categoriaFiltro change
   useEffect(() => {
     fetchProductos(debouncedSearch, 0, false, categoriaFiltro);
   }, [debouncedSearch, categoriaFiltro, fetchProductos]);
@@ -298,7 +294,7 @@ export function CategoriasClient({
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, offset, debouncedSearch, fetchProductos]);
+  }, [hasMore, isLoading, offset, debouncedSearch, categoriaFiltro, fetchProductos]);
 
   // ---------------------------------------------------------------------------
   // Divider drag
@@ -463,14 +459,9 @@ export function CategoriasClient({
       ? '¿Eliminar esta categoría?'
       : `Esta categoría tiene ${total_productos} producto(s) asignado(s). Al eliminarla, esos productos quedarán sin categoría. ¿Deseas continuar?`;
     if (!window.confirm(mensaje)) return;
-    setDeletingId(id);
-    try {
-      const res = await fetch(`/api/categorias/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setCategorias(prev => prev.filter(c => c.id !== id));
-      }
-    } finally {
-      setDeletingId(null);
+    const res = await fetch(`/api/categorias/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setCategorias(prev => prev.filter(c => c.id !== id));
     }
   };
 

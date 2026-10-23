@@ -38,7 +38,7 @@ const MOCK_ITEMS = [
 ];
 
 // Fetch mock base: lista catálogos + detalle con items
-function mockFetch(overrides: Record<string, any> = {}) {
+function mockFetch() {
   global.fetch = jest.fn().mockImplementation((url: string, opts: any) => {
     // GET lista
     if (url.includes('/api/catalogos?')) {

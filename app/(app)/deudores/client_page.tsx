@@ -21,7 +21,7 @@ interface Deudor {
   deuda_mas_antigua: string;
 }
 
-export function DeudoresClient({ session }: { session: any }) {
+export function DeudoresClient({}: { session: any }) {
   const [deudores, setDeudores] = useState<Deudor[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -40,7 +40,7 @@ interface OpcionEntrega {
   costo: number;
 }
 
-export function CajaConfigClient({ currentUserNombre }: { currentUserNombre: string }) {
+export function CajaConfigClient({}: { currentUserNombre: string }) {
   // ─── Carga inicial (2 fetch) ───
   useEffect(() => {
     (async () => {

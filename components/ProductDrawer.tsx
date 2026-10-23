@@ -572,6 +572,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                    >
                      {previewUrl ? (
                          <div className="relative w-full aspect-square max-w-[120px] mx-auto overflow-hidden rounded-md border shadow-sm">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- preview local antes de subir a Cloudinary */}
                             <img src={previewUrl} alt="Preview" className="object-cover w-full h-full" />
                          </div>
                      ) : (

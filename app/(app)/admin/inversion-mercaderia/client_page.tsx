@@ -47,8 +47,8 @@ function Thumb({ src, className }: { src?: string | null; className?: string }) 
   if (!src) {
     return <ImageOff className="w-5 h-5 text-[var(--body)]/40 shrink-0" />;
   }
-  // eslint-disable-next-line @next/next/no-img-element
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- thumbnail de Cloudinary en tooltip de recharts; next/image no aplica a contenido dinámico de gráfico
     <img
       src={src}
       alt=""
@@ -120,7 +120,6 @@ export function InversionMercaderiaClient() {
     imagen_url: d.imagen_url,
   }));
   const top = topProductos(visibles, metrica, 10, false); // ya viene filtrado
-  const metricaLabel = TOP_METRICAS.find((m) => m.key === metrica)?.label ?? '';
   const metricaDescripcion = METRICA_DESCRIPCION[metrica];
 
   // Colores validados con el validador de dataviz skill (claro/oscuro).

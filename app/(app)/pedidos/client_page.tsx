@@ -74,7 +74,7 @@ function formatFecha(value: string): string {
   });
 }
 
-export function PedidosPage({ session }: { session: any }) {
+export function PedidosPage({}: { session: any }) {
   const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);

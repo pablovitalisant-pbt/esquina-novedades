@@ -19,6 +19,8 @@ jest.mock('@/lib/pedidos/liberar-reservas', () => ({
   liberarReservasVencidas: (...args: any[]) => mockLiberar(...args),
 }));
 
+jest.mock('@/config/feature-flags.json', () => ({ 'pedido-confetti': true }));
+
 import PedidoPage from '@/app/pedido/[id]/page';
 
 const UUID = '6c1f0a2e-8b3d-4a5f-9c7e-1d2b3a4c5d6e';
@@ -107,5 +109,48 @@ describe('botón de pago y mensajes por estado', () => {
   test.each(['rechazado', 'expirado'])('%s → sin enlace de pago', async (estado) => {
     const out = await html({ ...PEDIDO, estado });
     expect(out).not.toContain('Pagar con Mercado Pago');
+  });
+});
+
+// ─── Ciclo pedido festivo: diseño por estado + confetti ───
+const flagsMock = jest.requireMock('@/config/feature-flags.json') as Record<string, boolean>;
+
+describe('diseño festivo por estado', () => {
+  afterEach(() => { flagsMock['pedido-confetti'] = true; });
+
+  test.each(['convertido', 'pagado'])('%s → agradecimiento, confetti y "Seguir comprando"', async (estado) => {
+    const out = await html({ ...PEDIDO, estado });
+    expect(out).toContain('¡Gracias por tu compra');
+    expect(out).toContain('data-confetti');
+    expect(out).toContain('Seguir comprando');
+    expect(out).not.toContain('Pagar con Mercado Pago');
+  });
+
+  test.each(['pendiente_pago', 'rechazado', 'expirado', 'revision', 'pagado_tardio', 'descartado'])(
+    '%s → nunca confetti', async (estado) => {
+      const out = await html({ ...PEDIDO, estado });
+      expect(out).not.toContain('data-confetti');
+    },
+  );
+
+  test('pendiente_pago → "Tu pedido está reservado" y número corto del pedido', async () => {
+    const out = await html();
+    expect(out).toContain('Tu pedido está reservado');
+    expect(out).toContain('#6C1F0A2E');
+  });
+
+  test('revision → "Estamos revisando tu pago"', async () => {
+    expect(await html({ ...PEDIDO, estado: 'revision' })).toContain('Estamos revisando tu pago');
+  });
+
+  test('rechazado → "El pago fue rechazado"', async () => {
+    expect(await html({ ...PEDIDO, estado: 'rechazado' })).toContain('El pago fue rechazado');
+  });
+
+  test('flag pedido-confetti OFF → convertido sin confetti, con agradecimiento', async () => {
+    flagsMock['pedido-confetti'] = false;
+    const out = await html({ ...PEDIDO, estado: 'convertido' });
+    expect(out).not.toContain('data-confetti');
+    expect(out).toContain('¡Gracias por tu compra');
   });
 });

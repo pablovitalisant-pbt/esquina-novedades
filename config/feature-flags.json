@@ -4,5 +4,6 @@
   "notas-venta-modalidad": true,
   "clientes-etiqueta": true,
   "tienda-pago-online": true,
-  "mp-webhook-ignorar-ipn-legacy": true
+  "mp-webhook-ignorar-ipn-legacy": true,
+  "pedido-confetti": false
 }

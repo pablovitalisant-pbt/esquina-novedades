@@ -68,7 +68,7 @@ function precioUnidad(producto: ProductoPrecio, origen: Origen, precioCatalogo?:
     if (typeof precioCatalogo !== 'number' || !Number.isFinite(precioCatalogo) || precioCatalogo < 0) {
       throw new ErrorPrecio('precio de catálogo no disponible para el producto');
     }
-    return Math.round(precioCatalogo); // CLP entero; la página puede mostrar 1 decimal
+    return Math.round(precioCatalogo); // CLP entero; precioCatalogoBase ya lo entrega así
   }
   const prcventa = Number(producto.prcventa);
   if (!Number.isFinite(prcventa) || prcventa < 0) {

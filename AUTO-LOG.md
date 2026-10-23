@@ -42,9 +42,15 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Contrato: diagnóstico por suite (13 F falta de datos, 5 T tests desactualizados, 0 B); seed idempotente `npm run test:seed` con safeguard anti-producción; tests ajustados sin cambiar qué verifican.
 - Tests: suite completa 212/212 suites, 1775/1775 tests (primera vez 100 %); tsc 0; lint 0/0; build OK.
 - Verificación DT: labels de UI confirmados contra el código; script revisado (carga .env.test, assertEnvTestExiste + assertNoProduccion antes de conectar).
-- Commit: (este)
+- Commit: f600207
 - Gates disparados: ninguno
 
 ## 2026-10-23 - A8 zonas de riesgo + A10 diff de env (DT, solo docs)
 - PRD "Zonas de riesgo conocidas" completado (webhook/BUG-005, IPN legacy, reserva BUG-003, precio catálogo, flags en tests, env).
 - `docs/audits/env-diff-2026-10-23.md`: producción tiene todas las requeridas; faltan Cloudinary (C2) y credenciales MP productivas (C4), planificados.
+## 2026-10-23 - Slice: A7 precio de catálogo en CLP entero
+- Contrato: `precioCatalogoBase` = `Math.ceil(costo * (1 + margen/100))` (antes ceil a 1 decimal, herencia USD).
+- Tests: nuevo test rojo (esperaba 1235, recibía 1234.5) → verde; suite completa 213/213, 1778/1778; tsc 0; lint 0/0; build OK.
+- Verificación DT: corrección del diagnóstico del DT: NO había descuadre con MP (el servidor ya hacía `Math.round` al cobrar y la UI mostraba entero). Efecto real del cambio: precios de catálogo redondean hacia arriba al peso (hasta +$1 en algunos productos, p. ej. 129,4 → 130). Informado a Pablo.
+- Commit: (este)
+- Gates disparados: ninguno

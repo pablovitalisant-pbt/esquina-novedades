@@ -110,7 +110,7 @@ describe('total', () => {
 
 describe('precio de catálogo (origen catalogo)', () => {
   test('usa la misma fórmula que la página del catálogo', () => {
-    expect(precioCatalogoBase(99.5, 30)).toBe(129.4);
+    expect(precioCatalogoBase(99.5, 30)).toBe(130);
   });
 
   test('cobra el precio de catálogo (redondeado a CLP), nunca el del cliente', () => {
@@ -123,7 +123,7 @@ describe('precio de catálogo (origen catalogo)', () => {
         entrega: RETIRO,
       },
     );
-    expect(r.lineas[0].precio).toBe(129);
-    expect(r.total).toBe(129);
+    expect(r.lineas[0].precio).toBe(130);
+    expect(r.total).toBe(130);
   });
 });

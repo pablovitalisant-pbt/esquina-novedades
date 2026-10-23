@@ -21,6 +21,8 @@ jest.mock('mercadopago', () => ({
   Payment: class { get(a: any) { return paymentGet(a); } },
 }));
 
+// Flag del ciclo IPN legacy (mutable por test vía jest.requireMock). Default ON.
+jest.mock('@/config/feature-flags.json', () => ({ 'mp-webhook-ignorar-ipn-legacy': true }));
 import { POST } from '@/app/api/mercadopago/webhook/route';
 
 const SECRET = 'secreto-test';
@@ -162,4 +164,47 @@ test('error de DB -> 500 y el secreto no se loguea', async () => {
   expect((await POST(req())).status).toBe(500);
   expect(JSON.stringify(log.mock.calls)).not.toContain(SECRET);
   log.mockRestore();
+});
+
+// ─── Ciclo IPN legacy: notificaciones "MercadoPago Feed v2.0" (?id=&topic=) ───
+const flagsMock = jest.requireMock('@/config/feature-flags.json') as Record<string, boolean>;
+function ipn(qs: string) {
+  return new NextRequest(`http://localhost/api/mercadopago/webhook?${qs}`, {
+    method: 'POST', headers: { 'user-agent': 'MercadoPago Feed v2.0 payment' },
+    body: JSON.stringify({ resource: '184708163551', topic: 'payment' }),
+  });
+}
+describe('IPN legacy sin data.id ni firma', () => {
+  afterEach(() => { flagsMock['mp-webhook-ignorar-ipn-legacy'] = true; });
+  test('topic=payment con flag ON -> 200 sin Payment.get ni SQL', async () => {
+    const res = await POST(ipn('id=184708163551&topic=payment'));
+    expect(res.status).toBe(200);
+    expect(paymentGet).not.toHaveBeenCalled();
+    expect(sql).not.toHaveBeenCalled();
+  });
+  test('topic=merchant_order con flag ON -> 200 sin efectos', async () => {
+    const res = await POST(ipn('id=45497450319&topic=merchant_order'));
+    expect(res.status).toBe(200);
+    expect(paymentGet).not.toHaveBeenCalled();
+    expect(sql).not.toHaveBeenCalled();
+  });
+  test('flag OFF -> 401 como antes', async () => {
+    flagsMock['mp-webhook-ignorar-ipn-legacy'] = false;
+    expect((await POST(ipn('id=184708163551&topic=payment'))).status).toBe(401);
+    expect(paymentGet).not.toHaveBeenCalled();
+  });
+  test('sin data.id y sin topic -> 401 aunque el flag esté ON', async () => {
+    expect((await POST(ipn('id=184708163551'))).status).toBe(401);
+    expect(paymentGet).not.toHaveBeenCalled();
+  });
+  test('topic con data.id presente -> sigue exigiendo firma (401 sin firma)', async () => {
+    expect((await POST(ipn('data.id=184708163551&topic=payment'))).status).toBe(401);
+    expect(paymentGet).not.toHaveBeenCalled();
+  });
+  test('smoke: notificación firmada sigue procesando con flag ON', async () => {
+    const res = await POST(req());
+    expect(res.status).toBe(200);
+    expect(paymentGet).toHaveBeenCalledTimes(1);
+    expect(convertir).toHaveBeenCalledTimes(1);
+  });
 });

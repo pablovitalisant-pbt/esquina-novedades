@@ -3,5 +3,6 @@
   "precio-mayorista-ui": true,
   "notas-venta-modalidad": true,
   "clientes-etiqueta": true,
-  "tienda-pago-online": true
+  "tienda-pago-online": true,
+  "mp-webhook-ignorar-ipn-legacy": false
 }

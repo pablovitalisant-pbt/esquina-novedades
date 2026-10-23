@@ -94,3 +94,12 @@ Pendientes:
 - Limpieza L1 aplicada (despachos-ia, flags muertos, sharp, shadcn). Registro de notas de bodega se conserva.
 - BUG-002: dotenv ahora devDependency explicita.
 
+## Estado al 2026-10-23
+- Flujo de pago MP verificado de punta a punta con pago real de prueba (BUG-005 en BUGS.md: la clave del webhook es la de la app dueña de las credenciales que cobran; el simulador no prueba pagos reales).
+- Ciclos nuevos: IPN legacy responde 200 sin procesar (flag `mp-webhook-ignorar-ipn-legacy`); página `/pedido/[id]` con diseño de la tienda + confetti (flag `pedido-confetti`).
+- Backlog vigente y ordenado: `docs/BACKLOG.md`. Traspaso: `docs/TRASPASO-2026-10-23.md`.
+- Las secciones "Próximo paso" y el primer "Contador" de arriba son históricas (Sesión 0); manda esta sección.
+
+## Contador de slices desde el último ponytail audit (vigente)
+
+3 (U1 Next 15, IPN legacy, página de pedido festiva) — audit anterior: 2026-10-22.

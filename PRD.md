@@ -143,7 +143,7 @@ Iquique, Alto Hospicio y Arica.
   venta automáticamente con sus ítems y tipo, y un cobro en Caja Mayor en la
   cuenta configurada como "Mercado Pago". El webhook debe ser idempotente
   (MP reintenta notificaciones).
-- Pago rechazado/cancelado → `rechazado`, se devuelve el stock.
+- Pago rechazado/cancelado → el pedido sigue `pendiente_pago` y el stock sigue reservado: el comprador puede reintentar en la misma preferencia. El stock se libera solo al expirar (36 h) o si falla la creación de la preferencia (decisión DT 2026-10-22, ver `app/api/mercadopago/webhook/route.ts`).
 - Pago aprobado sobre un pedido ya `expirado` → no se pierde: queda marcado
   `pagado_tardio` para revisión manual del admin (reponer stock o reembolsar).
 
@@ -171,7 +171,7 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 
 | # | Slice | Notas |
 |---|---|---|
-| 0 | Neon + schema desde cero | Ver §10.1. Aplicar `migrations/` en orden contra la DB vacía y verificar que el schema real cubre todo lo que el código consulta. Seed: empresa + admin |
+| 0 | ✅ COMPLETADO — Neon + schema desde cero | Ver §10.1. Aplicar `migrations/` en orden contra la DB vacía y verificar que el schema real cubre todo lo que el código consulta. Seed: empresa + admin |
 | 1 | ✅ COMPLETADO — Rebranding Chile | LandingPage, layout metadata, catálogo, logo, `es-BO`→`es-CL`, "Documento de identidad"→"RUT" |
 | 2 | ✅ COMPLETADO — CLP única moneda | ~22 archivos con USD/ARS/tipo de cambio. Probablemente sub-slices |
 | 3 | ✅ COMPLETADO — Eliminar PowerSync / offline | `lib/powersync/*`, `api/powersync/token`, `admin/powersync-status`, `admin/sync-conflictos`, flags `*-offline-*`, `app/sw.ts`, `app/offline`, `components/AlertasBell`, `contexts/AlertasContext` (revisar dependencia) |
@@ -180,9 +180,9 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 | 6 | ✅ COMPLETADO — Etiqueta de cliente | derivada del historial (vista o query), visible en `/clientes` |
 | 7 | ✅ COMPLETADO — Tienda: carrito con modalidad + entrega + email | reusa `pedidos-publicos` / `carrito-pedidos-ui` |
 | 8 | ✅ COMPLETADO — Reserva de stock + expiración 36 h | §8.4 |
-| 9 | ✅ COMPLETADO (pendiente de credenciales reales) — Mercado Pago: preferencia + redirect + back_urls | credenciales de prueba |
-| 10 | ✅ COMPLETADO (pendiente de credenciales reales) — Webhook firmado + conversión a nota + cobro en caja | idempotente |
-| 11 | Deploy producción | dominio Namecheap → Vercel, credenciales de producción, Señal 3 |
+| 9 | ✅ COMPLETADO (verificado con pago real de prueba 2026-10-23; faltan credenciales de producción) — Mercado Pago: preferencia + redirect + back_urls | credenciales de prueba |
+| 10 | ✅ COMPLETADO (verificado con pago real de prueba 2026-10-23, BUG-005; faltan credenciales de producción) — Webhook firmado + conversión a nota + cobro en caja | idempotente |
+| 11 | Deploy producción | dominio Namecheap → Vercel, credenciales de producción, Señal 3. Desglosado en `docs/BACKLOG.md` |
 
 ## 10. Riesgos y notas técnicas
 

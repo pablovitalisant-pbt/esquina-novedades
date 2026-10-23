@@ -1,7 +1,7 @@
 {
   "registro_notas_bodega_ui": false,
-  "precio-mayorista-ui": false,
-  "notas-venta-modalidad": false,
-  "clientes-etiqueta": false,
-  "tienda-pago-online": false
+  "precio-mayorista-ui": true,
+  "notas-venta-modalidad": true,
+  "clientes-etiqueta": true,
+  "tienda-pago-online": true
 }

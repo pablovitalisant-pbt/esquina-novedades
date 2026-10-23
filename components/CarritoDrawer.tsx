@@ -127,7 +127,7 @@ export function CarritoDrawer() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex flex-col gap-3 py-4 flex-1 overflow-y-auto">
+          <div className="flex flex-col gap-3 px-4 py-4 flex-1 overflow-y-auto">
             {items.length === 0 && (
               <p className="text-sm text-[var(--body-subtle)] text-center py-10">Tu carrito está vacío.</p>
             )}
@@ -195,7 +195,7 @@ export function CarritoDrawer() {
             />
           </div>
 
-          <div className="border-t border-[var(--border-default)] pt-4 flex flex-col gap-3">
+          <div className="border-t border-[var(--border-default)] px-4 pt-4 pb-4 flex flex-col gap-3">
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--body-subtle)]">Subtotal</span>
               <span data-testid="subtotal">{formatCLP(subtotal)}</span>

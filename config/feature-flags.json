@@ -6,5 +6,5 @@
   "tienda-pago-online": true,
   "mp-webhook-ignorar-ipn-legacy": true,
   "pedido-confetti": true,
-  "env-validacion-arranque": false
+  "env-validacion-arranque": true
 }

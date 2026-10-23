@@ -12,5 +12,23 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Contrato: audit de lo cambiado desde f097823; aplicar hallazgos verificados.
 - Tests: suites tocadas 7/7 (81 tests) verdes; next-config 2/2; tsc 108 = línea base; suite completa = 5 suites heredadas.
 - Verificación DT: claude-deep reportó "tsc sin errores en código fuente" pero el hallazgo 6 subía tsc a 134 (+26 en tests) y rompía next-config.test → revertido el 6 y ajustado el test. Hallazgo 5 rechazado (evidencia incompleta).
+- Commit: b6ef44c
+- Gates disparados: ninguno
+## 2026-10-23 - Slice: A3 validación de env al arrancar
+- Contrato: lib/env.ts (requeridas, de pago según flag tienda-pago-online, opcionales Cloudinary) + instrumentation.ts (solo nodejs, flag env-validacion-arranque). Loguea nombres faltantes, nunca valores; no tumba la app.
+- Tests: 10 nuevos (rojo verificado por módulo inexistente → verde); suite completa = línea base; tsc 108; build OK.
+- Verificación DT: claude-deep reportó "184 errores preexistentes" en tsc; medido por el DT: 108 (dato falso, sin impacto en el código).
+- Commit: 86dcecf (flag off) + 19cfce6 (flag on)
+- Gates disparados: ninguno. Pendiente verificar el log de arranque en producción tras el push.
+
+## 2026-10-23 - Slice: A4a tests-script a módulos
+- Contrato: `export {};` en 19 tests sin import/export (scope global → TS2451/TS2393).
+- Tests: tsc 108 → 39 (medido por DT); diff verificado: solo +19 líneas `export {};`.
+- Commit: 6fad760
+- Gates disparados: ninguno
+## 2026-10-23 - Slice: A4b tsc a cero
+- Contrato: solo cambios de tipos en tests (sin tocar aserciones) + mover `getCatalogData` de la página a `app/catalogo/[slug]/data.ts` (export no permitido en páginas de Next).
+- Tests: tsc 39 → 0; suite completa = línea base (mismas 5 suites); build OK. DT verificó: movimiento literal (134 líneas, 0 diferencias), diff de tests solo casts/anotaciones + 1 prop de fixture exigida por el tipo.
+- Verificación DT: claude-deep listó mal las suites en rojo (nombró productos-softdelete, que pasa).
 - Commit: (este)
 - Gates disparados: ninguno

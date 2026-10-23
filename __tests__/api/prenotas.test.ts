@@ -31,7 +31,7 @@ describe('GET /api/notas-venta', () => {
     getServerSession.mockResolvedValue(null);
 
     const req = new NextRequest('http://localhost/api/notas-venta');
-    const res = await GET(req);
+    const res = await (GET as (req: Request) => Promise<any>)(req);
     const body = await res.json();
 
     expect(res.status).toBe(401);
@@ -42,7 +42,7 @@ describe('GET /api/notas-venta', () => {
     getServerSession.mockResolvedValue({ user: { rol: 'bodeguero' } });
 
     const req = new NextRequest('http://localhost/api/notas-venta');
-    const res = await GET(req);
+    const res = await (GET as (req: Request) => Promise<any>)(req);
     const body = await res.json();
 
     expect(res.status).toBe(403);
@@ -56,7 +56,7 @@ describe('GET /api/notas-venta', () => {
     ]);
 
     const req = new NextRequest('http://localhost/api/notas-venta');
-    const res = await GET(req);
+    const res = await (GET as (req: Request) => Promise<any>)(req);
     const body = await res.json();
 
     expect(res.status).toBe(200);

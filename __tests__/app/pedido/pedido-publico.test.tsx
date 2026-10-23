@@ -56,7 +56,7 @@ function setupDb(pedido: any = PEDIDO, items: any[] = ITEMS) {
 
 async function html(pedido: any = PEDIDO, items: any[] = ITEMS) {
   setupDb(pedido, items);
-  return renderToStaticMarkup(await PedidoPage({ params: { id: UUID } }));
+  return renderToStaticMarkup(await PedidoPage({ params: Promise.resolve({ id: UUID }) }));
 }
 
 beforeEach(() => {
@@ -77,12 +77,12 @@ describe('privacidad y 404', () => {
 
   test('id inexistente → notFound (404), no 500', async () => {
     setupDb(null);
-    await expect(PedidoPage({ params: { id: UUID } })).rejects.toThrow('NEXT_NOT_FOUND');
+    await expect(PedidoPage({ params: Promise.resolve({ id: UUID }) })).rejects.toThrow('NEXT_NOT_FOUND');
     expect(mockNotFound).toHaveBeenCalled();
   });
 
   test('id no UUID → notFound sin consultar la DB', async () => {
-    await expect(PedidoPage({ params: { id: '../../etc/passwd' } })).rejects.toThrow('NEXT_NOT_FOUND');
+    await expect(PedidoPage({ params: Promise.resolve({ id: '../../etc/passwd' }) })).rejects.toThrow('NEXT_NOT_FOUND');
     expect(mockSql).not.toHaveBeenCalled();
   });
 });

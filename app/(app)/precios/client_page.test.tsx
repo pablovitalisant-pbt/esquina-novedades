@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 async function typeSearch(term: string) {
-  render(<PreciosClient session={{ rol: 'admin', user: { id: '1', rol: 'admin' } }} />);
+  render(<PreciosClient session={{ rol: 'admin', user: { id: '1', rol: 'admin' } } as any} />);
   const input = await screen.findByPlaceholderText('Buscar por código o descripción...');
   fireEvent.change(input, { target: { value: term } });
 }

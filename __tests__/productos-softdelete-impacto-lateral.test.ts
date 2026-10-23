@@ -77,7 +77,7 @@ describe('filtro activo en listados', () => {
   });
 
   test('catalogo publico (page) filtra activo en las ramas de listado', () => {
-    expect(leer('app/catalogo/[slug]/page.tsx')).toMatch(/activo\s*=\s*true/i);
+    expect(leer('app/catalogo/[slug]/data.ts')).toMatch(/activo\s*=\s*true/i);
   });
 
   test('landing (app/page.tsx) filtra activo', () => {

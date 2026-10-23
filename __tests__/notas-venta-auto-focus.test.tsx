@@ -45,7 +45,7 @@ function crearFetchMock(opts: {
   let fetchPrenotaCallCount = 0;
 
   return jest.fn().mockImplementation(async (url: string, reqOpts?: RequestInit) => {
-    const urlStr = typeof url === 'string' ? url : url.toString();
+    const urlStr = typeof url === "string" ? url : String(url);
 
     // GET /api/notas-venta/1 — fetchPrenota
     if (urlStr.startsWith('/api/notas-venta/1') && (!reqOpts || reqOpts.method === 'GET' || !reqOpts.method)) {
@@ -106,7 +106,7 @@ describe('Notas de Venta — auto-focus (Punto 2 del contrato)', () => {
     let itemsEnDB: any[] = [];
 
     global.fetch = jest.fn().mockImplementation(async (url: string, reqOpts?: RequestInit) => {
-      const urlStr = typeof url === 'string' ? url : url.toString();
+      const urlStr = typeof url === "string" ? url : String(url);
 
       // GET /api/notas-venta/1 — fetchPrenota
       if (urlStr.startsWith('/api/notas-venta/1') && (!reqOpts || reqOpts.method === 'GET' || !reqOpts.method)) {
@@ -181,7 +181,7 @@ describe('Notas de Venta — auto-focus (Punto 2 del contrato)', () => {
   // ─── Test 2: Estado compartido ──────────────────────────────────────
   test('[ESTADO COMPARTIDO] autoFocusItemId no interfiere con click manual en Editar de otra fila', async () => {
     global.fetch = jest.fn().mockImplementation(async (url: string, reqOpts?: RequestInit) => {
-      const urlStr = typeof url === 'string' ? url : url.toString();
+      const urlStr = typeof url === "string" ? url : String(url);
 
       if (urlStr.startsWith('/api/notas-venta/1') && (!reqOpts || reqOpts.method === 'GET' || !reqOpts.method)) {
         return {
@@ -277,7 +277,7 @@ describe('Notas de Venta — smoke E2E auto-foco (Punto 2 del contrato)', () => 
     let paso = 0;
 
     global.fetch = jest.fn().mockImplementation(async (url: string, reqOpts?: RequestInit) => {
-      const urlStr = typeof url === 'string' ? url : url.toString();
+      const urlStr = typeof url === "string" ? url : String(url);
       paso++;
 
       // Primer GET (carga inicial) — sin items

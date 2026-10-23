@@ -28,7 +28,7 @@ describe('GET /api/catalogos/public/[slug] — solo_nuevo con prefijo 101', () =
 
   beforeAll(async () => {
     const mod = await import('@/app/api/catalogos/public/[slug]/route');
-    GET = mod.GET;
+    GET = mod.GET as unknown as typeof GET;
   });
 
   beforeEach(() => {

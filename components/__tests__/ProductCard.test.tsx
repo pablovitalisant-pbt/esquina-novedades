@@ -21,6 +21,7 @@ const mockProduct: Producto = {
   es_nuevo: false,
   categoria: null,
   stock_minimo: null,
+  margen_pct: 0,
   fecha_ingreso: new Date(),
   updated_at: new Date(),
 };

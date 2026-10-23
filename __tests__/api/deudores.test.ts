@@ -38,20 +38,20 @@ describe('GET /api/deudores', () => {
   // ═══════════════════════════════════════════════════════════════
   it('R1: sin sesión → 401', async () => {
     getServerSession.mockResolvedValue(null);
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     expect(res.status).toBe(401);
   });
 
   it('R1: bodeguero → 403 (bloqueado)', async () => {
     getServerSession.mockResolvedValue({ user: { id: '2', rol: 'bodeguero' } });
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     expect(res.status).toBe(403);
   });
 
   it('R1: admin y vendedor → OK', async () => {
     getServerSession.mockResolvedValue({ user: { id: '1', rol: 'admin' } });
     sql.mockResolvedValueOnce([]);
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     expect(res.status).toBe(200);
   });
 
@@ -66,7 +66,7 @@ describe('GET /api/deudores', () => {
       captured = strings.join('');
       return [];
     });
-    await GET(new NextRequest('http://localhost'));
+    await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
 
     expect(captured.toLowerCase()).toContain("estado = 'activa'");
     // saldo_pendiente > 0.005 se filtra en el servicio (JS), no en SQL —
@@ -85,7 +85,7 @@ describe('GET /api/deudores', () => {
       { cliente_id: 'cB', nombre_cliente: 'Cliente B', titulo: 'Nota 3', created_at: '2026-06-01', total: 30, total_pagado: 10 },
     ]);
 
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     const { data } = await res.json();
 
     // Cliente A agrupa sus 2 notas en 1 fila
@@ -105,7 +105,7 @@ describe('GET /api/deudores', () => {
       { cliente_id: null, nombre_cliente: null, titulo: 'Nota X', created_at: '2026-07-05', total: 10, total_pagado: 5 },
     ]);
 
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     const { data } = await res.json();
     expect(data[0].cliente_nombre).toBe('Sin nombre');
   });
@@ -119,7 +119,7 @@ describe('GET /api/deudores', () => {
       { cliente_id: 'c1', nombre_cliente: 'A', titulo: 'N1', created_at: '2026-07-01', total: 10, total_pagado: 10 }, // saldo 0
     ]);
 
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     const { data } = await res.json();
     // Si el endpoint filtra saldo<=0, data queda vacía; si no, el cliente
     // lo filtra. Documentamos el contrato: saldo 0 no debe aparecer como deuda.
@@ -143,7 +143,7 @@ describe('GET /api/deudores', () => {
       { cliente_id: 'cC', nombre_cliente: 'C', titulo: 'N3', created_at: '2026-07-03', total: 100, total_pagado: 0, saldo_favor_aplicado: 30 },
     ]);
 
-    const res = await GET(new NextRequest('http://localhost'));
+    const res = await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost'));
     const { data } = await res.json();
     const nombres = data.map((d: any) => d.cliente_nombre);
     expect(nombres).toEqual(['B', 'C']);

@@ -23,7 +23,7 @@ const producto = (over: Record<string, unknown> = {}) => ({
 describe('precio manipulado por el cliente', () => {
   test('ignora precio, subtotal y total del body y usa los valores de productos', () => {
     const r = calcularPedido(
-      [{ producto_id: 1, modalidad: 'unidad', cantidad: 2, precio: 1, subtotal: 1, total: 1, entrega_costo: 999 }],
+      [{ producto_id: 1, modalidad: 'unidad', cantidad: 2, precio: 1, subtotal: 1, total: 1, entrega_costo: 999 } as any],
       [producto()],
       { origen: 'productos', entrega: RETIRO, direccion_entrega: null },
     );
@@ -115,7 +115,7 @@ describe('precio de catálogo (origen catalogo)', () => {
 
   test('cobra el precio de catálogo (redondeado a CLP), nunca el del cliente', () => {
     const r = calcularPedido(
-      [{ producto_id: 1, modalidad: 'unidad', cantidad: 1, precio: 1 }],
+      [{ producto_id: 1, modalidad: 'unidad', cantidad: 1, precio: 1 } as any],
       [producto()],
       {
         origen: 'catalogo',

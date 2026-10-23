@@ -217,7 +217,7 @@ describe('R6 — PUT drawer usa nueva URL/payload post-simplificación', () => {
         return call[1]?.method === 'PUT';
       });
       expect(putCall).toBeDefined();
-      const body = JSON.parse(putCall[1].body);
+      const body = JSON.parse((putCall as any[])[1].body as string);
       expect(body).toHaveProperty('ubicacion');
       expect(body).toHaveProperty('fisico_cajas');
       expect(body).toHaveProperty('fisico_unidades');

@@ -19,7 +19,7 @@ jest.mock('lucide-react', () => {
   return { MessageCircle: (p: any) => <span data-testid="icon-whatsapp" /> };
 });
 
-const fetchMock = jest.fn((url: string) => {
+const fetchMock = jest.fn((url: string): Promise<any> => {
   if (url === '/api/deudores') {
     return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
   }

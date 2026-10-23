@@ -59,7 +59,7 @@ describe('GET /api/categorias', () => {
     ]);
 
     const req = {} as Request;
-    const res = await GET(req);
+    const res = await (GET as (req: Request) => Promise<any>)(req);
 
     expect(res.status).toBe(200);
     const body = await res.json();

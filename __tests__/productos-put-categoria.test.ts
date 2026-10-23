@@ -29,7 +29,7 @@ describe('PUT /api/productos/[id] — categoria', () => {
 
   beforeAll(async () => {
     const mod = await import('@/app/api/productos/[id]/route');
-    PUT = mod.PUT;
+    PUT = mod.PUT as unknown as typeof PUT;
   });
 
   beforeEach(() => {

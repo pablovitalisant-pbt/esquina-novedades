@@ -3,7 +3,7 @@ import { AlertasProvider, useAlertas } from '@/contexts/AlertasContext';
 
 function ContextShapeSpy({ onShape }: { onShape: (shape: Record<string, unknown>) => void }) {
   const ctx = useAlertas();
-  onShape(ctx);
+  onShape(ctx as unknown as Record<string, unknown>);
   return null;
 }
 

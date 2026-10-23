@@ -300,7 +300,7 @@ describe('T6 — Smoke E2E: crear → editar override → verificar público', (
 
 describe('T7 — page.tsx getCatalogData refleja overrides igual que route.ts', () => {
   it('getCatalogData devuelve precio_override y aplica precedencia', async () => {
-    const { getCatalogData } = await import('@/app/catalogo/[slug]/page');
+    const { getCatalogData } = await import('@/app/catalogo/[slug]/data');
 
     // Insertar override para catálogo A
     const { GET } = await import('@/app/api/catalogos/public/[slug]/route');

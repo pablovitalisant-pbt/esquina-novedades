@@ -120,7 +120,7 @@ describe('Checkout en el drawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
     await waitFor(() => expect(postCalls(fetchMock)).toBe(1));
 
-    const body = JSON.parse(fetchMock.mock.calls.find((c: any) => String(c[0]).includes('/api/pedidos'))![1].body);
+    const body = JSON.parse((fetchMock.mock.calls.find((c: any) => String(c[0]).includes('/api/pedidos')) as any)[1].body);
     expect(body.email_contacto).toBe('juana@mail.com');
     expect(body.entrega_codigo).toBe('retiro');
     expect(body.direccion_entrega).toBeNull();

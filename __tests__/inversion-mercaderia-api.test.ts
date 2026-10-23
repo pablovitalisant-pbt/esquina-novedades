@@ -215,3 +215,4 @@ describe('GET /api/admin/inversion-mercaderia — GAP de contrato: categoria + f
     expect(res.status).toBe(400);
   });
 });
+export {};

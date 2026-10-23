@@ -91,3 +91,4 @@ describe('app/api/notas-venta/[id]/items POST — id UUID opcional (Slice 10a)',
     expect(body.codigo).toBe('A-001');
   });
 });
+export {};

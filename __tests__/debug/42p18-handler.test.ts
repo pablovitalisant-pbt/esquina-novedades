@@ -129,3 +129,4 @@ describe('42P18 regresión — handler real POST /pagar', () => {
     expect(r.credito).toBe(0);
   });
 });
+export {};

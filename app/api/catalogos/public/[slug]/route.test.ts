@@ -44,3 +44,4 @@ describe('parseKeywords — retrocompatibilidad', () => {
     expect(parseKeywords('vidrio')).toEqual(['vidrio']);
   });
 });
+export {};

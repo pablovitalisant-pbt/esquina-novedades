@@ -139,3 +139,4 @@ describe('POST /api/admin/inversion-mercaderia/snapshot — idempotencia', () =>
     expect(r2.status).toBe(200);
   });
 });
+export {};

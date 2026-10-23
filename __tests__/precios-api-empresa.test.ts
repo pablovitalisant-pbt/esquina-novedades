@@ -74,3 +74,4 @@ describe('GET /api/productos (Slice 2)', () => {
     expect(res.status).toBe(401);
   });
 });
+export {};

@@ -80,3 +80,4 @@ describe('GET /api/admin/productos-lista — filtro categoriaFiltro', () => {
     expect(fullTemplate).toContain('is null');
   });
 });
+export {};

@@ -106,3 +106,4 @@ describe("BUG-004: fetchMovimientos sin selector de empresa", () => {
     expect(keys).toEqual(["page", "limit"]);
   });
 });
+export {};

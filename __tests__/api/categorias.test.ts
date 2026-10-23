@@ -164,3 +164,4 @@ describe('DELETE /api/categorias/[id]', () => {
     expect(res.status).toBe(403);
   });
 });
+export {};

@@ -254,3 +254,4 @@ describe('PrenotaDetallePage — cifras ARS equivalentes (slice)', () => {
     expect(screen.queryByText(/AR\$/)).toBeNull();
   });
 });
+export {};

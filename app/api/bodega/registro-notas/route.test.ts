@@ -116,3 +116,4 @@ describe('app/api/bodega/registro-notas', () => {
     expect(res.status).toBe(400);
   });
 });
+export {};

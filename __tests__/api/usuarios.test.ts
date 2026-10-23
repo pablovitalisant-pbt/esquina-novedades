@@ -331,3 +331,4 @@ describe('DELETE /api/admin/usuarios/[id]', () => {
     expect(res.status).toBe(400);
   });
 });
+export {};

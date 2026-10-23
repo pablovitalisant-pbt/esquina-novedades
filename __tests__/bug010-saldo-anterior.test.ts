@@ -146,3 +146,4 @@ describe('BUG-010: saldo_anterior correcto', () => {
     expect(cuentaSegunda.saldo_anterior).toBe(200);
   });
 });
+export {};

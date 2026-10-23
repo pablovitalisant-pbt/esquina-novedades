@@ -80,3 +80,4 @@ describe('GET /api/admin/inversion-mercaderia — imagen_url', () => {
     expect(snapQ).toContain('empresa_id');
   });
 });
+export {};

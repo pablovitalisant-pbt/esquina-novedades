@@ -128,3 +128,4 @@ describe('PUT /api/productos/[id] — campo categoria', () => {
     expect(res.status).toBe(403);
   });
 });
+export {};

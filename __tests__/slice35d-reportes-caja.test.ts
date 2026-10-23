@@ -179,3 +179,4 @@ describe('TT3 — GET /api/caja/resumen-cuentas sin reembolsos', () => {
     expect(cuenta.total_reembolsos).toBe(0);
   });
 });
+export {};

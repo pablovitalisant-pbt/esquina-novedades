@@ -166,3 +166,4 @@ describe('BUG-008 — PATCH /api/caja/movimientos/[id]', () => {
     expect(sqlString).toContain('AS cliente_id');
   });
 });
+export {};

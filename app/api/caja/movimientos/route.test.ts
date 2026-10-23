@@ -98,3 +98,4 @@ describe('app/api/caja/movimientos POST — id UUID opcional (Slice 11a)', () =>
     expect(res.status).toBe(400);
   });
 });
+export {};

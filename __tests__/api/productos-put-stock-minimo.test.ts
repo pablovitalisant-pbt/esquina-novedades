@@ -121,3 +121,4 @@ describe('T4 — PUT /api/productos/[id] con stock_minimo', () => {
     expect(body.data.stock_minimo).toBe(10);
   });
 });
+export {};

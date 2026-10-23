@@ -22,10 +22,12 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 | A6 | Fixtures para la rama Neon `test-integration` | 5 suites heredadas en rojo (18 tests): `catalogo-precio-override`, `debug/42p18-handler`, `productos-crear-smoke`, `productos-stock-minimo-ui`, `app/api/notas-venta/[id]/items/route.test.ts` | Suite completa 100 % verde | ✅ |
 | A7 | Catálogo público redondea a 1 decimal (herencia USD) | Listado en CONTEXT como pendiente; **no verificado si sigue ocurriendo** | Verificar; si ocurre, CLP entero en todo el catálogo | ✅ |
 | A8 | Completar "Zonas de riesgo conocidas" del PRD | Hoy solo tiene `scripts/migrations-order.ts`. Faltan: webhook MP (clave = app dueña de las credenciales; simulador no prueba pagos reales), IPN legacy, reserva de stock (BUG-003), flags leídos por tests (BUG-004) | Tabla completa | ✅ |
-| A9 | Smoke E2E de todos los flujos | Requisito 2 de la Señal 3 | Checklist ejecutado con evidencia: login, notas de venta (unidad/caja/mixta), precios, clientes, caja mayor, bodega, alertas, catálogo admin/público, tienda + pago MP, pedidos staff, deudores | 🟨 público OK (2026-10-23); falta smoke de flujos de staff con login de Pablo |
+| A9 | Smoke E2E de todos los flujos | Requisito 2 de la Señal 3 | Checklist ejecutado con evidencia: login, notas de venta (unidad/caja/mixta), precios, clientes, caja mayor, bodega, alertas, catálogo admin/público, tienda + pago MP, pedidos staff, deudores | ✅ 2026-10-23: público + 15 módulos de staff en solo lectura, sin errores. Hallazgo → A12 |
 | A10 | Diff de variables de entorno prod vs dev | Requisito 4 de la Señal 3 | Lista de keys (sin valores) por entorno, sin faltantes | ✅ |
 
 | A11 | Tipar los `any` heredados de Bazar Naty | 385 `any` en 99 archivos; `no-explicit-any` quedó desactivado en A5 para tener build estricto | Regla reactivada y lint 0/0. Deuda, no bloquea go-live | ⬜ |
+
+| A12 | **Decisión de producto pendiente:** costo de entrega en la nota de venta | Pedido `afb8e9f4…` (Delivery Iquique): pedido y cobro en caja = $56.990, pero la nota de venta #1 = $53.990 (no incluye los $3.000 de entrega). El PRD (§8.4/§8.5) no define dónde va ese costo | Pablo decide: (a) agregar línea "Despacho" a la nota al convertir, o (b) dejarlo fuera y registrarlo aparte. Luego ciclo PBT-IA | ⬜ |
 
 ## Bloque B — Infraestructura (no depende de Paola, sí de accesos)
 

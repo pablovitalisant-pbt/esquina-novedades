@@ -52,5 +52,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Contrato: `precioCatalogoBase` = `Math.ceil(costo * (1 + margen/100))` (antes ceil a 1 decimal, herencia USD).
 - Tests: nuevo test rojo (esperaba 1235, recibía 1234.5) → verde; suite completa 213/213, 1778/1778; tsc 0; lint 0/0; build OK.
 - Verificación DT: corrección del diagnóstico del DT: NO había descuadre con MP (el servidor ya hacía `Math.round` al cobrar y la UI mostraba entero). Efecto real del cambio: precios de catálogo redondean hacia arriba al peso (hasta +$1 en algunos productos, p. ej. 129,4 → 130). Informado a Pablo.
-- Commit: (este)
+- Commit: 4da4d10
 - Gates disparados: ninguno
+## 2026-10-23 - A9 smoke E2E (DT, solo lectura en producción)
+- Público: home, /productos, /login, /pedido (200/404), API de entrega; pago MP verificado con pagos reales.
+- Staff (sesión de Pablo): notas de venta (lista y detalle), precios (búsqueda), clientes, caja mayor, bodega, ingresos, deudores, pedidos, alertas de stock, kardex (deshabilitado a propósito), catálogos, usuarios, categorías, caja-config, inversión en mercadería. Sin errores.
+- Hallazgos: (1) nota #1 no incluye el costo de entrega ($3.000) que sí está en el pedido y en el cobro de caja → A12, decisión de producto. (2) Productos DEMO con categoría en texto sin filas en `categorias` (dato de demo; se borra en C6).
+- Gates disparados: A12 (decisión de producto).

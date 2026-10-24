@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
+import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 
 function getUsuarioId(session: any) {
   return Number((session?.user as any)?.id);
@@ -29,7 +30,8 @@ export async function GET() {
                 WHEN BOOL_AND(pi.modalidad = 'unidad') THEN 'menor'
                 ELSE 'mixta'
               END
-       FROM public.prenota_items pi WHERE pi.prenota_id = p.id) as tipo,
+       FROM public.prenota_items pi
+       WHERE pi.prenota_id = p.id AND pi.codigo <> ${CODIGO_DESPACHO}) as tipo,
       COALESCE((SELECT SUM(cmn.monto_aplicado) FROM public.caja_movimiento_notas cmn WHERE cmn.prenota_id = p.id), 0) as total_pagado,
       COALESCE((SELECT SUM(monto) FROM public.clientes_saldo_favor_movimientos
                 WHERE aplicado_prenota_id = p.id AND tipo = 'debito'), 0) as saldo_favor_aplicado

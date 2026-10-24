@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 import { NextResponse } from 'next/server';
 
 // Slice 3c — saldo_favor viene como string de numeric (Neon); se convierte a
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
                        ELSE 'ambos' END
            FROM public.prenotas p
            JOIN public.prenota_items pi ON pi.prenota_id = p.id
-           WHERE p.cliente_id = clientes.id AND p.estado = 'activa') AS etiqueta
+           WHERE p.cliente_id = clientes.id AND p.estado = 'activa'
+             AND pi.codigo <> ${CODIGO_DESPACHO}) AS etiqueta
         FROM public.clientes
         WHERE (${q}::text IS NULL OR nombre ILIKE ${pattern})
       ) c

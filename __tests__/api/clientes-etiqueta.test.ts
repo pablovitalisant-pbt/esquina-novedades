@@ -31,6 +31,15 @@ describe('GET /api/clientes — etiqueta derivada', () => {
     expect(texto).toMatch(/AS etiqueta/);
     expect(values).toContain(null); // sin filtro
   });
+  // A12: la línea Despacho no es un producto y no debe volver 'ambos' a un
+  // cliente que solo compró por caja.
+  test('A12 — la etiqueta excluye la línea DESPACHO', async () => {
+    await GET(new NextRequest('http://localhost/api/clientes'));
+    const { texto, values } = captura();
+    expect(texto).toMatch(/codigo\s*(<>|NOT IN)/i);
+    expect(texto + values.join(',')).toMatch(/DESPACHO/);
+  });
+
   test('una sola query con LIMIT 50 (q y etiqueta combinados)', async () => {
     await GET(new NextRequest('http://localhost/api/clientes'));
     await GET(new NextRequest('http://localhost/api/clientes?q=Ana&etiqueta=ambos'));

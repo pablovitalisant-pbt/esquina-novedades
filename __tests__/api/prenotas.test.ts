@@ -69,6 +69,21 @@ describe('GET /api/notas-venta', () => {
     expect(body.data[0]).toHaveProperty('total_pagado');
     expect(body.data[0]).toHaveProperty('saldo_pendiente');
   });
+
+  // A12: la línea "Despacho" no es un producto y no debe alterar el tipo.
+  test('A12 — el cálculo de tipo excluye la línea DESPACHO', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
+    sql.mockResolvedValue([]);
+
+    await (GET as (req: Request) => Promise<any>)(new NextRequest('http://localhost/api/notas-venta'));
+
+    const { texto, values } = (() => {
+      const [strings, ...vals] = sql.mock.calls[0];
+      return { texto: strings.join(''), values: vals };
+    })();
+    expect(texto).toMatch(/codigo\s*(<>|NOT IN)/i);
+    expect(texto + values.join(',')).toMatch(/DESPACHO/);
+  });
 });
 
 describe('POST /api/notas-venta', () => {
@@ -126,6 +141,31 @@ describe('GET /api/notas-venta/[id]', () => {
       saldo_pendiente: 1800,
       cliente_saldo_favor: 0,
     });
+  });
+
+  // A12: un pedido solo-caja con Despacho sigue siendo 'mayor' y el total
+  // incluye el despacho (nota.total = pedido.total).
+  test('A12 — tipo ignora DESPACHO y el total lo suma', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    sql
+      .mockResolvedValueOnce([{ id: 10, titulo: 'NOTA MAYOR', nombre_cliente: 'JUAN', cliente_id: null }])
+      .mockResolvedValueOnce([
+        { id: 'i1', codigo: 'A', modalidad: 'caja', cajas: 2, unidades: 12, precio: 1000, subtotal: '2000.00' },
+        { id: 'i2', codigo: 'DESPACHO', modalidad: 'unidad', cajas: 0, unidades: 1, precio: 1500, subtotal: '1500.00' },
+      ])
+      .mockResolvedValueOnce([{ total: 0 }])
+      .mockResolvedValueOnce([{ total: 0 }]);
+
+    const res = await GET_DETAIL(
+      new NextRequest('http://localhost/api/notas-venta/10'),
+      { params: Promise.resolve({ id: '10' }) },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.tipo).toBe('mayor');
+    expect(body.total).toBe(3500);
+    expect(body.saldo_pendiente).toBe(3500);
   });
 });
 

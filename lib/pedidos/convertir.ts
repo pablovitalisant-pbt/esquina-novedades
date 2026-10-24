@@ -1,5 +1,9 @@
 import { sql } from '@/lib/db';
 
+// Código de la línea de despacho en la nota: no es un producto, se inserta con
+// empresa_id NULL para que ningún join de stock la alcance.
+export const CODIGO_DESPACHO = 'DESPACHO';
+
 // Núcleo de la conversión pedido → Nota de Venta, sin sesión: recibe el usuario.
 // Lo usan la ruta POST /api/pedidos/[id]/convertir (usuario de sesión) y el
 // webhook de Mercado Pago (usuario sistema).
@@ -24,7 +28,7 @@ export async function convertirPedido(
   // `pagado` con stock_reservado=true ya descontó al reservar: solo crea la
   // nota. Cualquier otro estado (pendiente_pago, expirado, rechazado…) → 409.
   const pedidoRows = await sql`
-    SELECT id, estado, cliente_id, stock_reservado FROM public.pedidos WHERE id = ${id}
+    SELECT id, estado, cliente_id, stock_reservado, entrega_costo FROM public.pedidos WHERE id = ${id}
   `;
   if (pedidoRows.length === 0) {
     return { status: 404, body: { error: 'Pedido no encontrado' } };
@@ -36,6 +40,7 @@ export async function convertirPedido(
     return { status: 409, body: { error: 'El pedido no está pendiente' } };
   }
   const clienteId = pedidoRows[0].cliente_id;
+  const entregaCosto = Number(pedidoRows[0].entrega_costo) || 0;
 
   // 2. Crear la prenota (misma numeración que POST /api/notas-venta)
   const count = await sql`SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}`;
@@ -50,6 +55,8 @@ export async function convertirPedido(
     const itemsReservados = await sql`
       SELECT codigo, cantidad, modalidad FROM public.pedido_items WHERE pedido_id = ${id}
     `;
+    // Una sola sentencia atómica. La fila Despacho va en el mismo INSERT y
+    // queda condicionada al UPDATE del pedido (idempotencia) y a entrega > 0.
     const rows = await sql`
       WITH target AS (
         SELECT id FROM public.pedidos
@@ -76,6 +83,11 @@ export async function convertirPedido(
         FROM public.pedido_items pi
         JOIN public.productos p ON p.id = pi.producto_id AND p.empresa_id = ${empresaId}
         WHERE pi.pedido_id = ${id} AND EXISTS (SELECT 1 FROM upd)
+        UNION ALL
+        SELECT (SELECT id FROM nueva), ${CODIGO_DESPACHO}, 'Despacho', NULL::text, NULL::int,
+               0, 1, ${entregaCosto}::numeric, 'unidad'
+        FROM public.pedidos pe
+        WHERE pe.id = ${id} AND pe.entrega_costo > 0 AND EXISTS (SELECT 1 FROM upd)
         RETURNING codigo
       )
       SELECT (SELECT id FROM nueva) AS prenota_id
@@ -159,6 +171,16 @@ export async function convertirPedido(
     `;
 
     convertidos.push({ codigo, cajas });
+  }
+
+  // 3b. Entrega como línea de la nota (sin producto ni stock): así el total de
+  // la nota incluye el despacho, igual que pedidos.total y el cobro en caja.
+  if (entregaCosto > 0) {
+    await sql`
+      INSERT INTO public.prenota_items
+        (prenota_id, codigo, descripcion, empresa_id, cajas, unidades, precio, modalidad)
+      VALUES (${prenotaId}, ${CODIGO_DESPACHO}, 'Despacho', NULL, 0, 1, ${entregaCosto}, 'unidad')
+    `;
   }
 
   // 4. Marcar pedido convertido (una sola vía), incluso con conversión parcial

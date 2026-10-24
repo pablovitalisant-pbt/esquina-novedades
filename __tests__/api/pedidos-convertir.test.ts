@@ -33,7 +33,7 @@ let failCodigo: string | null = null;
 let itemsMock: any[] = [];
 let cteResults: any[][] | null = null;
 
-function setupSqlMock(pedidoEstado: string, stockReservado = false) {
+function setupSqlMock(pedidoEstado: string, stockReservado = false, entregaCosto = 0) {
   sql.mockImplementation((...args: any[]) => {
     const q = args[0].join('');
     // Slice 8d: conversión de pedido con reserva → una sola sentencia CTE que
@@ -42,7 +42,13 @@ function setupSqlMock(pedidoEstado: string, stockReservado = false) {
       return cteResults ? cteResults.shift() : [{ prenota_id: 42 }];
     }
     if (q.includes('FROM public.pedidos WHERE id')) {
-      return [{ id: 'pedido-1', estado: pedidoEstado, cliente_id: 'c1', stock_reservado: stockReservado }];
+      return [{
+        id: 'pedido-1',
+        estado: pedidoEstado,
+        cliente_id: 'c1',
+        stock_reservado: stockReservado,
+        entrega_costo: entregaCosto,
+      }];
     }
     if (q.includes('COUNT(*) FROM public.prenotas')) return [{ count: '0' }];
     if (q.includes('INSERT INTO public.prenotas')) return [{ id: 42 }];
@@ -236,5 +242,103 @@ describe('POST /api/pedidos/[id]/convertir', () => {
     const res = await POST(convertReq(), CTX);
     expect(res.status).toBe(409);
     expect(sql.mock.calls.some((c) => c[0].join('').includes('INSERT INTO public.prenotas'))).toBe(false);
+  });
+});
+
+// ─── A12: línea "Despacho" en la nota (pedido.total = nota.total) ──────
+const llamadas = () => sql.mock.calls.map((c: any[]) => ({ texto: c[0].join(''), valores: [...c.slice(1)] }));
+const cteReservado = () => llamadas().find((c) => c.texto.includes('INSERT INTO public.prenotas') && c.texto.includes('public.pedido_items'));
+// El código puede ir literal en el SQL o como parámetro: se cuentan ambos.
+const cuentaDespacho = (c: { texto: string; valores: any[] }) =>
+  (c.texto.match(/DESPACHO/g)?.length ?? 0) + c.valores.filter((v) => v === 'DESPACHO').length;
+
+describe('A12 — línea Despacho al convertir', () => {
+  test('rama reservada con entrega_costo > 0 → UNA línea DESPACHO sin producto', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
+    setupSqlMock('pagado', true, 1500);
+
+    const res = await POST(convertReq(), CTX);
+    expect(res.status).toBe(201);
+
+    const cte = cteReservado()!;
+    expect(cte).toBeDefined();
+    expect(cuentaDespacho(cte)).toBe(1);
+    // precio = entrega_costo, modalidad unidad, unidades 1 y empresa NULL
+    // (acepta valor literal o parametrizado).
+    expect(cte.valores).toContain(1500);
+    expect(cte.texto + cte.valores.join(',')).toMatch(/Despacho/);
+    expect(cte.texto + cte.valores.join(',')).toMatch(/unidad/);
+    expect(cte.texto.includes('NULL') || cte.valores.includes(null)).toBe(true);
+  });
+
+  test('rama reservada con entrega_costo = 0 → sin línea DESPACHO', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
+    setupSqlMock('pagado', true, 0);
+
+    const res = await POST(convertReq(), CTX);
+    expect(res.status).toBe(201);
+
+    const cte = cteReservado()!;
+    // Una sola sentencia: la fila queda condicionada en el WHERE de Postgres.
+    expect(cte.texto).toMatch(/pe\.entrega_costo > 0/);
+    expect(cte.texto).toMatch(/EXISTS \(SELECT 1 FROM upd\)/);
+  });
+
+  test('rama legacy (pendiente) con entrega_costo > 0 → inserta DESPACHO', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
+    setupSqlMock('pendiente', false, 1500);
+
+    const res = await POST(convertReq(), CTX);
+    expect(res.status).toBe(201);
+
+    const inserts = llamadas().filter((c) => c.texto.includes('INSERT INTO public.prenota_items'));
+    const despacho = inserts.filter((c) => cuentaDespacho(c) === 1);
+    expect(despacho).toHaveLength(1);
+    expect(despacho[0].valores).toContain(1500);
+    expect(despacho[0].texto + despacho[0].valores.join(',')).toMatch(/unidad/);
+    expect(despacho[0].texto.includes('NULL') || despacho[0].valores.includes(null)).toBe(true);
+  });
+
+  test('doble conversión (segunda sin target) no duplica la línea', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
+    cteResults = [[{ prenota_id: 42 }], []];
+    setupSqlMock('pagado', true, 1500);
+
+    const res1 = await POST(convertReq(), CTX);
+    const res2 = await POST(convertReq(), CTX);
+    expect(res1.status).toBe(201);
+    expect(res2.status).toBe(409);
+
+    const cte = cteReservado()!;
+    // La fila solo se inserta si el UPDATE del pedido (upd) produjo fila:
+    // la segunda entrega encuentra target vacío y no inserta nada.
+    const cteTodo = cte.texto + ',' + cte.valores.join(',');
+    expect(cteTodo).toMatch(/DESPACHO[\s\S]*EXISTS \(SELECT 1 FROM upd\)|EXISTS \(SELECT 1 FROM upd\)[\s\S]*DESPACHO/);
+    // No hay un INSERT de DESPACHO suelto y no condicionado fuera del CTE.
+    const sueltos = llamadas().filter((c) =>
+      c.texto.includes('INSERT INTO public.prenota_items') &&
+      !c.texto.includes('WITH target') &&
+      cuentaDespacho(c) > 0);
+    expect(sueltos).toHaveLength(0);
+  });
+
+  test('DESPACHO nunca entra al descuento de stock', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
+    setupSqlMock('pendiente', false, 1500);
+
+    await POST(convertReq(), CTX);
+
+    const stock = llamadas().filter((c) =>
+      c.texto.includes('UPDATE public.productos SET saldo = saldo -') ||
+      c.texto.includes('UPDATE public.ubicaciones_bodega SET saldo = saldo -'));
+    expect(stock.length).toBeGreaterThan(0);
+    for (const c of stock) {
+      expect(c.texto).not.toMatch(/DESPACHO/);
+      expect(c.valores).not.toContain('DESPACHO');
+    }
+    // La línea entra con empresa_id NULL: los joins de stock (codigo+empresa_id)
+    // no la alcanzan en ninguna restauración/descuento.
+    const despacho = llamadas().find((c) => c.texto.includes('INSERT INTO public.prenota_items') && cuentaDespacho(c) === 1)!;
+    expect(despacho.texto.includes('NULL') || despacho.valores.includes(null)).toBe(true);
   });
 });

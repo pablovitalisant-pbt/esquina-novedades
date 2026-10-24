@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 import { formatCLP } from '@/lib/utils';
+import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 
 import type { RouteContext } from '@/types';
 
@@ -55,11 +56,13 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     0
   );
   // Tipo derivado (5f): sin items -> null; solo cajas -> mayor; solo unidades -> menor.
-  const tipo = (items as any[]).length === 0
+  // La línea Despacho no es un producto y no cuenta para el tipo.
+  const itemsTipo = (items as any[]).filter((i: any) => i.codigo !== CODIGO_DESPACHO);
+  const tipo = itemsTipo.length === 0
     ? null
-    : (items as any[]).every((i: any) => i.modalidad === 'caja')
+    : itemsTipo.every((i: any) => i.modalidad === 'caja')
       ? 'mayor'
-      : (items as any[]).every((i: any) => i.modalidad !== 'caja')
+      : itemsTipo.every((i: any) => i.modalidad !== 'caja')
         ? 'menor'
         : 'mixta';
   const pagadoRows = await sql`

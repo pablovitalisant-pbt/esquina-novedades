@@ -232,11 +232,16 @@ export function CarritoDrawer() {
 }
 
 /** Mensaje para el cliente a partir de la respuesta de error de POST /api/pedidos. */
-function mensajeError(body: any): string {
+type ErrorPedido = {
+  items?: Array<{ codigo: string; disponible: number; solicitado: number }>;
+  error?: string;
+};
+
+function mensajeError(body: ErrorPedido | null): string {
   const sinStock = Array.isArray(body?.items) ? body.items : [];
   if (sinStock.length > 0) {
     const detalle = sinStock
-      .map((i: any) => `${i.codigo} (quedan ${i.disponible}, pediste ${i.solicitado})`)
+      .map((i) => `${i.codigo} (quedan ${i.disponible}, pediste ${i.solicitado})`)
       .join(', ');
     return `No hay stock suficiente: ${detalle}. Ajusta las cantidades e intenta de nuevo.`;
   }

@@ -20,16 +20,16 @@ interface Props {
 }
 
 export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
-  const MODALIDAD_UI = (flags as any)['notas-venta-modalidad'] === true;
+  const MODALIDAD_UI = (flags as Record<string, boolean>)['notas-venta-modalidad'] === true;
   const puedeCaja = producto.precio_mayor != null && producto.cantcaja > 0;
-  const [prenotas, setPrenotas] = useState<any[]>([]);
+  const [prenotas, setPrenotas] = useState<Array<{ id: string | number; titulo: string }>>([]);
   const [prenotaId, setPrenotaId] = useState<string>('nueva');
   const [cajas, setCajas] = useState(1);
   const [modalidad, setModalidad] = useState<'unidad' | 'caja'>('unidad');
   const [precio, setPrecio] = useState(producto.prcventa);
   const [saving, setSaving] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Array<{ id: number; nombre: string; telefono: string | null }>>([]);
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [clientesLoading, setClientesLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -78,8 +78,8 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
           const { data } = await res.json();
           setClientes(data || []);
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') setClientes([]);
+      } catch (err) {
+        if (!(err instanceof Error && err.name === 'AbortError')) setClientes([]);
       } finally {
         setClientesLoading(false);
       }
@@ -94,7 +94,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
     try {
       let id = prenotaId;
       if (prenotaId === 'nueva') {
-        const body: any = {};
+        const body: { cliente_id?: number } = {};
         if (clienteId) body.cliente_id = clienteId;
         const res = await fetch('/api/notas-venta', {
           method: 'POST',

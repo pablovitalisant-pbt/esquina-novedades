@@ -17,11 +17,20 @@ export const CODIGO_DESPACHO = 'DESPACHO';
 // dos conversiones concurrentes (p. ej. reintentos del webhook MP) serialicen:
 // la segunda espera el lock, reevalúa el WHERE y encuentra la fila ya cambiada.
 
+type ConvertirBody = {
+  error?: string;
+  data?: {
+    prenota_id: number;
+    convertidos: { codigo: string; cajas: number }[];
+    fallidos: { codigo: string; motivo: string; disponible: number; solicitado: number }[];
+  };
+};
+
 export async function convertirPedido(
   id: string,
   usuarioId: number,
   usuarioNombre: string
-): Promise<{ status: number; body: any }> {
+): Promise<{ status: number; body: ConvertirBody }> {
   const empresaId = 1; // single-tenant
 
   // 1. Pedido convertible? `pendiente` legacy descuenta stock al convertir.
@@ -44,7 +53,7 @@ export async function convertirPedido(
 
   // 2. Crear la prenota (misma numeración que POST /api/notas-venta)
   const count = await sql`SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}`;
-  const n = Number((count as any)[0].count) + 1;
+  const n = Number(count[0].count) + 1;
   const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
   const titulo = `Nota de Venta #${n} de ${usuarioNombre} — ${fecha}`;
 
@@ -101,7 +110,7 @@ export async function convertirPedido(
       body: {
         data: {
           prenota_id: Number(prenotaReservada),
-          convertidos: itemsReservados.map((it: any) => ({
+          convertidos: (itemsReservados as Array<{ codigo: string; modalidad: string | null; cantidad: number | string }>).map((it) => ({
             codigo: it.codigo,
             cajas: it.modalidad === 'caja' ? Number(it.cantidad) : 0,
           })),

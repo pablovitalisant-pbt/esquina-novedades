@@ -2,13 +2,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { InversionMercaderiaClient } from "./client_page";
+import { UserSession } from "@/types";
 
 export default async function InversionMercaderiaPage() {
   const session = await getServerSession(authOptions);
 
   // Guard SSR admin-only (dato financiero, más restrictivo que /admin/categorias).
   // El middleware ya bloquea no-admin en /admin/*.
-  if (!session || (session.user as any).rol !== "admin") {
+  if (!session || (session.user as UserSession).rol !== "admin") {
     redirect("/dashboard");
   }
 

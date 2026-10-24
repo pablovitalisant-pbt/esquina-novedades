@@ -27,7 +27,7 @@ type Producto = {
   categoria: string | null;
 };
 
-type Categoria = {
+export type Categoria = {
   id: string; // UUID desde 12 (migración 029)
   nombre: string;
   total_productos: number;

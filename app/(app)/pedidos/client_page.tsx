@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCLP } from '@/lib/utils';
+import type { SessionProp } from '@/types';
 
 interface PedidoItem {
   codigo: string;
@@ -74,7 +75,7 @@ function formatFecha(value: string): string {
   });
 }
 
-export function PedidosPage({}: { session: any }) {
+export function PedidosPage({}: { session: SessionProp }) {
   const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +145,7 @@ export function PedidosPage({}: { session: any }) {
       const total = convertidos?.length ?? 0;
       const base = `Nota de venta #${prenota_id} creada — ${total} producto${total !== 1 ? 's' : ''}`;
       if (fallidos?.length) {
-        const codigos = fallidos.map((f: any) => f.codigo).join(', ');
+        const codigos = fallidos.map((f: { codigo: string }) => f.codigo).join(', ');
         toast.warning(`${base}, sin stock: ${codigos}`);
       } else {
         toast.success(base);

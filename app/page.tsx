@@ -8,8 +8,20 @@ import { LandingPage } from '@/components/LandingPage';
 
 export const dynamic = 'force-dynamic';
 
-function mapRows(rows: any[]) {
-  return rows.map((r: any) => ({
+type LandingRow = {
+  codigo: string;
+  id: number;
+  detalle: string | null;
+  imagen_url: string | null;
+  cantcaja: string;
+  umed: string;
+  precio: string;
+  saldo: string;
+  es_nuevo: boolean;
+};
+
+function mapRows(rows: unknown[]) {
+  return (rows as LandingRow[]).map((r) => ({
     ...r,
     saldo: parseInt(r.saldo),
     precio: parseFloat(r.precio),

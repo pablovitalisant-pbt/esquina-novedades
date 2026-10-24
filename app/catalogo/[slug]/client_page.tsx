@@ -10,7 +10,27 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingBag } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
 
-export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }) {
+type CatalogoPublico = {
+  titulo: string;
+  descripcion: string | null;
+  empresa_slug: string;
+  mostrar_precio: boolean;
+  mostrar_stock?: boolean;
+  productos: Array<{
+    id: number;
+    codigo: string;
+    detalle?: string | null;
+    imagen_url: string | null;
+    es_nuevo: boolean;
+    saldo?: number;
+    cantcaja: number;
+    umed: string;
+    precio_catalogo: number | null;
+    precio_mayor?: number | null;
+  }>;
+};
+
+export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; slug: string }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('print=1')) {
@@ -41,7 +61,7 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 print:block print:space-y-0">
-            {data.productos.map((p: any) => (
+            {data.productos.map((p) => (
               <div key={p.id} className="print-page bg-white bg-[var(--muted)]900 border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group">
                 <div className="relative aspect-square bg-[var(--muted)] bg-[var(--muted)]800">
                   <ImageWithFallback
@@ -62,7 +82,7 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
                   {p.cantcaja > 1 && (
                     <div className="text-xs text-[var(--body)]">Packing: {p.cantcaja} {p.umed}/Caja</div>
                   )}
-                  {data.mostrar_stock && p.cantcaja > 0 && p.saldo > 0 && (
+                  {data.mostrar_stock && p.cantcaja > 0 && p.saldo != null && p.saldo > 0 && (
                     <div className="text-xs text-[var(--body)]">Stock disponible: {Math.floor(p.saldo / p.cantcaja)} cajas</div>
                   )}
                   {data.mostrar_precio && p.precio_catalogo !== null && (
@@ -75,7 +95,7 @@ export function PublicCatalogoClient({ data, slug }: { data: any; slug: string }
                   )}
                   <div className="mt-3">
                     <BotonAgregarPedido
-                      item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
+                      item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle ?? null, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
                     />
                   </div>
                 </div>

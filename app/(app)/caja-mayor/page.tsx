@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { CajaMayorClient } from "./client_page";
 import { redirect } from "next/navigation";
+import { Cuenta, UserSession } from "@/types";
 
 export default async function CajaMayorPage() {
   const session = await getServerSession(authOptions);
@@ -12,7 +13,8 @@ export default async function CajaMayorPage() {
   }
 
   // Caja Mayor es solo admin (vendedor tiene el resto de ventas)
-  if ((session.user as any).rol !== "admin") {
+  const user = session.user as UserSession & { name?: string | null };
+  if (user.rol !== "admin") {
     redirect("/dashboard");
   }
 
@@ -26,10 +28,10 @@ export default async function CajaMayorPage() {
 
   return (
     <CajaMayorClient
-      cuentas={cuentas as any}
-      userName={(session.user as any).nombre || (session.user as any).name || ""}
-      userRol={(session.user as any).rol || ""}
-      userId={parseInt((session.user as any).id, 10)}
+      cuentas={cuentas as Cuenta[]}
+      userName={user.nombre || user.name || ""}
+      userRol={user.rol || ""}
+      userId={parseInt(user.id, 10)}
     />
   );
 }

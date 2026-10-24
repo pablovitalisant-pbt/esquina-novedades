@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcryptjs';
+import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 export const EMPRESA_NOMBRE = 'La Esquina de las Novedades';
 export const EMPRESA_SLUG = 'la-esquina-de-las-novedades';
@@ -16,7 +17,7 @@ export function validateSeedEnv(env: Record<string, string | undefined>) {
 
 // Seed mínimo e idempotente: empresa + admin. El código asume empresa_id = 1.
 export async function runSeed(
-  sql: any,
+  sql: NeonQueryFunction<false, false>,
   env: Record<string, string | undefined>,
   hash: (p: string) => Promise<string> = (p) => bcrypt.hash(p, 10),
 ) {
@@ -27,7 +28,7 @@ export async function runSeed(
     ON CONFLICT (slug) DO NOTHING
   `;
   const empresas = await sql`SELECT id, slug FROM empresas WHERE slug = ${EMPRESA_SLUG}`;
-  const empresa = empresas.find((e: any) => e.slug === EMPRESA_SLUG);
+  const empresa = empresas.find((e) => e.slug === EMPRESA_SLUG);
   if (!empresa || empresa.id !== 1) {
     throw new Error('empresa debe quedar con id=1 (el código lo asume); la DB no está vacía');
   }
@@ -38,10 +39,10 @@ export async function runSeed(
     ON CONFLICT (rut) DO NOTHING
   `;
   const usuarios = await sql`SELECT id, rut FROM usuarios WHERE rut = ${adminRut}`;
-  const admin = usuarios.find((u: any) => u.rut === adminRut);
+  const admin = usuarios.find((u) => u.rut === adminRut);
 
   await sql`
-    INSERT INTO usuario_empresa (usuario_id, empresa_id) VALUES (${admin.id}, ${empresa.id})
+    INSERT INTO usuario_empresa (usuario_id, empresa_id) VALUES (${admin!.id}, ${empresa.id})
     ON CONFLICT (usuario_id, empresa_id) DO NOTHING
   `;
 }

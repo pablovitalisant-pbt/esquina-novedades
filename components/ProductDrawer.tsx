@@ -35,7 +35,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
   const [prcVenta, setPrcVenta] = useState('');
   const [prcMinimo, setPrcMinimo] = useState('');
   const [editPrecioMayor, setEditPrecioMayor] = useState('');
-  const PRECIO_MAYOR_UI = (flags as any)['precio-mayorista-ui'] === true;
+  const PRECIO_MAYOR_UI = (flags as Record<string, boolean>)['precio-mayorista-ui'] === true;
   const [categoria, setCategoria] = useState(producto?.categoria ?? '');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +81,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setCategoriasDisponibles(data.map((c: any) => c.nombre));
+          setCategoriasDisponibles(data.map((c: { nombre: string }) => c.nombre));
         }
       })
       .catch(() => {});
@@ -192,8 +192,8 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       toast.success('Imagen actualizada con éxito');
       setPreviewUrl(null);
       setSelectedFile(null);
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsUploading(false);
     }
@@ -204,7 +204,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
     if (!producto) return;
     setIsSaving(true);
 
-    const body: Record<string, any> = {};
+    const body: Record<string, unknown> = {};
 
     if (editCosto) body.costo = Number(editCosto);
     if (editMargenPct) body.margen_pct = Number(editMargenPct);
@@ -236,8 +236,8 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       onUpdated(data);
       toast.success('Producto actualizado');
       setIsEditing(false);
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
     }
@@ -277,11 +277,11 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       onUpdated(payload.data);
       toast.success(payload.message || 'Código actualizado');
       setIsEditingCodigo(false);
-    } catch (error: any) {
+    } catch (error) {
       // El servidor manda el mensaje final (409 duplicado, 400 igual al actual).
       // Se muestra tal cual — el useEffect sobre [producto] no corre en fallo,
       // asi que el input queda abierto para corregir.
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSavingCodigo(false);
     }
@@ -299,10 +299,10 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       onUpdated(payload.data);
       toast.success(payload.message || 'Producto eliminado');
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       // El backend distingue 409 (tiene stock) de 400 (ya eliminado) en el
       // mensaje; se muestra tal cual para que el usuario sepa que hacer.
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsDeleting(false);
     }

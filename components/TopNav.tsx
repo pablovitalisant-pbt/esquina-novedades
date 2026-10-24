@@ -37,8 +37,8 @@ import flags from '@/config/feature-flags.json';
 export function TopNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isAdmin = (session?.user as any)?.rol === 'admin';
-  const rol = (session?.user as any)?.rol as string;
+  const isAdmin = session?.user?.rol === 'admin';
+  const rol = session?.user?.rol as string;
 
   const logoHref = rol === 'bodeguero' ? '/bodega' : '/precios';
   const { stockBajoCount } = useAlertas();
@@ -50,7 +50,7 @@ export function TopNav() {
     return 'Buenas noches';
   };
 
-  const primerNombre = ((session?.user as any)?.nombre as string)?.split(' ')[0] ?? '';
+  const primerNombre = session?.user?.nombre?.split(' ')[0] ?? '';
 
   const [ventasOpen, setVentasOpen] = useState(false);
   const [bodegaOpen, setBodegaOpen] = useState(false);
@@ -172,7 +172,7 @@ export function TopNav() {
                       <PackagePlus className="w-4 h-4" /> Ingreso de Mercadería
                     </Link>
                   </DropdownMenuItem>
-                  {(flags as any)['registro_notas_bodega_ui'] && (
+                  {(flags as Record<string, boolean>)['registro_notas_bodega_ui'] && (
                     <DropdownMenuItem>
                       <Link href="/bodega/registro-notas" className="flex items-center gap-2 w-full">
                         <ClipboardList className="w-4 h-4" /> Registro de Notas

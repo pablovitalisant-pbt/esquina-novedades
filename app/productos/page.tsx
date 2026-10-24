@@ -35,7 +35,18 @@ async function getProductos() {
     HAVING SUM(saldo) > 0
     ORDER BY codigo ASC
   `;
-  const productos = rows.map((r: any) => ({
+  const productos = (rows as Array<{
+    codigo: string;
+    id: number;
+    detalle: string | null;
+    imagen_url: string | null;
+    cantcaja: string;
+    umed: string;
+    precio: string;
+    precio_mayor: string | null;
+    saldo: string;
+    es_nuevo: boolean;
+  }>).map((r) => ({
     ...r,
     saldo: parseInt(r.saldo),
     precio: parseFloat(r.precio),

@@ -132,6 +132,20 @@ export interface CatalogoItem {
   created_at: Date;
 }
 
+// Prop `session` que reciben los client components: estructura laxa a
+// propósito para que las páginas puedan pasar la Session de NextAuth y los
+// tests un objeto parcial, sin depender de los campos opcionales de NextAuth.
+export type SessionProp = {
+  user?: {
+    id?: string | number;
+    rut?: string;
+    nombre?: string;
+    rol?: string;
+    empresas?: number[];
+    [key: string]: unknown;
+  };
+} | null;
+
 export interface UserSession {
   id: string;
   rut: string;

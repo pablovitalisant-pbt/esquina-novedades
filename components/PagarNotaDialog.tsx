@@ -131,7 +131,7 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
             <select
               className="border rounded-card px-3 py-2 text-sm bg-[var(--card)]"
               value={pagoForm.forma_pago}
-              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as any }))}
+              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as 'efectivo' | 'cheque' | 'transferencia' }))}
             >
               <option value="efectivo">Efectivo</option>
               <option value="cheque">Cheque</option>

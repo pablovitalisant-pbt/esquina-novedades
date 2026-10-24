@@ -16,7 +16,7 @@ import flags from '@/config/feature-flags.json';
 export function BottomNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const rol = (session?.user as any)?.rol as string;
+  const rol = session?.user?.rol as string;
 
   const [ventasOpen, setVentasOpen] = useState(false);
   const [bodegaOpen, setBodegaOpen] = useState(false);
@@ -136,7 +136,7 @@ export function BottomNav() {
                 <div className="space-y-0">
                   {sheetLink('/bodega', <Box className="w-5 h-5" />, 'Ubicaciones', () => setBodegaOpen(false))}
                   {sheetLink('/bodega/ingresos', <PackagePlus className="w-5 h-5" />, 'Ingreso de Mercadería', () => setBodegaOpen(false))}
-                  {(flags as any)['registro_notas_bodega_ui'] && sheetLink('/bodega/registro-notas', <ClipboardList className="w-5 h-5" />, 'Registro de Notas', () => setBodegaOpen(false))}
+                  {(flags as Record<string, boolean>)['registro_notas_bodega_ui'] &&sheetLink('/bodega/registro-notas', <ClipboardList className="w-5 h-5" />, 'Registro de Notas', () => setBodegaOpen(false))}
                   {(isAdmin || isBodeguero || isVendedor) &&
                     sheetLink('/alertas-stock', <AlertTriangle className="w-5 h-5" />, 'Alertas de stock', () => setBodegaOpen(false))
                   }

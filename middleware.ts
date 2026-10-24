@@ -1,12 +1,13 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 import { RUTAS_POR_ROL } from '@/lib/rutas-por-rol';
+import type { JWT } from 'next-auth/jwt';
 
 export default withAuth(
   function middleware(req) {
     const { pathname } = req.nextUrl;
-    const token = req.nextauth.token as any;
-    const rol = token?.rol as string;
+    const token = req.nextauth.token as JWT | null;
+    const rol = token?.rol;
 
     if (!rol || !RUTAS_POR_ROL[rol]) {
       return NextResponse.redirect(new URL('/login', req.url));

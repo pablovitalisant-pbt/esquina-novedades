@@ -59,9 +59,13 @@ function Thumb({ src, className }: { src?: string | null; className?: string }) 
 }
 
 // Tooltip custom de recharts: imagen + codigo + costo + venta potencial.
-export function ChartTooltip({ active, payload }: any) {
+type TooltipPayload = {
+  payload: { codigo: string; costoTotal: number; ventaPotencial: number; imagen_url: string | null };
+};
+
+export function ChartTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
   if (!active || !payload?.length) return null;
-  const p = payload[0].payload as { codigo: string; costoTotal: number; ventaPotencial: number; imagen_url: string | null };
+  const p = payload[0].payload;
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow text-[var(--body)]">
       <div className="flex items-center gap-2 mb-1">

@@ -8,7 +8,7 @@ export default async function BodegaPage() {
 
   return (
     <BodegaClient
-      session={session as any}
+      session={session}
     />
   );
 }

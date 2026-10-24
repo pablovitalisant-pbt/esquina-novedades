@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ClipboardList, Trash2, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import type { SessionProp } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -19,8 +20,8 @@ type Registro = {
   created_at: string;
 };
 
-export function RegistroNotasPage({ session }: { session: any }) {
-  const rol = (session?.user as any)?.rol as string;
+export function RegistroNotasPage({ session }: { session: SessionProp }) {
+  const rol = session?.user?.rol as string;
   const isAdmin = rol === 'admin';
 
   const [registros, setRegistros] = useState<Registro[]>([]);

@@ -6,13 +6,34 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PlusCircle, Search, Trash2, Link as LinkIcon, ExternalLink, FileDown, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import type { SessionProp } from '@/types';
 // single-tenant (hook legacy eliminado, PRD §9.17)
 import { CrearCatalogoDialog } from '@/components/CrearCatalogoDialog';
 import dynamic from 'next/dynamic';
 // ponytail: inlined from catalogos/catalogos-utils (deleted, PRD section 4).
 // Contract adapted to catalogo/admin data model: no 'categoria' field.
 // Verified against __tests__/catalogos-utils.test.ts (minus categoria tests).
-export function filtrarCatalogos(catalogos: any[], busqueda: string) {
+type CatalogoRow = {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  slug: string;
+  activo: boolean;
+  margen_precio: string;
+  user_id: string | null;
+  palabras_excluir?: string | null;
+  mostrar_precio?: boolean;
+};
+
+type CatalogoItem = {
+  codigo: string;
+  detalle: string | null;
+  imagen_url: string | null;
+  precio_catalogo: number | null;
+  precio_override?: number | null;
+};
+
+export function filtrarCatalogos<T extends { titulo: string; descripcion: string | null }>(catalogos: T[], busqueda: string): T[] {
   const q = busqueda.trim().toLowerCase();
   if (q.length < 2) return catalogos;
   const normalize = (s: string | null) =>
@@ -28,21 +49,21 @@ export function filtrarCatalogos(catalogos: any[], busqueda: string) {
 const QRCodeSVG = dynamic(() => import('qrcode.react').then(mod => mod.QRCodeSVG), { ssr: false });
 
 // crear/editar/eliminar catálogo requieren conexión (slug server-side).
-export function CatalogoAdminClient({ session }: { session: any }) {
+export function CatalogoAdminClient({ session }: { session: SessionProp }) {
   const activeEmpresaId = 1; // single-tenant
-  const [catalogos, setCatalogos] = useState<any[]>([]);
+  const [catalogos, setCatalogos] = useState<CatalogoRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   
   // --- Estado modal edición ---
-  const [editingCatalog, setEditingCatalog] = useState<any | null>(null);
-  const [editItems, setEditItems] = useState<any[]>([]);
+  const [editingCatalog, setEditingCatalog] = useState<CatalogoRow | null>(null);
+  const [editItems, setEditItems] = useState<CatalogoItem[]>([]);
   const [editMargen, setEditMargen] = useState<number>(0);
   const [editOverrides, setEditOverrides] = useState<Record<string, number | null>>({});
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
-  const editItemsOriginalRef = useRef<any[]>([]);
+  const editItemsOriginalRef = useRef<CatalogoItem[]>([]);
 
   const [isCreating, setIsCreating] = useState(false);
 
@@ -104,7 +125,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
 
   // --- Funciones edición ---
 
-  const handleOpenEdit = async (cat: any) => {
+  const handleOpenEdit = async (cat: CatalogoRow) => {
     // No se abre el modal de edición offline (no se puede calcular la lista de
     // productos del catálogo sin conexión — el servidor la recalcula).
     if (!navigator.onLine) {
@@ -113,7 +134,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
     }
     setEditingCatalog(cat);
     setEditItems([]);
-    setEditMargen(parseFloat(cat.margen_precio) || 0);
+    setEditMargen(parseFloat(String(cat.margen_precio)) || 0);
     setEditOverrides({});
     setEditLoading(true);
     try {
@@ -124,7 +145,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
         editItemsOriginalRef.current = data.productos || [];
         // Populate existing overrides from response
         const overrides: Record<string, number | null> = {};
-        (data.productos || []).forEach((p: any) => {
+        (data.productos || []).forEach((p: CatalogoItem) => {
           if (p.precio_override != null) overrides[p.codigo] = p.precio_override;
         });
         setEditOverrides(overrides);
@@ -319,7 +340,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
                 <Button variant="outline" className="flex-1 text-xs" onClick={() => window.open(getPublicUrl(cat.slug) + '?print=1', '_blank')}>
                   <FileDown className="w-3 h-3 mr-2" /> PDF
                 </Button>
-                {cat.user_id === (session?.user as any)?.id && (
+                {cat.user_id === session?.user?.id && (
                   <Button
                     variant="outline"
                     className="flex-1 text-xs"
@@ -384,7 +405,7 @@ export function CatalogoAdminClient({ session }: { session: any }) {
                       // eslint-disable-next-line @next/next/no-img-element -- preview de item en modal de edición; el tamaño real se sirve desde Cloudinary
                       <img
                         src={item.imagen_url}
-                        alt={item.detalle}
+                        alt={item.detalle ?? undefined}
                         className="w-10 h-10 object-cover rounded-md flex-shrink-0 border"
                       />
                     ) : (

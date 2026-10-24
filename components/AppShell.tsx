@@ -6,18 +6,20 @@ import { TopNav } from './TopNav';
 import { BottomNav } from './BottomNav';
 import { AlertasBell } from './AlertasBell';
 import { SessionProvider } from 'next-auth/react';
+import type { Session } from 'next-auth';
+import type { SessionProp } from '@/types';
 import { AlertasProvider } from '@/contexts/AlertasContext';
 import { MarcaLogo } from '@/components/MarcaLogo';
 
-export function AppShell({ children, session }: { children: React.ReactNode, session: any }) {
+export function AppShell({ children, session }: { children: React.ReactNode, session: SessionProp }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session as Session}>
     <AlertasProvider>
       <div className="min-h-screen bg-[var(--background)] flex flex-col pt-16 md:pt-16 pb-16 md:pb-0">
         <TopNav />
         <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-16 border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-xl flex items-center justify-between px-4">
           <Link href={
-            (session?.user as any)?.rol === 'bodeguero' ? '/bodega' : '/precios'
+            session?.user?.rol === 'bodeguero' ? '/bodega' : '/precios'
           } className="shrink-0">
             <MarcaLogo />
           </Link>

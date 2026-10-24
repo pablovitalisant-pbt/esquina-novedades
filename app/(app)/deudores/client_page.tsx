@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { MessageCircle } from 'lucide-react';
 import { formatCLP } from '@/lib/utils';
+import type { SessionProp } from '@/types';
 
 interface DeudaNota {
   id: number;
@@ -21,7 +22,7 @@ interface Deudor {
   deuda_mas_antigua: string;
 }
 
-export function DeudoresClient({}: { session: any }) {
+export function DeudoresClient({}: { session: SessionProp }) {
   const [deudores, setDeudores] = useState<Deudor[]>([]);
   const [loading, setLoading] = useState(true);
 

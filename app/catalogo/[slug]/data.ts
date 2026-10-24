@@ -45,7 +45,7 @@ export async function getCatalogData(slug: string) {
         FROM productos
         WHERE UPPER(codigo) = ANY(${tokensUpper})
       `;
-      const codigosEncontrados = new Set(found.map((r: any) => r.codigo));
+      const codigosEncontrados = new Set((found as Array<{ codigo: string }>).map((r) => r.codigo));
       codigosIncluir = tokensUpper.filter((t: string) => codigosEncontrados.has(t));
       keywordsIncluir = tokens
         .filter((t: string) => !codigosEncontrados.has(t.toUpperCase()))
@@ -95,14 +95,26 @@ export async function getCatalogData(slug: string) {
           ORDER BY p.codigo ASC
         `;
 
-    let productos = filterProducts(rows as CatalogoProducto[], codigosIncluir, keywordsIncluir, excluir);
+    type ProductoRow = CatalogoProducto & {
+      id: number;
+      imagen_url: string | null;
+      es_nuevo: boolean;
+      umed: string;
+      saldo: number;
+      costo: number;
+      cantcaja: number;
+      precio_mayor: number | null;
+      precio_catalogo: number | null;
+    };
+
+    let productos = filterProducts(rows as ProductoRow[], codigosIncluir, keywordsIncluir, excluir) as ProductoRow[];
 
     if (cat.solo_stock) {
-      productos = productos.filter((p: any) => Number(p.saldo) > 0);
+      productos = productos.filter((p) => Number(p.saldo) > 0);
     }
     if (soloNuevo) {
       const latestCodigos = await getLatestIngresoRealCodigos(sql, cat.solo_nuevo_top_n ?? 1);
-      productos = productos.filter((p: any) => latestCodigos.has(p.codigo.toUpperCase()));
+      productos = productos.filter((p) => latestCodigos.has(p.codigo.toUpperCase()));
     }
 
     // Fetch individual price overrides for this catalog
@@ -111,22 +123,22 @@ export async function getCatalogData(slug: string) {
       WHERE catalogo_id = ${cat.id}
     `;
     const overridesMap = new Map<string, number>(
-      overrides.map((o: any) => [o.codigo.toUpperCase(), parseFloat(o.precio)])
+      (overrides as Array<{ codigo: string; precio: string }>).map((o): [string, number] => [o.codigo.toUpperCase(), parseFloat(o.precio)])
     );
 
-    productos = productos.map((p: any) => {
+    productos = productos.map((p) => {
       const precioBase = mostrarPrecio
-        ? precioCatalogoBase(parseFloat(p.costo), margen)
+        ? precioCatalogoBase(parseFloat(String(p.costo)), margen)
         : null;
       const precioOverride = mostrarPrecio
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)
         : null;
       return {
         ...p,
-        saldo: parseInt(p.saldo),
-        costo: parseFloat(p.costo),
-        cantcaja: parseInt(p.cantcaja),
-        precio_mayor: p.precio_mayor == null ? null : parseFloat(p.precio_mayor),
+        saldo: parseInt(String(p.saldo)),
+        costo: parseFloat(String(p.costo)),
+        cantcaja: parseInt(String(p.cantcaja)),
+        precio_mayor: p.precio_mayor == null ? null : parseFloat(String(p.precio_mayor)),
         precio_catalogo: precioOverride ?? precioBase,
         precio_override: precioOverride,
       };

@@ -2,12 +2,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
-import { CategoriasClient } from "./client_page";
+import { CategoriasClient, type Categoria } from "./client_page";
+import { UserSession } from "@/types";
 
 export default async function CategoriasPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['admin', 'vendedor'].includes((session.user as any).rol)) {
+  if (!session || !['admin', 'vendedor'].includes((session.user as UserSession).rol)) {
     redirect('/dashboard');
   }
 
@@ -20,5 +21,5 @@ export default async function CategoriasPage() {
     ORDER BY c.nombre ASC
   `;
 
-  return <CategoriasClient categorias={categorias as any} />;
+  return <CategoriasClient categorias={categorias as Categoria[]} />;
 }

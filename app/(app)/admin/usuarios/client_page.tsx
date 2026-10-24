@@ -12,8 +12,16 @@ import { toast } from 'sonner';
 // La escritura de usuarios (hash bcrypt server-side) nunca puede ser offline.
 const OFFLINE_WRITE_MSG = 'La gestión de usuarios requiere conexión a internet. Conectate para crear, editar o eliminar usuarios.';
 
+type UsuarioRow = {
+  id: number;
+  rut: string;
+  nombre: string;
+  rol: string;
+  activo: boolean;
+};
+
 export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
-  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal forms
@@ -60,7 +68,7 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
     setIsOpen(true);
   };
 
-  const openEdit = (u: any) => {
+  const openEdit = (u: UsuarioRow) => {
     resetForm();
     setIsEditMode(true);
     setFormId(u.id);
@@ -113,18 +121,18 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
       toast.success(isEditMode ? 'Usuario actualizado' : 'Usuario creado exitosamente');
       setIsOpen(false);
       fetchUsuarios();
-    } catch (err: any) {
+    } catch (err) {
       // Falso positivo de navigator.onLine (dice "hay red local" sin salida a
       // internet): fetch falla con TypeError ante error de red → mismo mensaje.
       if (err instanceof TypeError) {
         toast.error(OFFLINE_WRITE_MSG);
       } else {
-        toast.error(err.message);
+        toast.error(err instanceof Error ? err.message : String(err));
       }
     }
   };
 
-  const handleDelete = async (u: any) => {
+  const handleDelete = async (u: UsuarioRow) => {
     if (!confirm(`¿Eliminar permanentemente a ${u.nombre}? Esta acción no se puede deshacer.`)) return;
     // Escritura offline bloqueada con mensaje claro
     if (!navigator.onLine) {
@@ -139,11 +147,11 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
       }
       toast.success('Usuario eliminado');
       fetchUsuarios();
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof TypeError) {
         toast.error(OFFLINE_WRITE_MSG);
       } else {
-        toast.error(err.message);
+        toast.error(err instanceof Error ? err.message : String(err));
       }
     }
   };

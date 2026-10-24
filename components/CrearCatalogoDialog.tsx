@@ -38,7 +38,7 @@ export function CrearCatalogoDialog({
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setCategoriasDisponibles(data.map((c: any) => c.nombre));
+          setCategoriasDisponibles(data.map((c: { nombre: string }) => c.nombre));
         }
       })
       .catch(() => {});

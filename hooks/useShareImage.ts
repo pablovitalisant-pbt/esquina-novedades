@@ -27,8 +27,8 @@ export function useShareImage() {
           ? `Imagen descargada — ${text} — ábrela desde tu galería para compartir`
           : 'Imagen descargada — ábrela desde tu galería para compartir');
       }
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
+    } catch (err) {
+      if (!(err instanceof Error && err.name === 'AbortError')) {
         toast.error('No se pudo compartir la imagen');
       }
     }

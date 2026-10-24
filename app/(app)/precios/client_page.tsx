@@ -19,7 +19,7 @@ interface PreciosClientProps {
 }
 
 export function PreciosClient({ session }: PreciosClientProps) {
-  const PRECIO_MAYOR_UI = (flags as any)['precio-mayorista-ui'] === true;
+  const PRECIO_MAYOR_UI = (flags as Record<string, boolean>)['precio-mayorista-ui'] === true;
   const [crearPrecioMayor, setCrearPrecioMayor] = useState('');
 
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -348,10 +348,10 @@ export function PreciosClient({ session }: PreciosClientProps) {
               key={p.id}
               producto={p}
               empresaSlug={EMPRESA.slug}
-              empresaNombre={(p as any).nombre_empresa}
+              empresaNombre={(p as Producto & { nombre_empresa?: string }).nombre_empresa ?? ''}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
-              rol={(session as any)?.user?.rol ?? session?.rol}
+              rol={session?.rol}
             />
           ))}
         </div>
@@ -362,7 +362,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         session={session}
-        empresaNombre={(selectedProduct as any)?.nombre_empresa || ''}
+        empresaNombre={(selectedProduct as Producto & { nombre_empresa?: string } | null)?.nombre_empresa || ''}
         onUpdated={handleProductUpdate}
         ocultarPrecios={ocultarPrecios}
       />

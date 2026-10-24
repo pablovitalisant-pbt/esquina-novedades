@@ -6,6 +6,7 @@ import flags from '@/config/feature-flags.json';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
+import type { SessionProp } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Trash2, Pencil, FileDown, MessageCircle, Plus, DollarSign } from 'lucide-react';
@@ -34,10 +35,54 @@ function hexToRgb(hex: string): [number, number, number] {
 const ACENTO = hexToRgb(EMPRESA.colores.acento);
 const TINTA = hexToRgb(EMPRESA.colores.tinta);
 
-// Modalidad/tipo: filas legacy sin `modalidad` se tratan como 'unidad' (default 041).
-const esCaja = (item: any) => item.modalidad === 'caja';
+type PrenotaItem = {
+  id: string;
+  codigo: string;
+  descripcion: string | null;
+  imagen_url: string | null;
+  modalidad: string | null;
+  cajas: number;
+  unidades: number;
+  precio: number;
+  subtotal: number;
+};
 
-function derivarTipo(items: any[]): string | null {
+type PrenotaDetalle = {
+  titulo: string;
+  tipo?: string | null;
+  nombre_cliente: string | null;
+  cliente_nombre: string | null;
+  cliente_saldo_favor?: number | null;
+  cliente_id?: number | null;
+  estado?: string | null;
+  total_pagado: number;
+  saldo_pendiente: number;
+  items: PrenotaItem[];
+};
+
+type ClienteResult = { id: number; nombre: string; telefono: string | null };
+
+type ProductoResult = {
+  codigo: string;
+  detalle: string | null;
+  imagen_url: string | null;
+  empresa_id: number;
+  prcventa: number;
+  saldo: number;
+  cantcaja: number;
+};
+
+type CellHookData = {
+  column: { index: number };
+  row?: { index: number };
+  section: string;
+  cell: { x: number; y: number };
+};
+
+// Modalidad/tipo: filas legacy sin `modalidad` se tratan como 'unidad' (default 041).
+const esCaja = (item: Pick<PrenotaItem, 'modalidad'>) => item.modalidad === 'caja';
+
+function derivarTipo(items: PrenotaItem[]): string | null {
   if (items.length === 0) return null;
   if (items.every(esCaja)) return 'mayor';
   if (items.every(i => !esCaja(i))) return 'menor';
@@ -52,7 +97,7 @@ function PrenotaItemsTable({
   autoFocusItemId,
   onAutoFocusConsumed,
 }: {
-  items: any[];
+  items: PrenotaItem[];
   onEliminar: (itemId: string) => void;
   prenotaId: string;
   onActualizar: () => void;
@@ -90,7 +135,7 @@ function PrenotaItemsTable({
     }
   }, [editingId]);
 
-  const handleGuardar = async (item: any) => {
+  const handleGuardar = async (item: PrenotaItem) => {
     setSaving(true);
     try {
       const res = await fetch(`/api/notas-venta/${prenotaId}/items/${item.id}`, {
@@ -259,7 +304,7 @@ function PrenotaItemsTable({
   );
 }
 
-export function PrenotaDetallePage({}: { session: any; params?: { id: string } }) {
+export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: string } }) {
   const router = useRouter();
   // El id se lee de la URL real (useParams), no del prop `params` horneado en el
   // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta
@@ -269,12 +314,12 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
   const id = useParams().id as string;
 
 
-  const [prenota, setPrenota] = useState<any>(null);
+  const [prenota, setPrenota] = useState<PrenotaDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
-  const [clienteResults, setClienteResults] = useState<any[]>([]);
+  const [clienteResults, setClienteResults] = useState<ClienteResult[]>([]);
   const [clientesLoading, setClientesLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const prodAbortRef = useRef<AbortController | null>(null);
@@ -286,7 +331,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
 
   // Búsqueda de productos (buscador directo, sin Kardex)
   const [productoQuery, setProductoQuery] = useState('');
-  const [productoResults, setProductoResults] = useState<any[]>([]);
+  const [productoResults, setProductoResults] = useState<ProductoResult[]>([]);
   const [productoLoading, setProductoLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -337,8 +382,8 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
           const { data } = await res.json();
           setClienteResults(data || []);
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') setClienteResults([]);
+      } catch (err) {
+        if (!(err instanceof Error && err.name === 'AbortError')) setClienteResults([]);
       } finally {
         setClientesLoading(false);
       }
@@ -346,7 +391,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     return () => clearTimeout(timer);
   }, [clienteQuery]);
 
-  const asignarCliente = async (c: any) => {
+  const asignarCliente = async (c: ClienteResult) => {
     try {
       await fetch(`/api/notas-venta/${id}`, {
         method: 'PATCH',
@@ -395,8 +440,8 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
           setHighlightedIndex(0);
           setShowResults(true);
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') setProductoResults([]);
+      } catch (err) {
+        if (!(err instanceof Error && err.name === 'AbortError')) setProductoResults([]);
       } finally {
         setProductoLoading(false);
       }
@@ -405,7 +450,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productoQuery]);
 
-  const agregarProducto = async (prod: any) => {
+  const agregarProducto = async (prod: ProductoResult) => {
     // Bloquea solo re-agregar el MISMO producto en vuelo (anti doble-click);
     // deja pasar adds concurrentes de productos distintos (el contador
     // agregarCallCounterRef resuelve el auto-focus del último).
@@ -473,7 +518,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
       { Campo: 'Cliente comprador', Valor: prenota.nombre_cliente || prenota.cliente_nombre || '-' },
     ];
 
-    const toRows = (items: any[]) => items.map(i => ({
+    const toRows = (items: PrenotaItem[]) => items.map(i => ({
       'Código': i.codigo,
       'Descripción': i.descripcion,
       'Modalidad': esCaja(i) ? 'Caja' : 'Unidad',
@@ -485,7 +530,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
 
     const ExcelJS = await import('exceljs');
     const wb = new ExcelJS.Workbook();
-    const addSheet = (name: string, rows: Record<string, any>[]) => {
+    const addSheet = (name: string, rows: Record<string, unknown>[]) => {
       const ws = wb.addWorksheet(name);
       ws.columns = Object.keys(rows[0]).map(k => ({ header: k, key: k }));
       ws.addRows(rows);
@@ -574,9 +619,9 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
 
     // Descargar imágenes vía proxy /api/share-image (mismo que WhatsApp).
     // Ponytail: base64DataURL para que doc.addImage no dependa de CORS/red al dibujar.
-    const imageCache = new Map<number, string | null>();
+    const imageCache = new Map<string, string | null>();
     await Promise.all(
-      prenota.items.map(async (item: any) => {
+      prenota.items.map(async (item) => {
         if (!item.imagen_url) { imageCache.set(item.id, null); return; }
         try {
           const res = await fetch(`/api/share-image?url=${encodeURIComponent(item.imagen_url)}`);
@@ -592,7 +637,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     // Tabla con columna Imagen (primera) — sin columna Empresa (deuda PRD §9.3.1).
     // Header dark, texto blanco, zebra striping. "Cajas" → "Cantidad de Cajas".
     const startY = infoY + boxH + 10;
-    const rows = prenota.items.map((i: any) => {
+    const rows = prenota.items.map((i) => {
       return [
         '', // columna Imagen — se dibuja aparte vía didDrawCell (index 0)
         i.codigo,
@@ -605,8 +650,8 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
       ];
     });
 
-    const totalCajas = prenota.items.reduce((sum: number, i: any) => sum + Number(i.cajas), 0);
-    const totalUnidadesSum = prenota.items.reduce((sum: number, i: any) => sum + Number(i.unidades), 0);
+    const totalCajas = prenota.items.reduce((sum: number, i) => sum + Number(i.cajas), 0);
+    const totalUnidadesSum = prenota.items.reduce((sum: number, i) => sum + Number(i.unidades), 0);
 
     autoTable(doc, {
       startY,
@@ -639,7 +684,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
         6: { cellWidth: 28, halign: 'right' },
         7: { cellWidth: 19, halign: 'right' }, // Modalidad
       },
-      didDrawCell: (data: any) => {
+      didDrawCell: (data: CellHookData) => {
         // Columna 0 = Imagen: dibujar si hay base64 cacheado
         if (data.column.index === 0 && data.row?.index !== undefined && data.section === 'body') {
           const item = prenota.items[data.row.index];
@@ -658,7 +703,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
 
     // ─── Totales: caja "Total" resaltada --accent + Pagado/Pendiente ───
     const total = prenota.items.reduce(
-      (sum: number, i: any) => sum + Number(i.subtotal), 0
+      (sum: number, i) => sum + Number(i.subtotal), 0
     );
     const totalStr = `Total: ${formatCLP(total)}`;
     const pagado = Number(prenota.total_pagado);
@@ -668,7 +713,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     const footerBandH = 16;
     const footerBandY = pageHeight - footerBandH;
 
-    let finalY = (doc as any).lastAutoTable.finalY + 10;
+    let finalY = (doc as typeof doc & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
     // BUG-062: medir el alto real del bloque de totales (desde finalY hasta el
     // baseline de "Gracias por su compra"). Si cae en la banda del footer (que se
     // pinta después y es opaca) o se pasa del borde de página, mover todo el
@@ -734,7 +779,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
   };
 
   const nombreArchivoPDF = () =>
-    `${prenota.titulo}${prenota.nombre_cliente ? ' — ' + prenota.nombre_cliente : ''}.pdf`;
+    `${prenota!.titulo}${prenota!.nombre_cliente ? ' — ' + prenota!.nombre_cliente : ''}.pdf`;
 
   // Slice: enviar PDF por WhatsApp en un click. Si el navegador soporta Web
   // Share con archivos (canShare), se arma un File PDF y se abre el selector
@@ -756,8 +801,8 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
           try {
             await navigator.share({ files: [pdfFile], title: prenota.titulo });
             return; // éxito — no cae al fallback
-          } catch (err: any) {
-            if (err?.name === 'AbortError') return; // usuario cerró el selector — no es error
+          } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') return; // usuario cerró el selector — no es error
             toast.error('No se pudo compartir el PDF por WhatsApp');
             return;
           }
@@ -800,7 +845,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
               // 5f aún no expone `tipo` en todas las respuestas: se deriva localmente.
               const tipo = prenota?.tipo ?? derivarTipo(prenota?.items ?? []);
               if (!tipo) return null;
-              return (flags as any)['notas-venta-modalidad'] === true
+              return (flags as Record<string, boolean>)['notas-venta-modalidad'] === true
                 ? <Badge variant="secondary">{tipo}</Badge>
                 : <p className="text-sm text-[var(--body-subtle)]">Tipo: {tipo}</p>;
             })()}
@@ -906,7 +951,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
             className="flex flex-col gap-2 max-h-64 overflow-y-auto"
             onMouseDown={e => e.preventDefault()}
           >
-            {productoResults.map((prod: any, index: number) => (
+            {productoResults.map((prod, index) => (
               <button
                 key={prod.codigo}
                 onClick={() => agregarProducto(prod)}
@@ -939,11 +984,11 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
             <div key={i} className="h-24 bg-[var(--muted)] rounded-card" />
           ))}
         </div>
-      ) : prenota?.items?.length > 0 ? (
+      ) : prenota && prenota.items.length > 0 ? (
         <>
           {(() => {
             const total = prenota.items.reduce(
-              (sum: number, item: any) => sum + Number(item.subtotal),
+              (sum: number, item) => sum + Number(item.subtotal),
               0
             );
             return (

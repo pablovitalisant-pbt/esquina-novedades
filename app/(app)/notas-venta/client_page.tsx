@@ -9,6 +9,7 @@ import { FileText, PlusCircle, Trash2, ExternalLink, DollarSign } from 'lucide-r
 import { toast } from 'sonner';
 import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { formatCLP, formatSaldoPendiente } from '@/lib/utils';
+import type { SessionProp } from '@/types';
 
 type Prenota = {
   id: number;
@@ -23,9 +24,9 @@ type Prenota = {
   tipo?: string | null;
 };
 
-export function PrenotasPage({ session }: { session: any }) {
+export function PrenotasPage({ session }: { session: SessionProp }) {
   const router = useRouter();
-  const rol = (session?.user as any)?.rol;
+  const rol = session?.user?.rol;
 
   const [prenotas, setPrenotas] = useState<Prenota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +145,7 @@ export function PrenotasPage({ session }: { session: any }) {
                       {prenota.tipo_documento}
                     </Badge>
                   )}
-                  {(flags as any)['notas-venta-modalidad'] === true && prenota.tipo && (
+                  {(flags as Record<string, boolean>)['notas-venta-modalidad'] === true && prenota.tipo && (
                     <Badge variant="secondary" className="text-[10px]">
                       {prenota.tipo}
                     </Badge>

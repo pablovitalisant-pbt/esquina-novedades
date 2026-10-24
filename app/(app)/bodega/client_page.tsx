@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { UbicacionBodegaAgrupada } from '@/types';
+import { UbicacionBodegaAgrupada, type SessionProp } from '@/types';
 import { BodegaCard } from '@/components/BodegaCard';
 import { Input } from '@/components/ui/input';
 import { Search, Share2 } from 'lucide-react';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
 import { EMPRESA } from '@/lib/empresa';
 
-export function BodegaClient({ session }: any) {
+export function BodegaClient({ session }: { session: SessionProp }) {
   const { shareImage } = useShareImage();
   const activeEmpresaId = 1; // single-tenant
   const [ubicaciones, setUbicaciones] = useState<UbicacionBodegaAgrupada[]>([]);
@@ -197,7 +197,7 @@ export function BodegaClient({ session }: any) {
   );
 }
 
-function UbicacionEditor({ ubicacion, onSaved, session }: { ubicacion: UbicacionBodegaAgrupada; onSaved: (updated: UbicacionBodegaAgrupada) => void; session: any }) {
+function UbicacionEditor({ ubicacion, onSaved, session }: { ubicacion: UbicacionBodegaAgrupada; onSaved: (updated: UbicacionBodegaAgrupada) => void; session: SessionProp }) {
   const [ubicacionStr, setUbicacionStr] = useState(ubicacion.ubicacion || '');
   const [fisicoCajas, setFisicoCajas] = useState(() => ubicacion.fisico_cajas != null ? ubicacion.fisico_cajas.toString() : '');
   const [fisicoUnidades, setFisicoUnidades] = useState(() => ubicacion.fisico_unidades != null && ubicacion.fisico_unidades > 0 ? ubicacion.fisico_unidades.toString() : '');
@@ -208,7 +208,7 @@ function UbicacionEditor({ ubicacion, onSaved, session }: { ubicacion: Ubicacion
   // Conciliación de stock: admin-only. Para vendedor/bodeguero
   // el botón no se muestra (no solo deshabilitado). El fetch de conciliación
   // SIEMPRE va al backend (POST /api/bodega/conciliaciones) — es admin-only y online.
-  const isAdmin = (session?.user as any)?.rol === 'admin';
+  const isAdmin = session?.user?.rol === 'admin';
   const showConciliacion = isAdmin;
   const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
 

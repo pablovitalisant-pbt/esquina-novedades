@@ -202,7 +202,7 @@ export function CajaMayorClient({
       const res = await fetch(endpoint);
       if (res.ok) {
         const json = await res.json();
-        const data: any[] = json.data || [];
+        const data: unknown[] = json.data || [];
         const results: ResultadoBusqueda[] = isDigits
           ? data.map((n) => ({ tipo: "nota" as const, nota: n as NotaBusquedaResult }))
           : data.map((c) => ({ tipo: "cliente" as const, cliente: c as ClienteOption }));

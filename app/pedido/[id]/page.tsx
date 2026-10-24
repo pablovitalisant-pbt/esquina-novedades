@@ -134,14 +134,21 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
             Tu compra
           </h2>
           <ul className="flex flex-col divide-y divide-[var(--border-default)]">
-            {items.map((item: any, i: number) => {
+            {(items as Array<{
+              codigo: string;
+              detalle: string | null;
+              cantidad: number | string;
+              modalidad: string | null;
+              precio: number | string;
+              subtotal?: number | string | null;
+            }>).map((item, i) => {
               const subtotal = item.subtotal ?? Number(item.precio) * Number(item.cantidad);
               return (
                 <li key={i} className="flex items-start justify-between gap-4 py-3">
                   <div className="min-w-0">
                     <p className="font-medium text-[var(--heading)]">{item.detalle ?? item.codigo}</p>
                     <p className="text-sm text-[var(--body-subtle)]">
-                      {cantidadTexto(Number(item.cantidad), item.modalidad)} · <span className="font-mono text-xs">{item.codigo}</span>
+                      {cantidadTexto(Number(item.cantidad), item.modalidad ?? '')} · <span className="font-mono text-xs">{item.codigo}</span>
                     </p>
                   </div>
                   <span className="shrink-0 font-medium">{formatCLP(Number(subtotal))}</span>

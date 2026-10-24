@@ -59,3 +59,22 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Staff (sesión de Pablo): notas de venta (lista y detalle), precios (búsqueda), clientes, caja mayor, bodega, ingresos, deudores, pedidos, alertas de stock, kardex (deshabilitado a propósito), catálogos, usuarios, categorías, caja-config, inversión en mercadería. Sin errores.
 - Hallazgos: (1) nota #1 no incluye el costo de entrega ($3.000) que sí está en el pedido y en el cobro de caja → A12, decisión de producto. (2) Productos DEMO con categoría en texto sin filas en `categorias` (dato de demo; se borra en C6).
 - Gates disparados: A12 (decisión de producto).
+## 2026-10-23 - Slice: A12 línea Despacho en la nota (decisión de Pablo: opción a)
+- Contrato: al convertir, si entrega_costo > 0 se agrega a prenota_items una línea DESPACHO (empresa_id NULL → fuera de todo join de stock), en la misma sentencia atómica (idempotente). tipo/etiqueta de la nota la ignoran.
+- Tests: 7 rojos → 42/42; validación contra Postgres real (BEGIN…ROLLBACK en test-integration): 1ª conversión 2 filas (ítem + DESPACHO 3000, empresa NULL), 2ª 0 filas nuevas. La prueba real detectó un bug de tipos en el UNION ALL (NULL inferido como texto) que los mocks no veían → corregido con casts.
+- Verificación DT: rechacé la primera versión (sentencia SQL duplicada de ~30 líneas para facilitar el mock) → una sola sentencia.
+- Commit: 5405cc0
+- Gates disparados: ninguno. Nota #1 (pedido afb8e9f4) no se corrige: es dato de prueba y se borra en C6.
+
+## 2026-10-23 - Slice: C6 script de limpieza para el go-live
+- Contrato: scripts/limpiar-datos-prueba.ts, dry-run por defecto, --host obligatorio igual a DATABASE_URL, una transacción con guards, DELETE siempre con WHERE sobre listas explícitas. 222 líneas (excede 200; aceptado por ser script aislado y repetitivo).
+- Tests: 5/5. Dry-run en PRODUCCIÓN (solo COUNT): 3 pedidos, 4 pedido_items, 3 notas, 4 ítems, 3 vínculos y 3 cobros de caja, 2 clientes, 5 productos — cuadra con lo esperado.
+- Commit: 28cb0eb
+- Gates disparados: ejecutar con --ejecutar queda para el go-live (C6), con respaldo previo.
+
+## 2026-10-23 - Slice: C1 branding centralizado
+- Contrato: lib/empresa.ts con logo/logoNota (null → wordmark actual), redes (vacías → no se muestran), colores; MarcaLogo y RedesSociales; app/manifest.ts reemplaza public/manifest.json; íconos copiados a public/marca/; borrados public/logo-*.png sin referencias (restos de Bazar Naty).
+- Tests: 106/106 tocados; suite completa verde; build OK con /manifest.webmanifest enlazado automáticamente.
+- Verificación DT: corregí 2 desviaciones: purpose de íconos ("any maskable" se había reducido a "maskable" → ahora dos entradas any + maskable) y layout.tsx seguía apuntando a /manifest.json borrado (404) → quitado; Next enlaza /manifest.webmanifest (verificado en el HTML del build).
+- Commit: e2511ac
+- Gates disparados: ninguno.

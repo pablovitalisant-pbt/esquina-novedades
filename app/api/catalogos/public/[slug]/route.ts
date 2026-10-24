@@ -1,3 +1,4 @@
+import { precioCatalogoBase } from '@/lib/precio-catalogo';
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
@@ -32,27 +33,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     let productos = await seleccionarProductosCatalogo(sql, cat);
 
     // Fetch individual price overrides for this catalog
-    const overrides = await sql`
+    const overrides = (await sql`
       SELECT codigo, precio FROM catalogo_precio_override
       WHERE catalogo_id = ${cat.id}
-    `;
+    `) as { codigo: string; precio: string }[];
     const overridesMap = new Map<string, number>(
-      overrides.map((o: any) => [o.codigo.toUpperCase(), parseFloat(o.precio)])
+      overrides.map((o) => [o.codigo.toUpperCase(), parseFloat(o.precio)])
     );
 
     // Compute precio_catalogo with override precedence
-    productos = productos.map((p: any) => {
+    productos = productos.map((p) => {
       const precioBase = mostrarPrecio
-        ? Math.ceil(parseFloat(p.costo) * (1 + margen / 100) * 10) / 10
+        ? precioCatalogoBase(parseFloat(String(p.costo)), margen)
         : null;
       const precioOverride = mostrarPrecio
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)
         : null;
       return {
         ...p,
-        saldo: parseInt(p.saldo),
-        costo: parseFloat(p.costo),
-        cantcaja: parseInt(p.cantcaja),
+        saldo: parseInt(String(p.saldo)),
+        costo: parseFloat(String(p.costo)),
+        cantcaja: parseInt(String(p.cantcaja)),
         precio_catalogo: precioOverride ?? precioBase,
         precio_override: precioOverride,
       };
@@ -68,8 +69,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
         productos,
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/catalogos/public/[slug] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

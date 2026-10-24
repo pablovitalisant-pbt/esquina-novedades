@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import type { UserSession } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 import type { RouteContext } from '@/types';
@@ -10,12 +9,12 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const rol = (session.user as UserSession)?.rol;
+  const rol = session.user?.rol;
   if (rol !== 'admin') return NextResponse.json({ error: 'Solo admin' }, { status: 403 });
 
   const id = Number((await params).id);
-  const userId = String((session.user as UserSession).id);
-  const usuarioNombre = (session.user as UserSession).nombre;
+  const userId = String(session.user.id);
+  const usuarioNombre = session.user.nombre;
 
   let observacionEliminacion: string | null = null;
   try {

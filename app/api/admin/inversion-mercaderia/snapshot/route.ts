@@ -2,6 +2,7 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularInversion, fechaHoyChile, type ProductoInversion } from "@/lib/inversion-mercaderia";
 import { timingSafeEqual } from "crypto";
+import { mensajeError } from '@/lib/errores';
 
 /**
  * POST /api/admin/inversion-mercaderia/snapshot
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ fecha, ...resumen });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,3 +1,5 @@
+import type { Session } from 'next-auth';
+
 // Contexto de ruta compartido (PRD §9.23 — antes duplicado en 7 archivos)
 export type RouteContext<T extends Record<string, string> = { id: string }> = {
   params: Promise<T>;
@@ -146,10 +148,4 @@ export type SessionProp = {
   };
 } | null;
 
-export interface UserSession {
-  id: string;
-  rut: string;
-  nombre: string;
-  rol: string;
-  empresas: number[];
-}
+export type UserSession = Session['user'];

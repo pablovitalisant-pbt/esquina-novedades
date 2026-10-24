@@ -6,14 +6,10 @@ import { formatCLP } from '@/lib/utils';
 import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 
 import type { RouteContext } from '@/types';
+import { usuarioSesion } from '@/lib/session';
+import type { Session } from 'next-auth';
 
-type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function getUsuarioId(session: { user?: unknown } | null | undefined) {
+function getUsuarioId(session: Session | null) {
   return Number(usuarioSesion(session).id);
 }
 

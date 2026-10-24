@@ -12,24 +12,12 @@ import { mpAccessToken, siteUrl } from '@/lib/mercadopago/config';
 import { precioCatalogoBase } from '@/lib/precio-catalogo';
 import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
 import flags from '@/config/feature-flags.json';
+import { usuarioSesion } from '@/lib/session';
+import { mensajeError, codigoError } from '@/lib/errores';
 
 const ORIGENES = ['productos', 'catalogo'] as const;
 
 const ERROR_PAGO = 'No se pudo iniciar el pago. Intenta nuevamente.';
-
-type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function codigoError(e: unknown): string {
-  return e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 type PedidoReplay = {
   id: string;

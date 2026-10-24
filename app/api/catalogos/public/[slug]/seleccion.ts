@@ -12,7 +12,7 @@ export function parseKeywords(raw: string): string[] {
   return raw.split(',').map(s => s.trim().replace(/\s+/g, ' ')).filter(Boolean);
 }
 
-export type ProductoCatalogoFila = {
+type ProductoCatalogoFila = {
   id: number;
   codigo: string;
   detalle: string | null;

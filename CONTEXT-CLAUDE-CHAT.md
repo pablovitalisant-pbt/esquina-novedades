@@ -102,4 +102,4 @@ Pendientes:
 
 ## Contador de slices desde el último ponytail audit (vigente)
 
-10 (A3–A7, A12, C6, C1, A11, A7 bis) — último audit: 2026-10-23 → Señal 2 activada: audit en curso.
+0 — último audit: 2026-10-23 (`docs/audits/ponytail-audit-2026-10-23b.md`), con slice de limpieza aplicado.

@@ -85,3 +85,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Verificación DT: revisé las líneas removidas sin patrón de tipo (68 en app/api, 25 en el resto): todas eran reescrituras de tipos (String(), !, anotaciones). Excede el límite de 200 líneas por sub-slice (+797/−382 en app/api, +340/−153 en el resto) porque tipar agrega interfaces; aceptado y registrado.
 - Hallazgo: `app/api/catalogos/public/[slug]/route.ts` tenía otra copia de la fórmula de precio con 1 decimal (A7 incompleto) → corregido con `precioCatalogoBase` en `3b07c20`.
 - Gates disparados: Señal 2 (más de 5 slices desde el audit del 2026-10-23) → ponytail audit a continuación.
+## 2026-10-23 - Señal 2: ponytail audit 2026-10-23b + limpieza
+- Audit de lo cambiado desde b6ef44c: 8 hallazgos (duplicación que dejó A11: guards admin, usuarioSesion, mensajeError).
+- Limpieza: aplicados 1–6 y 8 (neto ≈ −130 líneas); 7 rechazado. Nuevos `lib/errores.ts`, `lib/session.ts`, `requiereAdmin` en `app/api/caja/_types.ts`.
+- Tests: suite completa 215/215, 1799/1799; tsc 0; lint 0/0; build OK.
+- Verificación DT: mensajes de error y status HTTP idénticos (comparé los literales removidos vs agregados del diff; los 2 sin equivalente directo ahora se pasan como parámetro a `requiereAdmin`); 401 sin sesión / 403 no admin igual que antes.
+- Commit: (este)
+- Gates disparados: ninguno. Contador de slices desde el audit: 0.

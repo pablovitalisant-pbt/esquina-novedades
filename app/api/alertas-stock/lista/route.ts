@@ -1,12 +1,12 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import type { UserSession } from '@/types';
 import { NextResponse } from 'next/server';
+import { mensajeError } from '@/lib/errores';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as UserSession | undefined)?.rol;
+  const rol = session?.user?.rol;
   if (!session || !rol || !['admin', 'bodeguero', 'vendedor'].includes(rol)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
@@ -37,7 +37,7 @@ export async function GET() {
     return NextResponse.json({ data: rows });
   } catch (error) {
     console.error('GET /api/alertas-stock/lista error:', error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

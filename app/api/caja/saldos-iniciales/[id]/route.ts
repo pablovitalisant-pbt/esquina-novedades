@@ -2,18 +2,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { SessionUser } from "../../_types";
+import { requiereAdmin } from "../../_types";
+import { mensajeError } from '@/lib/errores';
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as SessionUser).rol;
-  if (rol !== "admin") {
-    return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
-  }
+  const g = requiereAdmin(await getServerSession(authOptions), "Solo administradores");
+  if (g) return g;
 
   const id = parseInt((await params).id, 10);
   if (isNaN(id)) {
@@ -30,6 +27,6 @@ export async function DELETE(
 
     return NextResponse.json({ data: { id: rows[0].id, eliminado: true } });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

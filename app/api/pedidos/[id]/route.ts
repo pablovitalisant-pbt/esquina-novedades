@@ -2,14 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): { rol?: string } {
-  return (session?.user as { rol?: string } | undefined) ?? {};
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
+import { usuarioSesion } from '@/lib/session';
+import { mensajeError } from '@/lib/errores';
 
 // PATCH /api/pedidos/[id] — única transición de estado: pendiente → descartado.
 // Rechaza bodeguero; 409 si el pedido ya no está pendiente (convertido/descartado).

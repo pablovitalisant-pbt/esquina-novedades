@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { UserSession } from "@/types";
+import { mensajeError } from '@/lib/errores';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   if (!empresaId) return NextResponse.json({ error: "Falta empresa_id" }, { status: 400 });
 
-  if (!(session.user as UserSession).empresas.includes(parseInt(empresaId, 10))) {
+  if (!session.user.empresas.includes(parseInt(empresaId, 10))) {
     return NextResponse.json({ error: "Empresa no autorizada" }, { status: 403 });
   }
 
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: rows });
   } catch (error) {
     console.error("GET /api/ubicaciones error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

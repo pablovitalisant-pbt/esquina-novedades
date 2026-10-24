@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { UserSession } from "@/types";
+import { mensajeError } from '@/lib/errores';
 
 export async function PUT(
   request: Request,
@@ -11,7 +11,7 @@ export async function PUT(
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as UserSession;
+  const user = session.user;
   const empresaId = user.empresas?.[0];
   if (!empresaId) return NextResponse.json({ error: "Sin empresa asignada" }, { status: 400 });
 
@@ -62,7 +62,7 @@ export async function PUT(
 
   } catch (error) {
     console.error("PUT /api/ubicaciones/codigo/[codigo] error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

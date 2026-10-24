@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
 import { CajaSaldoInicialSchema } from "@/docs/specs/caja-mayor.spec";
-import type { SessionUser } from "../_types";
+import { mensajeError } from '@/lib/errores';
 
 interface SaldoInicialRow {
   id: number;
@@ -16,9 +16,10 @@ interface SaldoInicialRow {
   created_at: string;
 }
 
+
 function adminGuard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as SessionUser).rol;
+  const rol = session.user.rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
   }
@@ -52,7 +53,7 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }
 
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     const { cuenta_id, fecha, saldo, observaciones } = parsed.data;
-    const creadoPor = (session!.user as SessionUser).nombre;
+    const creadoPor = session!.user.nombre;
 
     // UPSERT: solo un saldo inicial por cuenta
     const rows = await sql`
@@ -98,6 +99,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

@@ -4,26 +4,15 @@ import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { usuarioSesion } from '@/lib/session';
+import type { Session } from 'next-auth';
+import { mensajeError, codigoError } from '@/lib/errores';
 
 const ReembolsarSchema = z.object({
   observaciones: z.string().nullable().optional(),
 });
 
-type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function codigoError(e: unknown): string {
-  return e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
-function validarSesion(session: { user?: unknown } | null) {
+function validarSesion(session: Session | null) {
   if (!session) return { error: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   const rol = usuarioSesion(session).rol;
   if (rol === 'bodeguero') {

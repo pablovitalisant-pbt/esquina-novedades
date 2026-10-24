@@ -2,24 +2,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
 import { CajaCuentaUpdateSchema } from "@/docs/specs/caja-mayor.spec";
-import type { SessionUser } from "../../_types";
+import { requiereAdmin } from "../../_types";
+import { mensajeError } from '@/lib/errores';
 
-function adminGuard(session: Session | null) {
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if ((session.user as SessionUser).rol !== "admin") {
-    return NextResponse.json({ error: "Acceso denegado — solo admin" }, { status: 403 });
-  }
-  return null;
-}
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  const guard = adminGuard(session);
+  const guard = requiereAdmin(session, "Acceso denegado — solo admin");
   if (guard) return guard;
 
   try {
@@ -53,7 +46,7 @@ export async function PATCH(
 
     return NextResponse.json({ data: rows[0] });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }
 
@@ -62,7 +55,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  const guard = adminGuard(session);
+  const guard = requiereAdmin(session, "Acceso denegado — solo admin");
   if (guard) return guard;
 
   try {
@@ -99,6 +92,6 @@ export async function DELETE(
 
     return NextResponse.json({ data: rows[0] });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

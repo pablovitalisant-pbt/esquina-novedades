@@ -4,6 +4,9 @@ import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { usuarioSesion } from '@/lib/session';
+import type { Session } from 'next-auth';
+import { mensajeError } from '@/lib/errores';
 
 const PagarNotaSchema = z.object({
   cuenta_id: z.coerce.number().int().positive(),
@@ -12,17 +15,7 @@ const PagarNotaSchema = z.object({
   observaciones: z.string().nullable().optional(),
 });
 
-type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
-function guard(session: { user?: unknown } | null) {
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const rol = usuarioSesion(session).rol;
   if (rol !== "admin" && rol !== "vendedor") {

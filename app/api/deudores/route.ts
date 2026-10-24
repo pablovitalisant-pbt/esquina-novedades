@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
-import type { UserSession } from '@/types';
 
 type FilaDeuda = {
   id: string;
@@ -34,7 +33,7 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  const rol = (session?.user as UserSession | undefined)?.rol;
+  const rol = session?.user?.rol;
   if (rol === 'bodeguero') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }

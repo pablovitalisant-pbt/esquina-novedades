@@ -2,6 +2,7 @@ import { sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { mensajeError } from '@/lib/errores';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
       hasMore: offset + rows.length < total,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

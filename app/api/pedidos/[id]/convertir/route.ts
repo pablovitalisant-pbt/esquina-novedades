@@ -2,16 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { convertirPedido } from '@/lib/pedidos/convertir';
-
-type UsuarioSesion = { id: string; nombre: string; rol: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? ({} as UsuarioSesion);
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
+import { usuarioSesion } from '@/lib/session';
+import { mensajeError } from '@/lib/errores';
 
 // POST /api/pedidos/[id]/convertir — convierte un pedido en Nota de Venta.
 // Envoltorio con sesión; la lógica vive en lib/pedidos/convertir.ts.
@@ -28,7 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const { id } = await params;
     const user = usuarioSesion(session);
-    const { status, body } = await convertirPedido(id, Number(user.id), user.nombre);
+    const { status, body } = await convertirPedido(id, Number(user.id), user.nombre!);
     return NextResponse.json(body, { status });
   } catch (error) {
     return NextResponse.json({ error: mensajeError(error) }, { status: 500 });

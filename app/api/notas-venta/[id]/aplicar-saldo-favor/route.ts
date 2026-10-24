@@ -4,6 +4,9 @@ import { formatCLP } from '@/lib/utils';
 import { sql } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { usuarioSesion } from '@/lib/session';
+import type { Session } from 'next-auth';
+import { mensajeError } from '@/lib/errores';
 
 // Slice 3b — Aplicar saldo a favor de un cliente a una nota (acción manual).
 // Nunca automático: un admin/vendedor elige aplicar saldo disponible a la
@@ -13,17 +16,7 @@ const AplicarSaldoSchema = z.object({
   observaciones: z.string().nullable().optional(),
 });
 
-type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
-function guard(session: { user?: unknown } | null) {
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   const rol = usuarioSesion(session).rol;
   if (rol !== 'admin' && rol !== 'vendedor') {

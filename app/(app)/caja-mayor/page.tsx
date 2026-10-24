@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { CajaMayorClient } from "./client_page";
 import { redirect } from "next/navigation";
-import { Cuenta, UserSession } from "@/types";
+import { Cuenta } from "@/types";
 
 export default async function CajaMayorPage() {
   const session = await getServerSession(authOptions);
@@ -13,7 +13,7 @@ export default async function CajaMayorPage() {
   }
 
   // Caja Mayor es solo admin (vendedor tiene el resto de ventas)
-  const user = session.user as UserSession & { name?: string | null };
+  const user = session.user;
   if (user.rol !== "admin") {
     redirect("/dashboard");
   }

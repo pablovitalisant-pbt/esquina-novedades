@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import flags from '@/config/feature-flags.json';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { mensajeError } from '@/lib/errores';
 
 interface ProductDrawerProps {
   producto: Producto | null;
@@ -193,7 +194,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       setPreviewUrl(null);
       setSelectedFile(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(mensajeError(error));
     } finally {
       setIsUploading(false);
     }
@@ -237,7 +238,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       toast.success('Producto actualizado');
       setIsEditing(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(mensajeError(error));
     } finally {
       setIsSaving(false);
     }
@@ -281,7 +282,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       // El servidor manda el mensaje final (409 duplicado, 400 igual al actual).
       // Se muestra tal cual — el useEffect sobre [producto] no corre en fallo,
       // asi que el input queda abierto para corregir.
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(mensajeError(error));
     } finally {
       setIsSavingCodigo(false);
     }
@@ -302,7 +303,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
     } catch (error) {
       // El backend distingue 409 (tiene stock) de 400 (ya eliminado) en el
       // mensaje; se muestra tal cual para que el usuario sepa que hacer.
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(mensajeError(error));
     } finally {
       setIsDeleting(false);
     }

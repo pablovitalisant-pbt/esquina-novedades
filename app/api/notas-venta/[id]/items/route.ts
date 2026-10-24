@@ -5,12 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 
 import type { RouteContext } from '@/types';
-
-type UsuarioSesion = { rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
+import { usuarioSesion } from '@/lib/session';
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await getServerSession(authOptions);

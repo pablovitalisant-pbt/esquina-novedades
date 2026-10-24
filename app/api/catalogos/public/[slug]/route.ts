@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
 import { seleccionarProductosCatalogo } from "./seleccion";
+import { mensajeError } from '@/lib/errores';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     });
   } catch (error) {
     console.error("GET /api/catalogos/public/[slug] error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

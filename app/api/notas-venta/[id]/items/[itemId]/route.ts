@@ -4,20 +4,8 @@ import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 
 import type { RouteContext } from '@/types';
-
-type UsuarioSesion = { rol?: string };
-
-function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
-  return (session?.user as UsuarioSesion | undefined) ?? {};
-}
-
-function codigoError(e: unknown): string {
-  return e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
-}
-
-function mensajeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
+import { usuarioSesion } from '@/lib/session';
+import { mensajeError, codigoError } from '@/lib/errores';
 
 async function validarSesion() {
   const session = await getServerSession(authOptions);

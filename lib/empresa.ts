@@ -1,22 +1,4 @@
-type Marca = {
-  nombre: string;
-  razonSocial: string;
-  slug: string;
-  direccion: string;
-  ciudad: string;
-  horario: string;
-  whatsapp: string;
-  whatsappUrl: string;
-  /** Ruta en /public/marca. null = wordmark de texto. */
-  logo: string | null;
-  /** Logo del PDF de notas. null = wordmark de texto. */
-  logoNota: string | null;
-  /** URL vacía = red no se renderiza. */
-  redes: { facebook: string; instagram: string; tiktok: string };
-  colores: { primario: string; acento: string; tinta: string };
-};
-
-export const EMPRESA: Marca = {
+export const EMPRESA = {
   nombre: 'La Esquina de las Novedades',
   razonSocial: 'LA ESQUINA DE LAS NOVEDADES SPA',
   slug: 'la-esquina-de-las-novedades',
@@ -30,4 +12,4 @@ export const EMPRESA: Marca = {
   logoNota: null,
   redes: { facebook: '', instagram: '', tiktok: '' },
   colores: { primario: '#E21E26', acento: '#FFB612', tinta: '#231F20' },
-};
+} as const;

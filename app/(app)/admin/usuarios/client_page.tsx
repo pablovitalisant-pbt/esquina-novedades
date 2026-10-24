@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { UserPlus, Edit, Shield, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { mensajeError } from '@/lib/errores';
 
 // La escritura de usuarios (hash bcrypt server-side) nunca puede ser offline.
 const OFFLINE_WRITE_MSG = 'La gestión de usuarios requiere conexión a internet. Conectate para crear, editar o eliminar usuarios.';
@@ -127,7 +128,7 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
       if (err instanceof TypeError) {
         toast.error(OFFLINE_WRITE_MSG);
       } else {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.error(mensajeError(err));
       }
     }
   };
@@ -151,7 +152,7 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
       if (err instanceof TypeError) {
         toast.error(OFFLINE_WRITE_MSG);
       } else {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.error(mensajeError(err));
       }
     }
   };

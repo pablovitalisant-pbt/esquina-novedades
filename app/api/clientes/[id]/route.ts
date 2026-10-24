@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { mensajeError } from '@/lib/errores';
 
 export async function GET(
   _request: Request,
@@ -26,7 +27,7 @@ export async function GET(
     }
     return NextResponse.json({ data: rows[0] });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -83,7 +84,7 @@ export async function PATCH(
       throw err;
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -140,7 +141,7 @@ export async function DELETE(
     await sql`DELETE FROM public.clientes WHERE id = ${id}`;
     return NextResponse.json({ data: { id } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     // Postgres FK violation: error code 23503 o 23001 (defensivo — no debería pasar con la lógica de arriba)
     const code = (error as { code?: string } | null)?.code;
     if (code === '23503' || code === '23001') {

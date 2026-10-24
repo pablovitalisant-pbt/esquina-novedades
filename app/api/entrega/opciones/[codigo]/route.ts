@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import type { UserSession } from '@/types';
 
 export const dynamic = 'force-dynamic';
 const CAMPOS = ['costo', 'activa', 'orden', 'requiere_direccion', 'nota'];
@@ -28,7 +27,7 @@ function errorValidacion(b: CuerpoOpcion): string | null {
 export async function PATCH(request: Request, { params }: { params: Promise<{ codigo: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  if ((session.user as UserSession).rol !== 'admin') return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+  if (session.user.rol !== 'admin') return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
   const codigo = (await params).codigo;
   if (!codigo) return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
 

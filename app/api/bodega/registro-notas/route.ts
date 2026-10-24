@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import type { UserSession } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -36,8 +35,8 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const userId = Number((session.user as UserSession).id);
-  const usuarioNombre = (session.user as UserSession).nombre;
+  const userId = Number(session.user.id);
+  const usuarioNombre = session.user.nombre;
 
   const body = await req.json();
   const folio = body?.folio?.trim();

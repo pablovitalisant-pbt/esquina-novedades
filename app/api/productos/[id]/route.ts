@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularPrecio } from "@/lib/calcular-precio";
 import { esPrecioMayorValido } from "@/lib/precio-mayor";
-import type { UserSession } from "@/types";
+import { mensajeError } from '@/lib/errores';
 
 // ponytail: rechazar NaN/null — ver PBT-IA NaN/null bypass hallazgo
 const esNumeroValido = (v: unknown): boolean =>
@@ -33,7 +33,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as UserSession;
+  const user = session.user;
   if (user.rol !== "admin") {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
   }
@@ -187,7 +187,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
   } catch (error) {
     console.error("PUT /api/productos/[id] error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

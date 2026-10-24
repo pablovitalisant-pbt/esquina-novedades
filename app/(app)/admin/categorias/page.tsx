@@ -3,12 +3,11 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { CategoriasClient, type Categoria } from "./client_page";
-import { UserSession } from "@/types";
 
 export default async function CategoriasPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['admin', 'vendedor'].includes((session.user as UserSession).rol)) {
+  if (!session || !['admin', 'vendedor'].includes(session.user.rol)) {
     redirect('/dashboard');
   }
 

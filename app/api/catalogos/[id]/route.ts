@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import type { UserSession } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +15,12 @@ export async function PUT(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   // bodeguero no accede a catálogo admin (ni aunque sea dueño del catálogo)
-  if ((session.user as UserSession).rol === 'bodeguero') {
+  if (session.user.rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const catalogoId = Number((await params).id);
-  const user = session.user as UserSession;
+  const user = session.user;
   const userId = Number(user.id);
   const isAdmin = user.rol === 'admin';
 
@@ -102,12 +101,12 @@ export async function DELETE(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   // bodeguero no accede a catálogo admin (ni aunque sea dueño del catálogo)
-  if ((session.user as UserSession).rol === 'bodeguero') {
+  if (session.user.rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const catalogoId = Number((await params).id);
-  const user = session.user as UserSession;
+  const user = session.user;
   const userId = Number(user.id);
   const isAdmin = user.rol === 'admin';
 

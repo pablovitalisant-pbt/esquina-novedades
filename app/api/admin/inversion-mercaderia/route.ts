@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularInversion, fechaHoyChile, type ProductoInversion } from "@/lib/inversion-mercaderia";
-import type { UserSession } from "@/types";
+import { mensajeError } from '@/lib/errores';
 
 type SnapshotFila = {
   id: number;
@@ -38,7 +38,7 @@ const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
  */
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as UserSession).rol !== 'admin') {
+  if (!session || session.user.rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
       detalle,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

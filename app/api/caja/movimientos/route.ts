@@ -1,30 +1,26 @@
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
 import { CajaMovimientoCreateSchema } from "@/docs/specs/caja-mayor.spec";
-import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, MovimientosPaginadosConCierres, CuentaCierreResumen } from "@/docs/specs/caja-mayor.spec";
-import type { SessionUser } from "../_types";
+import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, MovimientosPaginadosConCierres } from "@/docs/specs/caja-mayor.spec";
+import type { CierreRow, MovimientoFechaRow } from "../_types";
+import { mensajeError } from '@/lib/errores';
 
-interface CierreRow {
-  id: number;
-  fecha_desde: string;
-  fecha_hasta: string;
-  resumen: CuentaCierreResumen[] | string;
-  usuario_id: number;
-  usuario_nombre: string;
-  created_at: string;
-}
-
-interface MovimientoFechaRow {
-  fecha: string;
+function guard(session: Session | null) {
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const rol = session.user.rol;
+  if (rol !== "admin") {
+    return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
+  }
+  return null;
 }
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as SessionUser).rol;
+  const rol = session.user.rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -151,18 +147,10 @@ export async function GET(request: Request) {
       cierres_en_rango: [],
     } satisfies MovimientosPaginadosConCierres);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }
 
-function guard(session: Session | null) {
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as SessionUser).rol;
-  if (rol !== "admin") {
-    return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
-  }
-  return null;
-}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -195,8 +183,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const usuarioId = parseInt((session!.user as SessionUser).id, 10);
-    const usuarioNombre = (session!.user as SessionUser).nombre;
+    const usuarioId = parseInt(session!.user.id, 10);
+    const usuarioNombre = session!.user.nombre;
 
     const rows = await sql`
       INSERT INTO caja_movimientos (
@@ -224,6 +212,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: rows[0] }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

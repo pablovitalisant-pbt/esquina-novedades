@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { mensajeError } from '@/lib/errores';
 
 // id llega como string desde el JWT (auth.ts hace String(user.id)); se tipa
 // como union para conservar la comparación original contra el uid numérico.
@@ -41,7 +42,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ message: "Usuario actualizado" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     if (message.includes('unique constraint')) {
       return NextResponse.json({ error: "El RUT modificado ya pertenece a otro usuario" }, { status: 400 });
     }
@@ -67,7 +68,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await sql`DELETE FROM usuarios WHERE id = ${uid}`;
     return NextResponse.json({ message: "Usuario eliminado" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

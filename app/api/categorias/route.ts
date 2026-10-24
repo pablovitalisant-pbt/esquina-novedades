@@ -1,8 +1,8 @@
 import { sql } from '@/lib/db';
-import type { UserSession } from '@/types';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { mensajeError } from '@/lib/errores';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export async function GET() {
     `;
     return NextResponse.json(rows);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -26,8 +26,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as UserSession;
-    const role = user?.rol;
+    const role = session?.user?.rol;
 
     if (role !== 'admin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(rows[0], { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     if ((error as { code?: string }).code === '23505') {
       return NextResponse.json({ error: 'Ya existe una categoría con ese nombre' }, { status: 400 });
     }

@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { UserSession } from "@/types";
 import { uploadImage } from "@/lib/cloudinary";
+import { mensajeError } from '@/lib/errores';
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   
-  const user = session.user as UserSession;
+  const user = session.user;
   if (!['admin'].includes(user.rol)) {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
   }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ imagen_url: imageUrl, public_id: publicId });
   } catch (error) {
     console.error(`POST /api/productos/upload error:`, error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

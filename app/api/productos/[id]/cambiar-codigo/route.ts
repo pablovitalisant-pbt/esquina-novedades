@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { UserSession } from "@/types";
+import { mensajeError } from '@/lib/errores';
 
 // Endpoint dedicado: el codigo NO entra al WHITELIST del PUT /api/productos/[id]
 // porque cambiarlo propaga a 4 tablas y exige unicidad por empresa.
@@ -10,7 +10,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as UserSession;
+  const user = session.user;
   if (user.rol !== "admin") {
     return NextResponse.json(
       { error: "Solo administradores pueden editar el código de un producto" },
@@ -90,7 +90,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   } catch (error) {
     console.error("POST /api/productos/[id]/cambiar-codigo error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

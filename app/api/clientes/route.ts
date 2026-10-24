@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 import { NextResponse } from 'next/server';
-import type { UserSession } from '@/types';
+import { mensajeError } from '@/lib/errores';
 
 // Slice 3c — saldo_favor viene como string de numeric (Neon); se convierte a
 // number para que el render no dependa de un tipo ambiguo.
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as UserSession).rol === 'bodeguero') {
+  if (session.user.rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     `;
     return NextResponse.json({ data: rows.map(conSaldoFavor) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as UserSession).rol === 'bodeguero') {
+  if (session.user.rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       throw err;
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = mensajeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

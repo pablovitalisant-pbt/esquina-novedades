@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
-import type { SessionUser } from "../_types";
+import { mensajeError } from '@/lib/errores';
 
 interface ClienteBusquedaRow {
   cliente_id: string;
@@ -12,9 +12,10 @@ interface ClienteBusquedaRow {
   ultima_compra: string;
 }
 
+
 function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as SessionUser).rol;
+  const rol = session.user.rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -61,6 +62,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ data: result });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

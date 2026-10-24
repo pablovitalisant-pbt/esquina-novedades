@@ -3,6 +3,8 @@
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
 import { EMPRESA } from '@/lib/empresa';
+import { MarcaLogo } from '@/components/MarcaLogo';
+import { RedesSociales } from '@/components/RedesSociales';
 import { ShoppingBag, MessageCircle } from 'lucide-react';
 
 interface LandingProducto {
@@ -23,7 +25,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
       {/* 1. Header */}
       <header className="border-b border-[var(--border-default)] sticky top-0 bg-background z-50">
         <div className="mx-auto px-6 h-16 flex items-center justify-between gap-4" style={{ maxWidth: '1152px' }}>
-          <span className="text-xl font-extrabold tracking-tight text-[var(--heading)]">{EMPRESA.nombre}</span>
+          <MarcaLogo className="text-xl font-extrabold tracking-tight text-[var(--heading)]" />
           <nav className="hidden md:flex items-center gap-6">
             <a href="#catalogo" className="text-sm font-medium text-[var(--body)] hover:text-[var(--landing-primary)] transition-colors border-b-2 border-transparent hover:border-[var(--landing-primary)]">
               Catálogo
@@ -198,7 +200,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
           <p className="text-white mb-1">© {new Date().getFullYear()} {EMPRESA.razonSocial}</p>
           <p className="text-white/70">{EMPRESA.direccion}, {EMPRESA.ciudad}</p>
           <p className="text-white/70">Horario: {EMPRESA.horario}</p>
-          <p className="text-white/70 mb-5">{EMPRESA.redes.join(' · ')}: {EMPRESA.nombre}</p>
+          <RedesSociales className="flex justify-center gap-4 text-white/70 mb-5" />
           <div className="flex justify-center gap-4">
             <a
               href={EMPRESA.whatsappUrl}

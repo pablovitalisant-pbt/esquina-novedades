@@ -26,6 +26,14 @@ function blobToDataURL(blob: Blob): Promise<string> {
   });
 }
 
+// Colores de marca para jsPDF (no lee CSS vars): hex de EMPRESA → [r, g, b].
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+const ACENTO = hexToRgb(EMPRESA.colores.acento);
+const TINTA = hexToRgb(EMPRESA.colores.tinta);
+
 // Modalidad/tipo: filas legacy sin `modalidad` se tratan como 'unidad' (default 041).
 const esCaja = (item: any) => item.modalidad === 'caja';
 
@@ -510,13 +518,24 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     // ─── Header: banda --accent (#FFB612) + logo/marca a la izquierda y
     //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).
     // Sin logo: wordmark de texto hasta recibir el logo de la clienta (PRD 10.4).
-    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.setFillColor(...ACENTO);
     doc.rect(0, 0, pageWidth, 4, 'F');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(35, 31, 32); // heading (#231F20)
-    doc.text(EMPRESA.nombre, 14, 20);
+    // Logo opcional: si Paola entrega PNG, se enchufa en EMPRESA.logoNota.
+    // Sin logo: wordmark de texto (comportamiento actual).
+    if (EMPRESA.logoNota) {
+      try {
+        const res = await fetch(EMPRESA.logoNota);
+        if (res.ok) doc.addImage(await blobToDataURL(await res.blob()), 'PNG', 14, 12, 30, 12);
+      } catch {
+        // Fallback silencioso al wordmark de abajo.
+      }
+    } else {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(...TINTA);
+      doc.text(EMPRESA.nombre, 14, 20);
+    }
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
@@ -525,7 +544,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     doc.text(EMPRESA.ciudad, 14, 36);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
-    doc.setTextColor(35, 31, 32);
+    doc.setTextColor(...TINTA);
     doc.text('NOTA DE VENTA', pageWidth - 14, 20, { align: 'right' });
 
     // ─── Bloque de info: caja "Nota de venta para:" + caja N°/Fecha ───
@@ -544,7 +563,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     doc.text('Nota de venta para:', 20, infoY + 8);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(35, 31, 32);
+    doc.setTextColor(...TINTA);
     doc.text(clienteNombre, 20, infoY + 17);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
@@ -602,8 +621,8 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
       ]],
       showFoot: 'lastPage', // fix duplicación: el foot solo se pinta en la última página
       footStyles: {
-        fillColor: [255, 182, 18], // --accent #FFB612, mismo color que la caja de Total
-        textColor: [35, 31, 32],   // --heading
+        fillColor: ACENTO, // --accent #FFB612, mismo color que la caja de Total
+        textColor: TINTA,   // --heading
         fontStyle: 'bold',
         fontSize: 10,
       },
@@ -662,9 +681,9 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
       finalY = 20;
     }
 
-    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.setFillColor(...ACENTO); // --accent #FFB612
     doc.rect(totalBoxX, finalY, totalBoxW, 14, 'F');
-    doc.setTextColor(35, 31, 32); // --heading
+    doc.setTextColor(...TINTA); // --heading
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(totalStr, totalBoxX + 4, finalY + 8);
@@ -673,7 +692,7 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     let yResumen = finalY + 20;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.setTextColor(35, 31, 32); // --heading
+    doc.setTextColor(...TINTA); // --heading
     doc.text(`Pagado: ${formatCLP(pagado)}`, pageWidth - 14, yResumen, { align: 'right' });
     yResumen += 6;
     doc.text(`Pendiente: ${formatCLP(pendiente)}`, pageWidth - 14, yResumen, { align: 'right' });
@@ -682,16 +701,16 @@ export function PrenotaDetallePage({}: { session: any; params?: { id: string } }
     const fy = yResumen + 10;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(35, 31, 32);
+    doc.setTextColor(...TINTA);
     doc.text('Gracias por su compra', 14, fy);
 
     // Banda de contacto anclada al borde inferior real de la página (no al fy
     // acumulado — con pocos ítems quedaba "flotando" en el medio de la hoja).
     // footerBandH/footerBandY ya se declararon arriba (BUG-062) para medir el
     // espacio del bloque de totales.
-    doc.setFillColor(255, 182, 18); // --accent #FFB612
+    doc.setFillColor(...ACENTO); // --accent #FFB612
     doc.rect(0, footerBandY, pageWidth, footerBandH, 'F');
-    doc.setTextColor(35, 31, 32); // --heading
+    doc.setTextColor(...TINTA); // --heading
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.text(`WhatsApp ${EMPRESA.whatsapp}`, 14, footerBandY + 6);

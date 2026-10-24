@@ -88,12 +88,12 @@ describe('Test 7: layout.tsx — metadata.icons', () => {
   });
 });
 
-// ─── Test 8: logo-texto.png ───
+// ─── Test 8: MarcaLogo (logo opcional, wordmark de fallback) ───
 
-describe('Test 8: wordmark de texto (sin logos PNG de Bazar Naty)', () => {
-  test.each(['LandingPage.tsx', 'TopNav.tsx'])('%s usa EMPRESA.nombre y no logo-texto.png', (f) => {
+describe('Test 8: wordmark/logo vía MarcaLogo (sin logos PNG de Bazar Naty)', () => {
+  test.each(['LandingPage.tsx', 'TopNav.tsx'])('%s usa MarcaLogo y no logo-texto.png', (f) => {
     const content = fs.readFileSync(path.join(ROOT, 'components', f), 'utf-8');
-    expect(content).toContain('EMPRESA.nombre');
+    expect(content).toContain('MarcaLogo');
     expect(content).not.toContain('logo-texto.png');
   });
 });

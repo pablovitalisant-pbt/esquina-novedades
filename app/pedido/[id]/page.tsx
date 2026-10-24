@@ -5,6 +5,7 @@ import { sql } from '@/lib/db';
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { formatCLP } from '@/lib/utils';
 import { CatalogFooter } from '@/components/CatalogFooter';
+import { MarcaLogo } from '@/components/MarcaLogo';
 import { ConfettiCompra } from '@/components/ConfettiCompra';
 import flags from '@/config/feature-flags.json';
 
@@ -105,7 +106,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
 
       <header className="border-b border-[var(--border-default)]">
         <div className="mx-auto flex h-16 items-center justify-between gap-4 px-6" style={{ maxWidth: '1152px' }}>
-          <span className="text-lg font-bold text-[var(--heading)]">La Esquina de las Novedades</span>
+          <MarcaLogo className="text-lg font-bold text-[var(--heading)]" />
           <Link href="/productos" className="inline-flex items-center gap-1 text-sm text-[var(--body-subtle)] transition-colors hover:text-[var(--primary)]">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Volver a la tienda

@@ -7,7 +7,7 @@ import { BottomNav } from './BottomNav';
 import { AlertasBell } from './AlertasBell';
 import { SessionProvider } from 'next-auth/react';
 import { AlertasProvider } from '@/contexts/AlertasContext';
-import { EMPRESA } from '@/lib/empresa';
+import { MarcaLogo } from '@/components/MarcaLogo';
 
 export function AppShell({ children, session }: { children: React.ReactNode, session: any }) {
   return (
@@ -18,8 +18,8 @@ export function AppShell({ children, session }: { children: React.ReactNode, ses
         <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-16 border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-xl flex items-center justify-between px-4">
           <Link href={
             (session?.user as any)?.rol === 'bodeguero' ? '/bodega' : '/precios'
-          } className="font-extrabold text-xl tracking-tight text-[var(--primary)]">
-            {EMPRESA.nombre}
+          } className="shrink-0">
+            <MarcaLogo />
           </Link>
           <AlertasBell />
         </header>

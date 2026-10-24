@@ -31,7 +31,7 @@ import {
 import { Badge } from './ui/badge';
 import { AlertasBell } from './AlertasBell';
 import { useAlertas } from '@/contexts/AlertasContext';
-import { EMPRESA } from '@/lib/empresa';
+import { MarcaLogo } from '@/components/MarcaLogo';
 import flags from '@/config/feature-flags.json';
 
 export function TopNav() {
@@ -80,7 +80,7 @@ export function TopNav() {
       <div className="container flex h-16 max-w-7xl items-center justify-between mx-auto px-4">
         <div className="flex items-center gap-8">
           <Link href={logoHref} className="shrink-0">
-            <span className="font-extrabold text-xl tracking-tight text-[var(--primary)]">{EMPRESA.nombre}</span>
+            <MarcaLogo />
           </Link>
           <nav className="flex items-center space-x-1">
 

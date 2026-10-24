@@ -71,8 +71,9 @@ describe('Slice 3 — cierre (3.10 + 3.11)', () => {
   ])('T5 no existe %s', (p) => expect(fs.existsSync(path.join(ROOT, p))).toBe(false));
 
   it('T5 manifest se conserva', () => {
-    expect(fs.existsSync(path.join(ROOT, 'public/manifest.json'))).toBe(true);
-    expect(leer('app/layout.tsx')).toContain('manifest:');
+    expect(fs.existsSync(path.join(ROOT, 'app/manifest.ts'))).toBe(true);
+    // Next enlaza solo /manifest.webmanifest desde app/manifest.ts: el layout no debe apuntar al JSON borrado.
+    expect(leer('app/layout.tsx')).not.toContain('/manifest.json');
   });
 
   it('T-final sin powersync|wa-sqlite|serwist (app/api exento, D6)', () => {

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
+import { EMPRESA } from '@/lib/empresa';
 
 // Colores de marca + pastel del design-skill.
-const COLORES = ['#E21E26', '#FFB612', '#F2D9DC', '#D9F2D8', '#E0D9F1', '#DAEFF8'];
+const COLORES = [EMPRESA.colores.primario, EMPRESA.colores.acento, '#F2D9DC', '#D9F2D8', '#E0D9F1', '#DAEFF8'];
 
 /** Dos ráfagas desde las esquinas inferiores, hacia arriba a 45° (90° = vertical). */
 export function ConfettiCompra() {

@@ -78,3 +78,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Verificación DT: corregí 2 desviaciones: purpose de íconos ("any maskable" se había reducido a "maskable" → ahora dos entradas any + maskable) y layout.tsx seguía apuntando a /manifest.json borrado (404) → quitado; Next enlaza /manifest.webmanifest (verificado en el HTML del build).
 - Commit: e2511ac
 - Gates disparados: ninguno.
+## 2026-10-23 - Slice: A11 sin `any` en código de producción (5 sub-slices)
+- Contrato: eliminar los 386 `any` explícitos de producción sin cambiar comportamiento; tests siguen permitiéndolos (mocks). Al final reactivar `no-explicit-any` para producción.
+- Sub-slices: A11-1 app/api/caja (85→0) `82b1582` · A11-2 notas-venta/pedidos/mercadopago (78→0) `78f3424` · A11-3 resto de app/api (119→0) `faed8fb` · A11-4 app/(app), componentes, lib, hooks, middleware, scripts (132→0) `4dd05a3` · A11-5 regla reactivada `95eee88`.
+- Tests: suite completa 215/215 suites, 1799/1799; tsc 0; lint 0/0 con la regla activa; build estricto OK. Sin `as unknown as` (verificado con grep en el diff).
+- Verificación DT: revisé las líneas removidas sin patrón de tipo (68 en app/api, 25 en el resto): todas eran reescrituras de tipos (String(), !, anotaciones). Excede el límite de 200 líneas por sub-slice (+797/−382 en app/api, +340/−153 en el resto) porque tipar agrega interfaces; aceptado y registrado.
+- Hallazgo: `app/api/catalogos/public/[slug]/route.ts` tenía otra copia de la fórmula de precio con 1 decimal (A7 incompleto) → corregido con `precioCatalogoBase` en `3b07c20`.
+- Gates disparados: Señal 2 (más de 5 slices desde el audit del 2026-10-23) → ponytail audit a continuación.

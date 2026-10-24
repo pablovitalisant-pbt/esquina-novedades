@@ -25,9 +25,9 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 | A9 | Smoke E2E de todos los flujos | Requisito 2 de la Señal 3 | Checklist ejecutado con evidencia: login, notas de venta (unidad/caja/mixta), precios, clientes, caja mayor, bodega, alertas, catálogo admin/público, tienda + pago MP, pedidos staff, deudores | ✅ 2026-10-23: público + 15 módulos de staff en solo lectura, sin errores. Hallazgo → A12 |
 | A10 | Diff de variables de entorno prod vs dev | Requisito 4 de la Señal 3 | Lista de keys (sin valores) por entorno, sin faltantes | ✅ |
 
-| A11 | Tipar los `any` heredados de Bazar Naty | 385 `any` en 99 archivos; `no-explicit-any` quedó desactivado en A5 para tener build estricto | Regla reactivada y lint 0/0. Deuda, no bloquea go-live | ⬜ |
+| A11 | Tipar los `any` heredados de Bazar Naty | 385 `any` en 99 archivos; `no-explicit-any` quedó desactivado en A5 para tener build estricto | Regla reactivada y lint 0/0. Deuda, no bloquea go-live | ✅ 2026-10-23 (386 → 0, regla reactivada) |
 
-| A12 | **Decisión de producto pendiente:** costo de entrega en la nota de venta | Pedido `afb8e9f4…` (Delivery Iquique): pedido y cobro en caja = $56.990, pero la nota de venta #1 = $53.990 (no incluye los $3.000 de entrega). El PRD (§8.4/§8.5) no define dónde va ese costo | Pablo decide: (a) agregar línea "Despacho" a la nota al convertir, o (b) dejarlo fuera y registrarlo aparte. Luego ciclo PBT-IA | ⬜ |
+| A12 | **Decisión de producto pendiente:** costo de entrega en la nota de venta | Pedido `afb8e9f4…` (Delivery Iquique): pedido y cobro en caja = $56.990, pero la nota de venta #1 = $53.990 (no incluye los $3.000 de entrega). El PRD (§8.4/§8.5) no define dónde va ese costo | Pablo decide: (a) agregar línea "Despacho" a la nota al convertir, o (b) dejarlo fuera y registrarlo aparte. Luego ciclo PBT-IA | ✅ 2026-10-23 opción (a): línea Despacho |
 
 ## Bloque B — Infraestructura (no depende de Paola, sí de accesos)
 
@@ -40,12 +40,12 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 
 | # | Ítem | Qué falta de Paola | Criterio de hecho | Estado |
 |---|------|--------------------|-------------------|--------|
-| C1 | Rebranding final | Logo (PNG), colores, URLs de Facebook/Instagram/TikTok | Logo real en UI y PDF de notas (hoy wordmark de texto); tokens de color; redes enlazadas | ⬜ |
+| C1 | Rebranding final | Logo (PNG), colores, URLs de Facebook/Instagram/TikTok | Logo real en UI y PDF de notas (hoy wordmark de texto); tokens de color; redes enlazadas | 🟨 preparado: reemplazar `public/marca/*` y valores en `lib/empresa.ts` |
 | C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | ⬜ |
 | C3 | Usuarios | Nombres y emails de los 4 usuarios (2 Administración, 2 Ventas) | Usuarios creados; Paola entra con el suyo | ⬜ |
 | C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ⬜ |
 | C5 | Boleta electrónica | Confirmar si la boleta de MP cubre las ventas online | Respuesta documentada (fuera del MVP) | ⬜ |
-| C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | ⬜ |
+| C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | 🟨 script listo: `npm run limpiar-prueba -- --host=<host> [--ejecutar]` (dry-run verificado en prod) |
 
 ## Fuera de este proyecto (anotado para no perderlo)
 - Bazar Naty sigue en Next 14.2.35 con 2 vulnerabilidades críticas.

@@ -102,4 +102,4 @@ Pendientes:
 
 ## Contador de slices desde el último ponytail audit (vigente)
 
-5 (A3 env, A4 tsc, A5 build estricto, A6 fixtures, A7 precio catálogo) — último audit: 2026-10-23 (`docs/audits/ponytail-audit-2026-10-23.md`). Señal 2 se activa en el próximo slice.
+10 (A3–A7, A12, C6, C1, A11, A7 bis) — último audit: 2026-10-23 → Señal 2 activada: audit en curso.

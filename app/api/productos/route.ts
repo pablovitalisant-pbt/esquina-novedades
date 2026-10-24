@@ -4,12 +4,13 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularPrecio } from "@/lib/calcular-precio";
 import { esPrecioMayorValido } from "@/lib/precio-mayor";
+import type { UserSession } from "@/types";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as any;
+  const user = session.user as UserSession;
   if (user.rol !== 'admin') {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
   }
@@ -71,16 +72,17 @@ export async function POST(request: Request) {
     `;
 
     return NextResponse.json({ data: result[0] }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/productos error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
 
@@ -95,7 +97,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [] });
     }
 
-    const empresaIds = (session.user as any).empresas || [];
+    const empresaIds = (session.user as UserSession).empresas || [];
     const rows = await sql`
       SELECT
         p.codigo,
@@ -132,8 +134,9 @@ export async function GET(request: Request) {
     `;
 
     return NextResponse.json({ data: rows });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/productos error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

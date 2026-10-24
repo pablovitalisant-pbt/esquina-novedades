@@ -3,10 +3,11 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 import { NextResponse } from 'next/server';
+import type { UserSession } from '@/types';
 
 // Slice 3c — saldo_favor viene como string de numeric (Neon); se convierte a
 // number para que el render no dependa de un tipo ambiguo.
-const conSaldoFavor = (r: any) => ({ ...r, saldo_favor: Number(r.saldo_favor) || 0 });
+const conSaldoFavor = (r: Record<string, unknown>) => ({ ...r, saldo_favor: Number(r.saldo_favor) || 0 });
 
 // Slice 6a — etiqueta derivada de las notas activas del cliente.
 const ETIQUETAS = ['mayorista', 'minorista', 'ambos', 'sin'];
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -55,9 +56,10 @@ export async function GET(request: Request) {
       ORDER BY c.nombre ASC
       LIMIT 50
     `;
-    return NextResponse.json({ data: (rows as any[]).map(conSaldoFavor) });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data: rows.map(conSaldoFavor) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -87,16 +89,17 @@ export async function POST(request: Request) {
         RETURNING id, nombre, telefono, direccion, notas, created_at::text
       `;
       return NextResponse.json({ data: rows[0] }, { status: 201 });
-    } catch (err: any) {
+    } catch (err) {
       // Slice unicidad: violación del índice único por teléfono normalizado.
-      if (err?.code === '23505' && telefono?.trim()) {
+      const code = (err as { code?: string } | null)?.code;
+      if (code === '23505' && telefono?.trim()) {
         const normalizado = telefono.trim().replace(/\D/g, '');
         const existente = await sql`
           SELECT nombre FROM public.clientes
           WHERE regexp_replace(telefono, '[^0-9]', '', 'g') = ${normalizado}
           LIMIT 1
         `;
-        const nombreExistente = (existente as any)[0]?.nombre ?? 'Otro cliente';
+        const nombreExistente = existente[0]?.nombre ?? 'Otro cliente';
         return NextResponse.json(
           { error: `Ya existe un cliente con este teléfono: ${nombreExistente}` },
           { status: 409 }
@@ -104,7 +107,8 @@ export async function POST(request: Request) {
       }
       throw err;
     }
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

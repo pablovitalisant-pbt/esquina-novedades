@@ -2,7 +2,28 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { calcularInversion, fechaHoyChile } from "@/lib/inversion-mercaderia";
+import { calcularInversion, fechaHoyChile, type ProductoInversion } from "@/lib/inversion-mercaderia";
+import type { UserSession } from "@/types";
+
+type SnapshotFila = {
+  id: number;
+  empresa_id: number;
+  costo_total: string;
+  venta_potencial_total: string;
+  ganancia_proyectada: string;
+  productos_sin_costo: number;
+};
+
+type DetalleSnapshotFila = {
+  codigo: string;
+  detalle: string | null;
+  saldo: number;
+  costo: number | null;
+  prcventa: number | null;
+  costo_total: string;
+  venta_potencial: string;
+  imagen_url: string | null;
+};
 
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -17,7 +38,7 @@ const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
  */
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== 'admin') {
+  if (!session || (session.user as UserSession).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -43,19 +64,19 @@ export async function GET(request: Request) {
 
   try {
     if (esVivo) {
-      const productos: any[] = categoria
+      const productos = (categoria
         ? await sql`SELECT codigo, detalle, saldo, costo, prcventa, imagen_url FROM productos WHERE categoria = ${categoria} AND activo = true`
-        : await sql`SELECT codigo, detalle, saldo, costo, prcventa, imagen_url FROM productos WHERE activo = true`;
+        : await sql`SELECT codigo, detalle, saldo, costo, prcventa, imagen_url FROM productos WHERE activo = true`) as ProductoInversion[];
       const { resumen, detalle } = calcularInversion(productos);
       return NextResponse.json({ resumen, detalle });
     }
 
     // fecha pasada → snapshot exacto
-    const snap: any[] = await sql`
+    const snap = (await sql`
       SELECT id, empresa_id, costo_total, venta_potencial_total, ganancia_proyectada, productos_sin_costo
       FROM snapshots_inversion_mercaderia WHERE fecha = ${fecha}
       ORDER BY id DESC LIMIT 1
-    `;
+    `) as SnapshotFila[];
     if (snap.length === 0) {
       return NextResponse.json({ sinSnapshot: true });
     }
@@ -64,14 +85,14 @@ export async function GET(request: Request) {
     // La foto se resuelve SIEMPRE contra productos.imagen_url ACTUAL (decisión del
     // Director): a diferencia de costo/precio, no es dato financiero y no debe
     // congelarse en el snapshot. LEFT JOIN → producto borrado cae a placeholder.
-    const detalleRows: any[] = await sql`
+    const detalleRows = (await sql`
       SELECT d.codigo, d.detalle, d.saldo, d.costo, d.prcventa, d.costo_total, d.venta_potencial,
              p.imagen_url
       FROM snapshots_inversion_mercaderia_detalle d
       LEFT JOIN productos p ON p.codigo = d.codigo AND p.empresa_id = ${s.empresa_id}
       WHERE d.snapshot_id = ${s.id}
       ORDER BY d.codigo
-    `;
+    `) as DetalleSnapshotFila[];
     const detalle = detalleRows.map((d) => ({
       codigo: d.codigo,
       detalle: d.detalle,
@@ -93,7 +114,8 @@ export async function GET(request: Request) {
       },
       detalle,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

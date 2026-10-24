@@ -3,10 +3,11 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import type { UserSession } from "@/types";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== 'admin') {
+  if (!session || (session.user as UserSession).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -25,14 +26,15 @@ export async function GET() {
     }));
 
     return NextResponse.json({ data: mapped });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== 'admin') {
+  if (!session || (session.user as UserSession).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -58,10 +60,11 @@ export async function POST(request: Request) {
     await sql`INSERT INTO usuario_empresa (usuario_id, empresa_id) VALUES (${userId}, 1)`;
 
     return NextResponse.json({ data: { ...inserted[0], empresas: [1] } });
-  } catch (error: any) {
-     if (error.message.includes('unique constraint')) {
-        return NextResponse.json({ error: "El RUT ya está registrado" }, { status: 400 });
-     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('unique constraint')) {
+      return NextResponse.json({ error: "El RUT ya está registrado" }, { status: 400 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

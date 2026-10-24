@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import type { UserSession } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const userId = Number((session.user as any).id);
+  const userId = Number((session.user as UserSession).id);
 
   const result = await sql`
     INSERT INTO catalogos (

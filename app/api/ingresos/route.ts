@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
+import type { UserSession } from '@/types';
 
 /**
  * POST /api/ingresos — Ingreso de Mercadería.
@@ -26,9 +27,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user as UserSession;
   const usuarioId = Number(user.id);
-  const usuarioNombre = user.nombre as string;
+  const usuarioNombre = user.nombre;
   const empresaId = Number(user.empresas?.[0]);
 
   if (!empresaId) {
@@ -87,5 +88,5 @@ export async function POST(request: NextRequest) {
     `,
   ]);
 
-  return NextResponse.json((rows as any)[0][0] ?? { ok: true }, { status: 200 });
+  return NextResponse.json(rows[0][0] ?? { ok: true }, { status: 200 });
 }

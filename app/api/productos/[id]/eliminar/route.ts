@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { UserSession } from "@/types";
 
 // Soft-delete: marca activo = false. No hay DELETE fisico (FKs RESTRICT desde
 // catalogo_items/pedido_items) ni propagacion a otras tablas — el `codigo` no
@@ -10,7 +11,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as any;
+  const user = session.user as UserSession;
   if (user.rol !== "admin") {
     return NextResponse.json(
       { error: "Solo administradores pueden eliminar un producto" },
@@ -50,8 +51,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json({ data: productResult, message: "Producto eliminado" });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/productos/[id]/eliminar error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

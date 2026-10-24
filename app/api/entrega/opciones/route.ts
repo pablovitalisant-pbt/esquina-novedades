@@ -13,7 +13,7 @@ export async function GET() {
       ORDER BY orden ASC, codigo ASC
     `;
     return NextResponse.json({ data: rows });
-  } catch (error: any) {
+  } catch (error) {
     console.error('GET /api/entrega/opciones error:', error);
     return NextResponse.json({ error: 'Error al obtener opciones de entrega' }, { status: 500 });
   }

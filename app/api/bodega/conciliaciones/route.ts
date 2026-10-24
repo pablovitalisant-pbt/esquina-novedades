@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
+import type { UserSession } from '@/types';
 import { authOptions } from '@/lib/auth';
 
 /**
@@ -29,14 +30,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
-  const rol = (session.user as any)?.rol;
+  const rol = (session.user as UserSession)?.rol;
   if (rol !== 'admin') {
     return NextResponse.json({ error: 'Solo el admin puede conciliar stock' }, { status: 403 });
   }
 
-  const user = session.user as any;
+  const user = session.user as UserSession;
   const usuarioId = Number(user.id);
-  const usuarioNombre = user.nombre as string;
+  const usuarioNombre = user.nombre;
   const empresaId = Number(user.empresas?.[0]);
   if (!empresaId) {
     return NextResponse.json({ error: 'Sin empresa asignada' }, { status: 400 });

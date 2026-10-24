@@ -25,8 +25,9 @@ export async function GET(
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
     }
     return NextResponse.json({ data: rows[0] });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -61,10 +62,11 @@ export async function PATCH(
         return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
       }
       return NextResponse.json({ data: rows[0] });
-    } catch (err: any) {
+    } catch (err) {
       // Slice unicidad: el teléfono editado choca con OTRO cliente (no con el
       // propio, que ya cambió de número si el UPDATE falló y volvió atrás).
-      if (err?.code === '23505' && telefono?.trim()) {
+      const code = (err as { code?: string } | null)?.code;
+      if (code === '23505' && telefono?.trim()) {
         const normalizado = telefono.trim().replace(/\D/g, '');
         const existente = await sql`
           SELECT nombre FROM public.clientes
@@ -72,7 +74,7 @@ export async function PATCH(
             AND id <> ${id}
           LIMIT 1
         `;
-        const nombreExistente = (existente as any)[0]?.nombre ?? 'Otro cliente';
+        const nombreExistente = existente[0]?.nombre ?? 'Otro cliente';
         return NextResponse.json(
           { error: `Ya existe un cliente con este teléfono: ${nombreExistente}` },
           { status: 409 }
@@ -80,8 +82,9 @@ export async function PATCH(
       }
       throw err;
     }
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -106,7 +109,7 @@ export async function DELETE(
 
     // Verificar notas de venta asociadas y su estado
     const notas = await sql`SELECT id, estado FROM public.prenotas WHERE cliente_id = ${id}`;
-    const notasActivas = notas.filter((n: any) => n.estado !== 'anulada');
+    const notasActivas = notas.filter((n) => n.estado !== 'anulada');
     if (notasActivas.length > 0) {
       return NextResponse.json(
         { error: 'No se puede eliminar: el cliente tiene notas de venta asociadas' },
@@ -116,7 +119,7 @@ export async function DELETE(
 
     // Si hay notas anuladas, verificar que no tengan movimientos de caja
     if (notas.length > 0) {
-      const notaIds = notas.map((n: any) => n.id);
+      const notaIds = notas.map((n) => n.id);
       const cajaCheck = await sql`
         SELECT 1 FROM public.caja_movimiento_notas
         WHERE prenota_id = ANY(${notaIds})
@@ -136,14 +139,16 @@ export async function DELETE(
     // Eliminar cliente
     await sql`DELETE FROM public.clientes WHERE id = ${id}`;
     return NextResponse.json({ data: { id } });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     // Postgres FK violation: error code 23503 o 23001 (defensivo — no debería pasar con la lógica de arriba)
-    if (error.code === '23503' || error.code === '23001') {
+    const code = (error as { code?: string } | null)?.code;
+    if (code === '23503' || code === '23001') {
       return NextResponse.json(
         { error: 'No se puede eliminar: el cliente tiene notas de venta asociadas' },
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { sql as sqlType } from '@/lib/db';
-import { filterProducts, type CatalogoProducto } from './filter-products';
+import { filterProducts } from './filter-products';
 import { getLatestIngresoRealCodigos } from '@/utils/catalogo-ingreso';
 
 /**
@@ -12,10 +12,32 @@ export function parseKeywords(raw: string): string[] {
   return raw.split(',').map(s => s.trim().replace(/\s+/g, ' ')).filter(Boolean);
 }
 
+export type ProductoCatalogoFila = {
+  id: number;
+  codigo: string;
+  detalle: string | null;
+  imagen_url: string | null;
+  cantcaja: string | number;
+  umed: string;
+  costo: string | number;
+  saldo: string | number;
+  es_nuevo: boolean;
+};
+
+type CatalogoSeleccion = {
+  empresa_id?: number;
+  palabras_incluir?: string | null;
+  palabras_excluir?: string | null;
+  categoria?: string | null;
+  solo_stock?: boolean;
+  solo_nuevo?: boolean;
+  solo_nuevo_top_n?: number | null;
+};
+
 export async function seleccionarProductosCatalogo(
   sql: typeof sqlType,
-  cat: Record<string, any>,
-): Promise<any[]> {
+  cat: CatalogoSeleccion,
+): Promise<ProductoCatalogoFila[]> {
   const tokens = parseKeywords(cat.palabras_incluir ?? '');
 
   let codigosIncluir: string[] = [];
@@ -23,12 +45,12 @@ export async function seleccionarProductosCatalogo(
 
   if (tokens.length > 0) {
     const tokensUpper = tokens.map((t: string) => t.toUpperCase());
-    const found = await sql`
+    const found = (await sql`
       SELECT DISTINCT UPPER(codigo) as codigo
       FROM productos
       WHERE UPPER(codigo) = ANY(${tokensUpper})
-    `;
-    const codigosEncontrados = new Set(found.map((r: any) => r.codigo));
+    `) as { codigo: string }[];
+    const codigosEncontrados = new Set(found.map((r) => r.codigo));
     codigosIncluir = tokensUpper.filter((t: string) => codigosEncontrados.has(t));
     keywordsIncluir = tokens
       .filter((t: string) => !codigosEncontrados.has(t.toUpperCase()))
@@ -38,7 +60,7 @@ export async function seleccionarProductosCatalogo(
   const excluir = parseKeywords(cat.palabras_excluir ?? '').map((s: string) => s.toLowerCase());
   const categoriaFilter = cat.categoria;
 
-  const rows = categoriaFilter
+  const rows = (categoriaFilter
     ? await sql`
         SELECT
           p.codigo,
@@ -73,16 +95,16 @@ export async function seleccionarProductosCatalogo(
           AND p.activo = true
         GROUP BY p.codigo
         ORDER BY p.codigo ASC
-      `;
+      `) as ProductoCatalogoFila[];
 
-  let productos = filterProducts(rows as CatalogoProducto[], codigosIncluir, keywordsIncluir, excluir);
+  let productos = filterProducts(rows, codigosIncluir, keywordsIncluir, excluir) as ProductoCatalogoFila[];
 
   if (cat.solo_stock) {
-    productos = productos.filter((p: any) => Number(p.saldo) > 0);
+    productos = productos.filter((p) => Number(p.saldo) > 0);
   }
   if (cat.solo_nuevo) {
     const latestCodigos = await getLatestIngresoRealCodigos(sql, cat.solo_nuevo_top_n ?? 1);
-    productos = productos.filter((p: any) => latestCodigos.has(p.codigo.toUpperCase()));
+    productos = productos.filter((p) => latestCodigos.has(p.codigo.toUpperCase()));
   }
 
   return productos;

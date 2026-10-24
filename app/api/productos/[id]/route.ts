@@ -4,9 +4,10 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { calcularPrecio } from "@/lib/calcular-precio";
 import { esPrecioMayorValido } from "@/lib/precio-mayor";
+import type { UserSession } from "@/types";
 
 // ponytail: rechazar NaN/null — ver PBT-IA NaN/null bypass hallazgo
-const esNumeroValido = (v: any): boolean =>
+const esNumeroValido = (v: unknown): boolean =>
   v !== null && typeof v !== "boolean" && Number.isFinite(Number(v));
 
 // BUG-umed-corrupto: umed es la unidad de medida, no una cantidad. Texto
@@ -14,7 +15,7 @@ const esNumeroValido = (v: any): boolean =>
 // rompiendo la vista de Packing en /precios. El frontend ahora ofrece un
 // dropdown fijo (Unid / Set) — el servidor exige exactamente esos valores.
 const UMED_VALORES_VALIDOS = ["U", "SET"];
-const esUmedValido = (v: any): boolean =>
+const esUmedValido = (v: unknown): v is string =>
   typeof v === "string" && UMED_VALORES_VALIDOS.includes(v.trim());
 
 // ponytail: whitelist de columnas — única fuente de verdad para el UPDATE dinámico.
@@ -32,7 +33,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const user = session.user as any;
+  const user = session.user as UserSession;
   if (user.rol !== "admin") {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
   }
@@ -42,7 +43,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const pid = parseInt((await context.params).id, 10);
 
     // Paso 1: extraer solo campos del whitelist presentes en el body
-    const changes: Record<string, any> = {};
+    const changes: Record<string, string | number | boolean | null> = {};
     for (const key of Object.keys(WHITELIST)) {
       if (body[key] !== undefined) changes[key] = body[key];
     }
@@ -123,7 +124,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     // Paso 6: construir y ejecutar UPDATE + propagación en transacción atómica
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: unknown[] = [];
     let idx = 1;
 
     for (const key of Object.keys(changes)) {
@@ -137,7 +138,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const query = `UPDATE public.productos SET ${setClauses.join(", ")} WHERE codigo = $${idx} RETURNING *`;
 
     // Transacción atómica: UPDATE + propagaciones en una sola transacción HTTP
-    const queries: any[] = [sql.query(query, params)];
+    const queries = [sql.query(query, params)];
 
     // A) Propagar detalle a ubicaciones_bodega
     if (clientDetalle !== undefined) {
@@ -148,7 +149,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     }
     // B) Propagar a prenota_items (solo activas sin pagos)
     const prenotaChanges: string[] = [];
-    const prenotaParams: any[] = [];
+    const prenotaParams: unknown[] = [];
     let pIdx = 1;
     if (clientDetalle !== undefined) {
       prenotaChanges.push(`descripcion = $${pIdx++}`);
@@ -184,8 +185,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const [productResult] = await sql.transaction(queries);
     return NextResponse.json({ data: productResult[0], message: "Producto actualizado" });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("PUT /api/productos/[id] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

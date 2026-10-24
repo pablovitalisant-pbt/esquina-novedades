@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import type { UserSession } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 import type { RouteContext } from '@/types';
@@ -9,12 +10,12 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const rol = (session.user as any)?.rol;
+  const rol = (session.user as UserSession)?.rol;
   if (rol !== 'admin') return NextResponse.json({ error: 'Solo admin' }, { status: 403 });
 
   const id = Number((await params).id);
-  const userId = String((session.user as any).id);
-  const usuarioNombre = (session.user as any).nombre as string;
+  const userId = String((session.user as UserSession).id);
+  const usuarioNombre = (session.user as UserSession).nombre;
 
   let observacionEliminacion: string | null = null;
   try {
@@ -28,7 +29,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const registroRows = await sql`
     SELECT * FROM public.registro_notas_bodega WHERE id = ${id}
   `;
-  const registro = (registroRows as any)[0] || null;
+  const registro = registroRows[0] || null;
 
   // Insertar en auditoría
   await sql`

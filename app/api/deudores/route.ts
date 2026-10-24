@@ -2,6 +2,30 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
+import type { UserSession } from '@/types';
+
+type FilaDeuda = {
+  id: string;
+  titulo: string;
+  created_at: string;
+  cliente_id: string | null;
+  nombre_cliente: string | null;
+  cliente_nombre: string | null;
+  cliente_telefono: string | null;
+  total: string;
+  total_pagado: string;
+  saldo_favor_aplicado: string | null;
+};
+
+type GrupoDeuda = {
+  cliente_id: string | null;
+  cliente_nombre: string;
+  telefono: string;
+  num_notas: number;
+  deuda_total: number;
+  notas: { id: string; titulo: string }[];
+  deuda_mas_antigua: string;
+};
 
 // GET /api/deudores — deudas pendientes agrupadas por cliente.
 // Reutiliza el cálculo de total/total_pagado/saldo_pendiente de GET /api/notas-venta.
@@ -10,12 +34,12 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  const rol = (session?.user as any)?.rol;
+  const rol = (session?.user as UserSession | undefined)?.rol;
   if (rol === 'bodeguero') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
-  const rows = await sql`
+  const filas = (await sql`
     SELECT
       p.id,
       p.titulo,
@@ -32,12 +56,12 @@ export async function GET() {
     LEFT JOIN public.clientes c ON c.id = p.cliente_id
     WHERE p.estado = 'activa'
     ORDER BY p.created_at ASC
-  `;
+  `) as FilaDeuda[];
 
   // Filtrar deudas (saldo > 0.005, mismo criterio que notas-venta) y agrupar.
-  const map = new Map<string, any>();
+  const map = new Map<string, GrupoDeuda>();
 
-  for (const r of rows as any[]) {
+  for (const r of filas) {
     const total = Number(r.total);
     const totalPagado = Number(r.total_pagado);
     const saldoFavorAplicado = Number(r.saldo_favor_aplicado || 0);

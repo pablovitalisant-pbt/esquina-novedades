@@ -4,9 +4,13 @@ import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
+// id llega como string desde el JWT (auth.ts hace String(user.id)); se tipa
+// como union para conservar la comparación original contra el uid numérico.
+type UsuarioSesion = { id: string | number; rol: string };
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== 'admin') {
+  if (!session || (session.user as UsuarioSesion).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -17,7 +21,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { rut, nombre, password, rol, activo } = await request.json();
 
     // Prevent removing admin from self
-    if ((session.user as any).id === uid && (rol !== 'admin' || activo === false)) {
+    if ((session.user as UsuarioSesion).id === uid && (rol !== 'admin' || activo === false)) {
       return NextResponse.json({ error: "No puedes quitarte los permisos de admin a ti mismo" }, { status: 400 });
     }
 
@@ -36,24 +40,25 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     await sql`INSERT INTO usuario_empresa (usuario_id, empresa_id) VALUES (${uid}, 1)`;
 
     return NextResponse.json({ message: "Usuario actualizado" });
-  } catch (error: any) {
-    if (error.message && error.message.includes('unique constraint')) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('unique constraint')) {
       return NextResponse.json({ error: "El RUT modificado ya pertenece a otro usuario" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== 'admin') {
+  if (!session || (session.user as UsuarioSesion).rol !== 'admin') {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   const { id } = await params;
   const uid = parseInt(id, 10);
 
-  if ((session.user as any).id === uid) {
+  if ((session.user as UsuarioSesion).id === uid) {
     return NextResponse.json({ error: "No puedes eliminarte a ti mismo" }, { status: 400 });
   }
 
@@ -61,7 +66,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await sql`DELETE FROM usuario_empresa WHERE usuario_id = ${uid}`;
     await sql`DELETE FROM usuarios WHERE id = ${uid}`;
     return NextResponse.json({ message: "Usuario eliminado" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

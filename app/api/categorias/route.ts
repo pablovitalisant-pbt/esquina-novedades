@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import type { UserSession } from '@/types';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
@@ -16,15 +17,16 @@ export async function GET() {
       ORDER BY c.nombre ASC
     `;
     return NextResponse.json(rows);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
+    const user = session?.user as UserSession;
     const role = user?.rol;
 
     if (role !== 'admin') {
@@ -47,10 +49,11 @@ export async function POST(request: Request) {
     `;
 
     return NextResponse.json(rows[0], { status: 201 });
-  } catch (error: any) {
-    if (error.code === '23505') {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if ((error as { code?: string }).code === '23505') {
       return NextResponse.json({ error: 'Ya existe una categoría con ese nombre' }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

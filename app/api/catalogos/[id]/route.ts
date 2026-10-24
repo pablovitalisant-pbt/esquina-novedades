@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import type { UserSession } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +16,12 @@ export async function PUT(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   // bodeguero no accede a catálogo admin (ni aunque sea dueño del catálogo)
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const catalogoId = Number((await params).id);
-  const user = session.user as any;
+  const user = session.user as UserSession;
   const userId = Number(user.id);
   const isAdmin = user.rol === 'admin';
 
@@ -37,7 +38,8 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const { palabras_excluir, margen_precio, precio_overrides } = body;
+  const { palabras_excluir, margen_precio } = body;
+  const precio_overrides: { codigo: string; precio: number | null }[] | undefined = body.precio_overrides;
 
   // Actualizar campos del catálogo
   if (palabras_excluir !== undefined || margen_precio !== undefined) {
@@ -67,8 +69,8 @@ export async function PUT(
     await sql`DELETE FROM catalogo_precio_override WHERE catalogo_id = ${catalogoId}`;
 
     const inserts = precio_overrides
-      .filter((po: any) => po.precio !== null)
-      .map((po: any) => ({
+      .filter((po) => po.precio !== null)
+      .map((po) => ({
         catalogoId,
         codigo: po.codigo.trim(),
         precio: po.precio,
@@ -100,12 +102,12 @@ export async function DELETE(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   // bodeguero no accede a catálogo admin (ni aunque sea dueño del catálogo)
-  if ((session.user as any).rol === 'bodeguero') {
+  if ((session.user as UserSession).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const catalogoId = Number((await params).id);
-  const user = session.user as any;
+  const user = session.user as UserSession;
   const userId = Number(user.id);
   const isAdmin = user.rol === 'admin';
 

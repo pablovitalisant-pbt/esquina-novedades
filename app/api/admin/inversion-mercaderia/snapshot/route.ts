@@ -1,6 +1,6 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { calcularInversion, fechaHoyChile } from "@/lib/inversion-mercaderia";
+import { calcularInversion, fechaHoyChile, type ProductoInversion } from "@/lib/inversion-mercaderia";
 import { timingSafeEqual } from "crypto";
 
 /**
@@ -33,19 +33,19 @@ export async function POST(request: Request) {
 
   try {
     // Es una sola empresa; resuelve la única fila en vez de asumir id.
-    const empresas: any[] = await sql`SELECT id FROM empresas ORDER BY id LIMIT 1`;
+    const empresas = (await sql`SELECT id FROM empresas ORDER BY id LIMIT 1`) as { id: number }[];
     const empresaId = empresas[0]?.id;
     if (!empresaId) {
       return NextResponse.json({ error: "No hay empresa registrada" }, { status: 500 });
     }
 
     const fecha = fechaHoyChile();
-    const productos: any[] = await sql`
+    const productos = (await sql`
       SELECT codigo, detalle, saldo, costo, prcventa FROM productos WHERE activo = true
-    `;
+    `) as ProductoInversion[];
     const { resumen, detalle } = calcularInversion(productos);
 
-    const snap: any[] = await sql`
+    const snap = (await sql`
       INSERT INTO snapshots_inversion_mercaderia
         (empresa_id, fecha, costo_total, venta_potencial_total, ganancia_proyectada, productos_sin_costo)
       VALUES (${empresaId}, ${fecha}, ${resumen.costoTotal}, ${resumen.ventaPotencialTotal}, ${resumen.gananciaProyectada}, ${resumen.productosSinCosto})
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         ganancia_proyectada = EXCLUDED.ganancia_proyectada,
         productos_sin_costo = EXCLUDED.productos_sin_costo
       RETURNING id
-    `;
+    `) as { id: number }[];
     const snapshotId = snap[0].id;
 
     // Reemplaza el detalle del día (upsert idempotente ante re-disparo).
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ fecha, ...resumen });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

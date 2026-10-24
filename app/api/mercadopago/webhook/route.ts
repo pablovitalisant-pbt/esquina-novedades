@@ -48,11 +48,11 @@ export async function POST(req: NextRequest) {
     let pago;
     try {
       pago = await new Payment(mpConfig()).get({ id: dataId });
-    } catch (e: any) {
+    } catch (e) {
       // Pago inexistente (p. ej. el simulador de MP o un id ajeno): no hay nada que
       // procesar y reintentar no lo hará aparecer -> 200 para cortar los reintentos.
       // Cualquier otro error (red, 5xx, token) sigue en 500 para que MP reintente.
-      if (e?.status === 404) {
+      if (e && typeof e === 'object' && 'status' in e && (e as { status?: unknown }).status === 404) {
         console.warn('[mp-webhook] pago inexistente', xRequestId);
         return ok();
       }

@@ -6,9 +6,15 @@ import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 
 import type { RouteContext } from '@/types';
 
+type UsuarioSesion = { rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as any)?.rol;
+  const rol = usuarioSesion(session).rol;
 
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -128,5 +134,5 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     UPDATE public.prenotas SET updated_at = now() WHERE id = ${id}
   `;
 
-  return NextResponse.json((rows as any)[0]);
+  return NextResponse.json((rows as Record<string, unknown>[])[0]);
 }

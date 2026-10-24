@@ -5,9 +5,23 @@ import { authOptions } from '@/lib/auth';
 
 import type { RouteContext } from '@/types';
 
+type UsuarioSesion = { rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
+function codigoError(e: unknown): string {
+  return e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
+}
+
+function mensajeError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 async function validarSesion() {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as any)?.rol;
+  const rol = usuarioSesion(session).rol;
 
   if (!session) {
     return { error: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) };
@@ -62,9 +76,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext<{ i
     ]);
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     // El guard detectó una condición inválida → distinguir la causa.
-    if (String(error.code) === '22012') {
+    if (codigoError(error) === '22012') {
       const notaRows = await sql`
         SELECT estado FROM public.prenotas WHERE id = ${notaId}
       `;
@@ -77,6 +91,6 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext<{ i
       return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
     }
     console.error('DELETE item error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

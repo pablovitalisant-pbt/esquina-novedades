@@ -13,9 +13,19 @@ const AplicarSaldoSchema = z.object({
   observaciones: z.string().nullable().optional(),
 });
 
-function guard(session: any) {
+type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
+function mensajeError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+function guard(session: { user?: unknown } | null) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = usuarioSesion(session).rol;
   if (rol !== 'admin' && rol !== 'vendedor') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
@@ -98,8 +108,8 @@ export async function POST(
       );
     }
 
-    const usuarioId = parseInt((session!.user as any).id, 10);
-    const usuarioNombre = (session!.user as any).nombre as string;
+    const usuarioId = parseInt(usuarioSesion(session).id ?? '', 10);
+    const usuarioNombre = usuarioSesion(session).nombre;
 
     // 5. INSERT del débito, atómico con el saldo disponible del cliente.
     // El WHERE filtra el INSERT a 0 filas si el saldo disponible (créditos -
@@ -142,8 +152,8 @@ export async function POST(
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error('POST /api/notas-venta/[id]/aplicar-saldo-favor error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

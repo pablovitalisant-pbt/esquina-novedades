@@ -7,13 +7,19 @@ import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 
 import type { RouteContext } from '@/types';
 
-function getUsuarioId(session: any) {
-  return Number((session?.user as any)?.id);
+type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
+function getUsuarioId(session: { user?: unknown } | null | undefined) {
+  return Number(usuarioSesion(session).id);
 }
 
 async function validarSesion() {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as any)?.rol;
+  const rol = usuarioSesion(session).rol;
 
   if (!session) {
     return { error: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) };
@@ -40,7 +46,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     LEFT JOIN public.clientes c ON c.id = p.cliente_id
     WHERE p.id = ${id}
   `;
-  const prenota = (prenotas as any)[0];
+  const prenota = (prenotas as Record<string, unknown>[])[0];
 
   if (!prenota) {
     return NextResponse.json({ error: 'No encontrada' }, { status: 404 });
@@ -50,19 +56,21 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     SELECT * FROM public.prenota_items WHERE prenota_id = ${id} ORDER BY created_at ASC
   `;
 
+  type ItemNota = { subtotal?: number | string | null; codigo?: unknown; modalidad?: unknown };
+
   // Calcular total, total_pagado y saldo_pendiente (para UI de pago)
-  const total = (items as any[]).reduce(
-    (sum: number, i: any) => sum + Number(i.subtotal ?? 0),
+  const total = (items as ItemNota[]).reduce(
+    (sum, i) => sum + Number(i.subtotal ?? 0),
     0
   );
   // Tipo derivado (5f): sin items -> null; solo cajas -> mayor; solo unidades -> menor.
   // La línea Despacho no es un producto y no cuenta para el tipo.
-  const itemsTipo = (items as any[]).filter((i: any) => i.codigo !== CODIGO_DESPACHO);
+  const itemsTipo = (items as ItemNota[]).filter((i) => i.codigo !== CODIGO_DESPACHO);
   const tipo = itemsTipo.length === 0
     ? null
-    : itemsTipo.every((i: any) => i.modalidad === 'caja')
+    : itemsTipo.every((i) => i.modalidad === 'caja')
       ? 'mayor'
-      : itemsTipo.every((i: any) => i.modalidad !== 'caja')
+      : itemsTipo.every((i) => i.modalidad !== 'caja')
         ? 'menor'
         : 'mixta';
   const pagadoRows = await sql`
@@ -71,7 +79,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
     WHERE cmn.prenota_id = ${id}
   `;
-  const totalPagado = parseFloat((pagadoRows as any)[0].total);
+  const totalPagado = parseFloat((pagadoRows as { total: string }[])[0].total);
   // Slice 3a — saldo a favor aplicado (débitos) a esta nota. Resta del saldo
   // igual que total_pagado. Hoy 0 (los débitos se generan en 3b); se deja ya
   // escrito para no volver a tocar este archivo en 3b.
@@ -80,7 +88,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     FROM public.clientes_saldo_favor_movimientos
     WHERE aplicado_prenota_id = ${id} AND tipo = 'debito'
   `;
-  const saldoFavorAplicado = parseFloat((sfRows as any)[0].total);
+  const saldoFavorAplicado = parseFloat((sfRows as { total: string }[])[0].total);
 
   // Slice 3b — saldo a favor disponible del cliente (créditos - débitos).
   // 0 si la nota no tiene cliente asignado. El frontend lo usa para decidir
@@ -92,7 +100,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       FROM public.clientes_saldo_favor_movimientos
       WHERE cliente_id = ${prenota.cliente_id}
     `;
-    clienteSaldoFavor = parseFloat((sfDisponible as any)[0].disponible);
+    clienteSaldoFavor = parseFloat((sfDisponible as { disponible: string }[])[0].disponible);
   }
 
   return NextResponse.json({
@@ -115,11 +123,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json({ error: 'ID de nota inválido' }, { status: 400 });
   }
-  const body = await request.json();
+  const body = (await request.json()) as { cliente_id?: string | null };
   const current = await sql`
     SELECT titulo_base, cliente_id FROM public.prenotas WHERE id = ${id}
   `;
-  const row = (current as any)[0];
+  const row = (current as { titulo_base?: string | null }[])[0];
   const tituloBase = row?.titulo_base;
 
   // ─── Validar cliente_id si viene en el body ───
@@ -127,7 +135,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const clientRows = await sql`
       SELECT id FROM public.clientes WHERE id = ${body.cliente_id}
     `;
-    if ((clientRows as any).length === 0) {
+    if ((clientRows as unknown[]).length === 0) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 400 });
     }
   }
@@ -141,7 +149,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       const clientRows = await sql`
         SELECT nombre FROM public.clientes WHERE id = ${body.cliente_id}
       `;
-      nombre_cliente = (clientRows as any)[0]?.nombre ?? null;
+      nombre_cliente = (clientRows as { nombre?: string | null }[])[0]?.nombre ?? null;
     }
   }
 
@@ -162,7 +170,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     RETURNING *
   `;
 
-  return NextResponse.json((rows as any)[0] ?? null);
+  return NextResponse.json((rows as Record<string, unknown>[])[0] ?? null);
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
@@ -179,7 +187,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
     WHERE cmn.prenota_id = ${id}
   `;
-  const totalPagado = parseFloat((sumRow as any).total);
+  const totalPagado = parseFloat((sumRow as { total: string }).total);
 
   if (totalPagado > 0) {
     return NextResponse.json({
@@ -209,7 +217,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
         WHERE u.codigo = g.codigo AND u.empresa_id = g.empresa_id`,
   ]);
 
-  if ((results[1] as any).length === 0) {
+  if ((results[1] as unknown[]).length === 0) {
     return NextResponse.json({ error: 'No encontrada o ya anulada' }, { status: 404 });
   }
 

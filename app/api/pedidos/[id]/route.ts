@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 
+function usuarioSesion(session: { user?: unknown } | null | undefined): { rol?: string } {
+  return (session?.user as { rol?: string } | undefined) ?? {};
+}
+
+function mensajeError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 // PATCH /api/pedidos/[id] — única transición de estado: pendiente → descartado.
 // Rechaza bodeguero; 409 si el pedido ya no está pendiente (convertido/descartado).
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if (usuarioSesion(session).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -58,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'El pedido no está pendiente' }, { status: 409 });
     }
     return NextResponse.json({ data: { id: rows[0].id, estado: rows[0].estado } }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

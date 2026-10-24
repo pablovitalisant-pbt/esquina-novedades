@@ -17,6 +17,55 @@ const ORIGENES = ['productos', 'catalogo'] as const;
 
 const ERROR_PAGO = 'No se pudo iniciar el pago. Intenta nuevamente.';
 
+type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
+function codigoError(e: unknown): string {
+  return e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
+}
+
+function mensajeError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+type PedidoReplay = {
+  id: string;
+  cliente_id: string;
+  estado: string;
+  created_at: string;
+  total: number;
+  expira_en: string | null;
+  mp_init_point: string | null;
+};
+
+type ItemEntrada = { producto_id: number; cantidad: number; modalidad: 'unidad' | 'caja' };
+type ProductoFila = ProductoPrecio & { costo: number | string; saldo: number };
+type PedidoLista = Record<string, unknown> & { id: string; cliente_id: string };
+type ItemLista = {
+  pedido_id: string;
+  codigo: string;
+  detalle: string | null;
+  cantidad: number;
+  modalidad: string;
+  precio: number;
+  subtotal: number;
+  cantcaja: number | null;
+};
+type CuerpoPedido = {
+  nombre_contacto?: unknown;
+  telefono_contacto?: unknown;
+  email_contacto?: unknown;
+  entrega_codigo?: unknown;
+  items?: unknown;
+  origen?: Origen;
+  origen_slug?: unknown;
+  idempotency_key?: unknown;
+  direccion_entrega?: string | null;
+};
+
 /** Slice 9c — preflight MP: sin config no se reserva stock. */
 async function pagoOnlineConfigurado(): Promise<boolean> {
   try {
@@ -35,7 +84,7 @@ async function pagoOnlineConfigurado(): Promise<boolean> {
 }
 
 /** Replay de Idempotency-Key con pago online: reusa el init point guardado. */
-async function responderReplay(pedido: any, pagoOnline: boolean) {
+async function responderReplay(pedido: PedidoReplay, pagoOnline: boolean) {
   if (!pagoOnline) return NextResponse.json({ data: pedido }, { status: 200 });
   if (pedido.estado !== 'pendiente_pago') {
     return NextResponse.json({ data: pedido }, { status: 200 });
@@ -59,7 +108,7 @@ async function responderReplay(pedido: any, pagoOnline: boolean) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as CuerpoPedido;
 
     // ─── Validaciones (400, sin insertar nada) ─────────────────────
     const nombre = typeof body?.nombre_contacto === 'string' ? body.nombre_contacto.trim() : '';
@@ -82,7 +131,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'entrega_codigo es requerido' }, { status: 400 });
     }
 
-    const items = Array.isArray(body?.items) ? body.items : null;
+    const items = Array.isArray(body?.items) ? (body.items as ItemEntrada[]) : null;
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'items debe ser un array con al menos 1 elemento' }, { status: 400 });
     }
@@ -90,7 +139,7 @@ export async function POST(request: NextRequest) {
       if (!Number.isInteger(it?.producto_id)) {
         return NextResponse.json({ error: 'cada item.producto_id debe ser un entero' }, { status: 400 });
       }
-      if (!Number.isInteger(it?.cantidad) || (it.cantidad as number) <= 0) {
+      if (!Number.isInteger(it?.cantidad) || it.cantidad <= 0) {
         return NextResponse.json({ error: 'cada item.cantidad debe ser un entero > 0' }, { status: 400 });
       }
       if (it?.modalidad !== 'unidad' && it?.modalidad !== 'caja') {
@@ -98,7 +147,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const origen: Origen = body?.origen;
+    const origen = body?.origen as Origen;
     if (!ORIGENES.includes(origen)) {
       return NextResponse.json({ error: "origen debe ser 'productos' o 'catalogo'" }, { status: 400 });
     }
@@ -125,7 +174,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
       if (existentes[0]) {
-        return responderReplay(existentes[0], pagoOnline);
+        return responderReplay(existentes[0] as PedidoReplay, pagoOnline);
       }
     }
 
@@ -142,12 +191,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Lectura de productos, entrega y precio de catálogo ─────────
-    const productoIds = items.map((it: any) => it.producto_id);
-    const productos = await sql`
+    const productoIds = items.map((it) => it.producto_id);
+    const productos = (await sql`
       SELECT id, codigo, detalle, prcventa, precio_mayor, cantcaja, activo, costo, saldo
       FROM public.productos
       WHERE id = ANY(${productoIds})
-    `;
+    `) as ProductoFila[];
 
     const opciones = await sql`
       SELECT codigo, nombre, costo, requiere_direccion, activa
@@ -169,30 +218,34 @@ export async function POST(request: NextRequest) {
       // está en esa lista no puede comprarse con el precio del catálogo.
       const seleccion = await seleccionarProductosCatalogo(sql, cats[0]);
       const codigosCatalogo = new Set(
-        seleccion.map((p: any) => String(p.codigo).trim().toUpperCase()),
+        (seleccion as { codigo: unknown }[]).map((p) => String(p.codigo).trim().toUpperCase()),
       );
-      for (const p of productos as any[]) {
+      for (const p of productos) {
         if (!codigosCatalogo.has(String(p.codigo).trim().toUpperCase())) {
           return NextResponse.json({ error: 'producto no pertenece al catalogo' }, { status: 400 });
         }
       }
-      const codigos = (productos as any[]).map((p) => String(p.codigo).toUpperCase());
+      const codigos = productos.map((p) => String(p.codigo).toUpperCase());
       const overrides = await sql`
         SELECT codigo, precio FROM public.catalogo_precio_override
         WHERE catalogo_id = ${cats[0].id} AND UPPER(codigo) = ANY(${codigos})
       `;
-      const porCodigo = new Map(overrides.map((o: any) => [String(o.codigo).toUpperCase(), parseFloat(o.precio)]));
+      const porCodigo = new Map(
+        (overrides as { codigo: unknown; precio: string }[]).map(
+          (o): [string, number] => [String(o.codigo).toUpperCase(), parseFloat(o.precio)],
+        ),
+      );
       const margen = parseFloat(cats[0].margen_precio) || 0;
       preciosCatalogo = {};
-      for (const p of productos as any[]) {
+      for (const p of productos) {
         preciosCatalogo[p.id] = porCodigo.get(String(p.codigo).toUpperCase())
-          ?? precioCatalogoBase(parseFloat(p.costo), margen);
+          ?? precioCatalogoBase(parseFloat(String(p.costo)), margen);
       }
     }
 
     let calculado;
     try {
-      calculado = calcularPedido(items, productos as ProductoPrecio[], {
+      calculado = calcularPedido(items, productos, {
         origen,
         preciosCatalogo,
         entrega: entrega as OpcionEntrega,
@@ -227,8 +280,8 @@ export async function POST(request: NextRequest) {
           VALUES (${nuevoId}, ${nombre}, ${telefono}, ${email})
         `;
         clienteId = nuevoId;
-      } catch (err: any) {
-        if (err?.code === '23505') {
+      } catch (err) {
+        if (codigoError(err) === '23505') {
           const re = await sql`
             SELECT id FROM public.clientes
             WHERE regexp_replace(telefono, '[^0-9]', '', 'g') = ${normalizado}
@@ -254,8 +307,7 @@ export async function POST(request: NextRequest) {
     const pedidoId = randomUUID();
 
     // ─── Transacción atómica: pedido + items (precios ya calculados) ─
-    const queries: any[] = [];
-    queries.push(sql`
+    const queries = [sql`
       INSERT INTO public.pedidos
         (id, cliente_id, nombre_contacto, telefono_contacto, email_contacto,
          origen, origen_slug, entrega_codigo, entrega_costo, direccion_entrega,
@@ -267,7 +319,7 @@ export async function POST(request: NextRequest) {
               CASE WHEN ${pagoOnline} THEN NOW() + INTERVAL '36 hours' ELSE NULL END,
               ${calculado.total})
       RETURNING id, cliente_id, estado, created_at::text, total, expira_en::text
-    `);
+    `];
     for (const linea of calculado.lineas) {
       queries.push(sql`
         INSERT INTO public.pedido_items
@@ -288,10 +340,10 @@ export async function POST(request: NextRequest) {
     let results;
     try {
       results = await sql.transaction(queries);
-    } catch (error: any) {
+    } catch (error) {
       // Doble clic concurrente: el índice único aborta el INSERT; devolvemos
       // el pedido que ganó la carrera sin reservar de nuevo.
-      if (idempotencyKey && String(error?.code) === '23505') {
+      if (idempotencyKey && codigoError(error) === '23505') {
         const [existente] = await sql`
           SELECT id, cliente_id, estado, created_at::text, total,
                  expira_en::text, mp_init_point
@@ -299,14 +351,18 @@ export async function POST(request: NextRequest) {
           WHERE idempotency_key = ${idempotencyKey}
           LIMIT 1
         `;
-        if (existente) return responderReplay(existente, pagoOnline);
+        if (existente) return responderReplay(existente as PedidoReplay, pagoOnline);
       }
-      if (String(error?.code) === '22012') {
+      if (codigoError(error) === '22012') {
         // Rollback ya deshizo lo nuestro: releemos el saldo real para el detalle.
         const actuales = await sql`
           SELECT id, codigo, saldo FROM public.productos WHERE id = ANY(${productoIds})
         `;
-        const porId = new Map((actuales as any[]).map((p) => [p.id, p]));
+        const porId = new Map(
+          (actuales as { id: number; saldo: number }[]).map(
+            (p): [number, { id: number; saldo: number }] => [p.id, p],
+          ),
+        );
         const sinStock = calculado.lineas
           .filter((l) => Number(porId.get(l.producto_id)?.saldo ?? 0) < l.unidades)
           .map((l) => ({
@@ -319,7 +375,7 @@ export async function POST(request: NextRequest) {
       throw error;
     }
     const pedido = results[0][0];
-    const data: any = {
+    const data: Record<string, unknown> & { init_point?: string } = {
       id: pedido.id,
       cliente_id: pedido.cliente_id,
       estado: pedido.estado,
@@ -343,8 +399,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ data }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }
 
@@ -353,7 +409,7 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if ((session.user as any).rol === 'bodeguero') {
+  if (usuarioSesion(session).rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
@@ -361,7 +417,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
 
-    const pedidos = await sql`
+    const pedidos = (await sql`
       SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
              p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
              p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
@@ -370,22 +426,22 @@ export async function GET(request: NextRequest) {
       LEFT JOIN public.clientes c ON c.id = p.cliente_id
       ${estado ? sql`WHERE p.estado = ${estado}` : sql``}
       ORDER BY p.created_at DESC
-    `;
+    `) as PedidoLista[];
 
     if (pedidos.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });
     }
 
-    const pedidoIds = pedidos.map((p: any) => p.id);
-    const items = await sql`
+    const pedidoIds = pedidos.map((p) => p.id);
+    const items = (await sql`
       SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
              pi.precio, pi.subtotal, p.cantcaja
       FROM public.pedido_items pi
       LEFT JOIN public.productos p ON p.id = pi.producto_id
       WHERE pi.pedido_id = ANY(${pedidoIds})
-    `;
+    `) as ItemLista[];
 
-    const itemsPorPedido = new Map<string, any[]>();
+    const itemsPorPedido = new Map<string, Record<string, unknown>[]>();
     for (const it of items) {
       const lista = itemsPorPedido.get(it.pedido_id) ?? [];
       lista.push({
@@ -400,7 +456,7 @@ export async function GET(request: NextRequest) {
       itemsPorPedido.set(it.pedido_id, lista);
     }
 
-    const data = pedidos.map((p: any) => ({
+    const data = pedidos.map((p) => ({
       id: p.id,
       cliente: { id: p.cliente_id, nombre: p.nombre, telefono: p.telefono },
       email_contacto: p.email_contacto,
@@ -419,7 +475,7 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ data }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: mensajeError(error) }, { status: 500 });
   }
 }

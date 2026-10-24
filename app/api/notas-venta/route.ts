@@ -4,13 +4,19 @@ import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 
-function getUsuarioId(session: any) {
-  return Number((session?.user as any)?.id);
+type UsuarioSesion = { id?: string; nombre?: string; rol?: string };
+
+function usuarioSesion(session: { user?: unknown } | null | undefined): UsuarioSesion {
+  return (session?.user as UsuarioSesion | undefined) ?? {};
+}
+
+function getUsuarioId(session: { user?: unknown } | null | undefined) {
+  return Number(usuarioSesion(session).id);
 }
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as any)?.rol;
+  const rol = usuarioSesion(session).rol;
 
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -40,7 +46,7 @@ export async function GET() {
     ORDER BY p.estado ASC, p.updated_at DESC
   `;
 
-  const data = rows.map((r: any) => ({
+  const data = (rows as Record<string, unknown>[]).map((r) => ({
     ...r,
     total: Number(r.total),
     total_pagado: Number(r.total_pagado),
@@ -53,7 +59,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  const rol = (session?.user as any)?.rol;
+  const rol = usuarioSesion(session).rol;
 
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
-  let body: any = {};
+  let body: { cliente_id?: string | null } = {};
   try {
     body = await request.json();
   } catch {
@@ -76,11 +82,11 @@ export async function POST(request: Request) {
   const usuarioId = getUsuarioId(session);
   // Notas compartidas: numeración por creador se mantiene, pero el título incluye
   // el nombre del creador para distinguir notas del mismo # de usuarios distintos.
-  const usuarioNombre = (session.user as any).nombre;
+  const usuarioNombre = usuarioSesion(session).nombre;
   const count = await sql`
     SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}
   `;
-  const n = Number((count as any)[0].count) + 1;
+  const n = Number((count as { count: string }[])[0].count) + 1;
   const fecha = new Date().toLocaleDateString('es-CL', {
     day: '2-digit',
     month: 'short',
@@ -93,5 +99,5 @@ export async function POST(request: Request) {
     RETURNING *
   `;
 
-  return NextResponse.json((rows as any)[0]);
+  return NextResponse.json((rows as Record<string, unknown>[])[0]);
 }

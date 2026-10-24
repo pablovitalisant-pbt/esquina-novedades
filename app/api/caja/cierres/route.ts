@@ -2,11 +2,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import type { CuentaCierreResumen, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../_types";
 
-function guard(session: any) {
+interface CierreRow {
+  id: number;
+  fecha_desde: string;
+  fecha_hasta: string;
+  resumen: CuentaCierreResumen[];
+  usuario_id: number;
+  usuario_nombre: string;
+  created_at: string;
+}
+
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -26,7 +38,7 @@ export async function GET() {
       ORDER BY fecha_hasta DESC
     `;
 
-    const data: CierrePeriodo[] = rows.map((r: any) => ({
+    const data: CierrePeriodo[] = (rows as CierreRow[]).map((r) => ({
       id: r.id,
       fecha_desde: r.fecha_desde,
       fecha_hasta: r.fecha_hasta,
@@ -37,8 +49,8 @@ export async function GET() {
     }));
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -46,7 +58,7 @@ export async function POST(_request: Request) {
   void _request;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
   }
@@ -155,8 +167,8 @@ export async function POST(_request: Request) {
       });
     }
 
-    const usuarioId = parseInt((session!.user as any).id, 10);
-    const usuarioNombre = (session!.user as any).nombre as string;
+    const usuarioId = parseInt((session!.user as SessionUser).id, 10);
+    const usuarioNombre = (session!.user as SessionUser).nombre;
 
     const insertRows = await sql`
       INSERT INTO caja_cierres (fecha_desde, fecha_hasta, resumen, usuario_id, usuario_nombre, creado_por)
@@ -175,7 +187,7 @@ export async function POST(_request: Request) {
     };
 
     return NextResponse.json({ data: result }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

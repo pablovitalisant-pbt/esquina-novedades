@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { SessionUser } from "../../_types";
 
 export async function DELETE(
   _request: Request,
@@ -9,7 +10,7 @@ export async function DELETE(
 ) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
   }
@@ -28,7 +29,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ data: { id: rows[0].id, eliminado: true } });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

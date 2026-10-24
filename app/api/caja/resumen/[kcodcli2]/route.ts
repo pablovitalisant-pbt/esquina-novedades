@@ -3,11 +3,13 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import type { NotaConPagos, ResumenClienteResponse } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../../_types";
 
-function guard(session: any) {
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -127,7 +129,7 @@ export async function GET(
     };
 
     return NextResponse.json({ data: result });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

@@ -2,13 +2,29 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { CajaMovimientoCreateSchema } from "@/docs/specs/caja-mayor.spec";
-import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, MovimientosPaginadosConCierres } from "@/docs/specs/caja-mayor.spec";
+import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, MovimientosPaginadosConCierres, CuentaCierreResumen } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../_types";
+
+interface CierreRow {
+  id: number;
+  fecha_desde: string;
+  fecha_hasta: string;
+  resumen: CuentaCierreResumen[] | string;
+  usuario_id: number;
+  usuario_nombre: string;
+  created_at: string;
+}
+
+interface MovimientoFechaRow {
+  fecha: string;
+}
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -75,7 +91,7 @@ export async function GET(request: Request) {
         ORDER BY fecha_hasta ASC
       `;
 
-      cierresEnRango = cierresRows.map((r: any) => ({
+      cierresEnRango = (cierresRows as CierreRow[]).map((r) => ({
         id: r.id,
         fecha_desde: r.fecha_desde,
         fecha_hasta: r.fecha_hasta,
@@ -96,7 +112,7 @@ export async function GET(request: Request) {
     }));
 
     // Solo intercalar cierres cuyas fechas caen dentro de esta página
-    const fechasMovimientos = rows.map((r: any) => r.fecha as string);
+    const fechasMovimientos = (rows as MovimientoFechaRow[]).map((r) => r.fecha);
     const fechaMinPagina = fechasMovimientos.length ? fechasMovimientos[fechasMovimientos.length - 1] : null;
     const fechaMaxPagina = fechasMovimientos.length ? fechasMovimientos[0] : null;
     const cierresDePagina = fechaMinPagina && fechaMaxPagina
@@ -134,14 +150,14 @@ export async function GET(request: Request) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       cierres_en_rango: [],
     } satisfies MovimientosPaginadosConCierres);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
-function guard(session: any) {
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -179,8 +195,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const usuarioId = parseInt((session!.user as any).id, 10);
-    const usuarioNombre = (session!.user as any).nombre as string;
+    const usuarioId = parseInt((session!.user as SessionUser).id, 10);
+    const usuarioNombre = (session!.user as SessionUser).nombre;
 
     const rows = await sql`
       INSERT INTO caja_movimientos (
@@ -207,7 +223,7 @@ export async function POST(request: Request) {
     `;
 
     return NextResponse.json({ data: rows[0] }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

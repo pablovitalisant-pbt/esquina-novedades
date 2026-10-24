@@ -3,12 +3,21 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { CajaImputacionCreateSchema } from "@/docs/specs/caja-mayor.spec";
 import { formatCLP } from "@/lib/utils";
+import type { SessionUser } from "../../../_types";
 
-function guard(session: any) {
+interface ImputacionRow {
+  id: number;
+  empresa: string;
+  prenota_id: number;
+  monto_aplicado: number;
+}
+
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -130,14 +139,14 @@ export async function POST(
     // Replace: delete existing, insert new.
     await sql`DELETE FROM caja_movimiento_notas WHERE movimiento_id = ${movimientoId}`;
 
-    const inserted: any[] = [];
+    const inserted: ImputacionRow[] = [];
     for (const n of notasValidadas) {
       const rows = await sql`
         INSERT INTO caja_movimiento_notas (movimiento_id, empresa, prenota_id, monto_aplicado)
         VALUES (${movimientoId}, ${EMPRESA.slug}, ${n.prenota_id}, ${n.monto_aplicado})
         RETURNING id, empresa, prenota_id, monto_aplicado
       `;
-      inserted.push(rows[0]);
+      inserted.push(rows[0] as ImputacionRow);
     }
 
     return NextResponse.json(
@@ -151,7 +160,7 @@ export async function POST(
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

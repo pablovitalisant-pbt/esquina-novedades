@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { SessionUser } from "../_types";
 
 // Única clave expuesta: cuenta que recibe los cobros de Mercado Pago.
 const PatchSchema = z.object({ mp_cuenta_id: z.number().int().positive() }).strict();
@@ -10,7 +11,7 @@ const PatchSchema = z.object({ mp_cuenta_id: z.number().int().positive() }).stri
 async function adminGuard() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if ((session.user as any).rol !== "admin") {
+  if ((session.user as SessionUser).rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado — solo admin" }, { status: 403 });
   }
   return session;
@@ -23,8 +24,8 @@ export async function GET() {
     const [row] = await sql`SELECT valor FROM public.caja_config WHERE clave = 'mp_cuenta_id'`;
     const id = Number(row?.valor);
     return NextResponse.json({ data: { mp_cuenta_id: Number.isInteger(id) && id > 0 ? id : null } });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -43,12 +44,12 @@ export async function PATCH(request: Request) {
 
     await sql`
       INSERT INTO public.caja_config (clave, valor, updated_at, updated_por)
-      VALUES ('mp_cuenta_id', ${String(mp_cuenta_id)}, NOW(), ${(guard.user as any).nombre ?? null})
+      VALUES ('mp_cuenta_id', ${String(mp_cuenta_id)}, NOW(), ${(guard.user as SessionUser).nombre ?? null})
       ON CONFLICT (clave) DO UPDATE
         SET valor = EXCLUDED.valor, updated_at = NOW(), updated_por = EXCLUDED.updated_por
     `;
     return NextResponse.json({ data: { mp_cuenta_id } });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

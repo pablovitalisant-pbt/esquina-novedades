@@ -2,11 +2,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { CajaSaldoInicialSchema } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../_types";
 
-function adminGuard(session: any) {
+interface SaldoInicialRow {
+  id: number;
+  cuenta_id: number;
+  cuenta_nombre: string;
+  fecha: string;
+  saldo: string;
+  observaciones: string | null;
+  created_at: string;
+}
+
+function adminGuard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
   }
@@ -28,7 +40,7 @@ export async function GET() {
       ORDER BY cc.orden ASC
     `;
 
-    const data = rows.map((r: any) => ({
+    const data = (rows as SaldoInicialRow[]).map((r) => ({
       id: r.id,
       cuenta_id: r.cuenta_id,
       cuenta_nombre: r.cuenta_nombre,
@@ -39,8 +51,8 @@ export async function GET() {
     }));
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -57,7 +69,7 @@ export async function POST(request: Request) {
     }
 
     const { cuenta_id, fecha, saldo, observaciones } = parsed.data;
-    const creadoPor = (session!.user as any).nombre as string;
+    const creadoPor = (session!.user as SessionUser).nombre;
 
     // UPSERT: solo un saldo inicial por cuenta
     const rows = await sql`
@@ -85,7 +97,7 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({ data: result }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

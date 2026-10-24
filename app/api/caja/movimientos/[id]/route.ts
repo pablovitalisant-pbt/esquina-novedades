@@ -2,12 +2,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { CajaMovimientoUpdateSchema } from "@/docs/specs/caja-mayor.spec";
 import { formatCLP } from "@/lib/utils";
+import type { SessionUser } from "../../_types";
 
-function guard(session: any) {
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -101,7 +103,7 @@ export async function PATCH(
     const newEmpresa = updates.empresa !== undefined ? updates.empresa
       : (newTipo === "gasto" && updates.tipo === "gasto" ? null : current.empresa);
 
-    const usuarioNombre = (session!.user as any).nombre as string;
+    const usuarioNombre = (session!.user as SessionUser).nombre;
 
     // Apply updates with COALESCE
     const updateFecha = updates.fecha ?? null;
@@ -140,8 +142,8 @@ export async function PATCH(
       result.ajuste_requerido = ajusteRequerido;
     }
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -165,7 +167,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ data: { id: rows[0].id, eliminado: true } });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

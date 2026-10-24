@@ -2,11 +2,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import type { SessionUser } from "../_types";
+
+interface ResumenCuentaRow {
+  cuenta_id: number;
+  cuenta_nombre: string;
+  total_cobros: string;
+  total_gastos: string;
+  total_reembolsos: string;
+  movimientos_neto: string;
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -35,7 +45,7 @@ export async function GET() {
       saldoMap.set(s.cuenta_id as number, parseFloat(s.saldo as string));
     }
 
-    const result = rows.map((r: any) => ({
+    const result = (rows as ResumenCuentaRow[]).map((r) => ({
       cuenta_id: r.cuenta_id,
       cuenta_nombre: r.cuenta_nombre,
       total_cobros: parseFloat(r.total_cobros),
@@ -45,7 +55,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({ data: result });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

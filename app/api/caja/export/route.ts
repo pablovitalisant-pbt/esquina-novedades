@@ -2,12 +2,27 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre } from "@/docs/specs/caja-mayor.spec";
+import type { MovimientoConCuenta, CierrePeriodo, MovimientoOCierre, CuentaCierreResumen } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../_types";
+
+interface CierreExportRow {
+  id: number;
+  fecha_desde: string;
+  fecha_hasta: string;
+  resumen: CuentaCierreResumen[] | string;
+  usuario_id: number;
+  usuario_nombre: string;
+  created_at: string;
+}
+
+interface MovimientoFechaRow {
+  fecha: string;
+}
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -57,7 +72,7 @@ export async function GET(request: Request) {
         ORDER BY fecha_hasta ASC
       `;
 
-      cierresEnRango = cierresRows.map((r: any) => ({
+      cierresEnRango = (cierresRows as CierreExportRow[]).map((r) => ({
         id: r.id,
         fecha_desde: r.fecha_desde,
         fecha_hasta: r.fecha_hasta,
@@ -78,7 +93,7 @@ export async function GET(request: Request) {
 
     // Intercalate ALL cierres whose fecha_hasta >= oldest movement date
     // Include cierres with fecha_hasta beyond the newest movement (same as page-1 fix)
-    const fechasMovimientos = rows.map((r: any) => r.fecha as string);
+    const fechasMovimientos = (rows as MovimientoFechaRow[]).map((r) => r.fecha);
     const fechaMinExport = fechasMovimientos.length ? fechasMovimientos[fechasMovimientos.length - 1] : null;
     const fechaMaxExport = fechasMovimientos.length ? fechasMovimientos[0] : null;
 
@@ -109,7 +124,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

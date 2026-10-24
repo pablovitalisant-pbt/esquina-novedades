@@ -3,11 +3,22 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import type { NotaBusquedaResult } from "@/docs/specs/caja-mayor.spec";
+import type { SessionUser } from "../_types";
 
-function guard(session: any) {
+interface NotaRow {
+  id: number;
+  fecha: string;
+  total: string;
+  total_pagado: string;
+  cliente_id: string;
+  nombre_cliente: string;
+}
+
+function guard(session: Session | null) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const rol = (session.user as any).rol;
+  const rol = (session.user as SessionUser).rol;
   if (rol !== "admin") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
@@ -58,7 +69,7 @@ export async function GET(request: Request) {
       LIMIT 10
     `;
 
-    const results: NotaBusquedaResult[] = rows.map((r: any) => ({
+    const results: NotaBusquedaResult[] = (rows as NotaRow[]).map((r) => ({
       id: r.id,
       fecha: r.fecha,
       total: parseFloat(r.total),
@@ -78,7 +89,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ data: results });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

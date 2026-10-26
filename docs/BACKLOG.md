@@ -33,8 +33,8 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 
 | # | Ítem | Por qué | Criterio de hecho | Estado |
 |---|------|---------|-------------------|--------|
-| B1 | Dominio `laesquinadelasnovedades.store` → Vercel | Slice 11. Necesita acceso a Namecheap (cuenta de la clienta) | Dominio con SSL sirviendo la app | ⬜ |
-| B2 | Actualizar URLs tras el dominio | `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL` (back_urls y `notification_url` de MP salen de ahí) y URL del webhook en MP | Variables + redeploy; pago de prueba redirige al dominio nuevo. Depende de B1 | ⬜ |
+| B1 | Dominio `laesquinadelasnovedades.store` → Vercel | Slice 11. Necesita acceso a Namecheap (cuenta de la clienta) | Dominio con SSL sirviendo la app | ✅ 2026-10-26: A @ 216.198.79.1, CNAME www → Vercel; www redirige 308 al dominio principal |
+| B2 | Actualizar URLs tras el dominio | `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL` (back_urls y `notification_url` de MP salen de ahí) y URL del webhook en MP | Variables + redeploy; pago de prueba redirige al dominio nuevo. Depende de B1 | ✅ 2026-10-26: NEXTAUTH_URL y NEXT_PUBLIC_SITE_URL = https://laesquinadelasnovedades.store |
 
 ## Bloque C — Depende de Paola (al final)
 
@@ -43,7 +43,7 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 | C1 | Rebranding final | Logo (PNG), colores, URLs de Facebook/Instagram/TikTok | Logo real en UI y PDF de notas (hoy wordmark de texto); tokens de color; redes enlazadas | 🟨 preparado: reemplazar `public/marca/*` y valores en `lib/empresa.ts` |
 | C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | ⬜ |
 | C3 | Usuarios | Nombres y emails de los 4 usuarios (2 Administración, 2 Ventas) | Usuarios creados; Paola entra con el suyo | ⬜ |
-| C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ⬜ |
+| C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ✅ 2026-10-26: app "La Esquina de las Novedades - Tienda" (8021659669573211) en la cuenta de La Esquina; webhook Modo productivo; pago real $2.490 (op. 185184493641) convertido con nota y cobro |
 | C5 | Boleta electrónica | Confirmar si la boleta de MP cubre las ventas online | Respuesta documentada (fuera del MVP) | ⬜ |
 | C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | 🟨 script listo: `npm run limpiar-prueba -- --host=<host> [--ejecutar]` (dry-run verificado en prod) |
 

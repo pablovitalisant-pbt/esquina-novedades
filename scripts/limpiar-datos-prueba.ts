@@ -7,6 +7,7 @@ export const PEDIDOS = [
   'afb8e9f4-0c9c-495d-9216-b1b4276b8613',
   'e14b5bf3-9b48-42ca-b25c-5581ba8259ce',
   '67181656-22d3-4a80-8f63-6efc18d3d45d',
+  'f715749f-2243-461e-b20c-4af74ad9d9ca', // pago real de validación en producción (2026-10-26)
 ];
 
 export const CODIGOS = ['DEMO-001', 'DEMO-002', 'DEMO-003', 'DEMO-004', 'DEMO-005'];

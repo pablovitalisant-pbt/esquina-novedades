@@ -61,3 +61,9 @@ describe('C6 — plan de limpieza de datos de prueba', () => {
     ]);
   });
 });
+
+test('incluye las notas manuales con productos DEMO aprobadas por Pablo', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { NOTAS_MANUALES } = require('../scripts/limpiar-datos-prueba');
+  expect(NOTAS_MANUALES).toEqual([4]);
+});

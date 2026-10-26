@@ -45,7 +45,7 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 | C3 | Usuarios | Nombres y emails de los 4 usuarios (2 Administración, 2 Ventas) | Usuarios creados; Paola entra con el suyo | ⬜ |
 | C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ✅ 2026-10-26: app "La Esquina de las Novedades - Tienda" (8021659669573211) en la cuenta de La Esquina; webhook Modo productivo; pago real $2.490 (op. 185184493641) convertido con nota y cobro |
 | C5 | Boleta electrónica | Confirmar si la boleta de MP cubre las ventas online | Respuesta documentada (fuera del MVP) | ⬜ |
-| C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | 🟨 script listo: `npm run limpiar-prueba -- --host=<host> [--ejecutar]` (dry-run verificado en prod) |
+| C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | ✅ 2026-10-26: ejecutado en producción (4 pedidos, 5 notas, 4 cobros, 2 clientes, 5 productos DEMO); respaldo previo en ~/.pbt-runner/respaldo-golive-2026-10-26.json. Se conservan usuarios, cuentas de caja, opciones de entrega y el catálogo NAVIDAD |
 
 ## Fuera de este proyecto (anotado para no perderlo)
 - Bazar Naty sigue en Next 14.2.35 con 2 vulnerabilidades críticas.

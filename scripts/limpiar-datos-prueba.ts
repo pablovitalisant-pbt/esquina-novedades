@@ -10,6 +10,9 @@ export const PEDIDOS = [
   'f715749f-2243-461e-b20c-4af74ad9d9ca', // pago real de validación en producción (2026-10-26)
 ];
 
+// Notas creadas a mano con productos DEMO (no vienen de un pedido online).
+export const NOTAS_MANUALES = [4];
+
 export const CODIGOS = ['DEMO-001', 'DEMO-002', 'DEMO-003', 'DEMO-004', 'DEMO-005'];
 
 const EMPRESA_ID = 1;
@@ -119,7 +122,7 @@ async function capturar(client: PoolClient): Promise<Ctx> {
        FROM public.pedidos WHERE id = ANY($1::uuid[])`,
     [PEDIDOS]
   );
-  const prenotas = unicos(ped.map((r) => r.prenota_id)).map(Number);
+  const prenotas = unicos([...ped.map((r) => Number(r.prenota_id)), ...NOTAS_MANUALES]);
   const clientes = unicos(ped.map((r) => r.cliente_id));
   const movimientos = unicos(ped.map((r) => r.caja_movimiento_id));
 

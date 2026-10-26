@@ -113,6 +113,8 @@ Iquique, Alto Hospicio y Arica.
   (por caja completa). `cantcaja` = unidades por caja.
 - La comisión de Mercado Pago la absorbe la tienda (precios ya la consideran).
 
+> **Decisión de Pablo (2026-10-26):** el precio mayorista es un **precio unitario rebajado** que aplica **desde 3 unidades**; no se vende por caja cerrada. Lo que sigue en §8.2/§8.3 sobre caja completa queda reemplazado por esta regla (slice A13 en `docs/BACKLOG.md`).
+
 ### 8.3 Mayorista vs detalle
 - Mayorista = compra de cajas completas. Detalle = compra por unidad.
 - Un solo inventario en unidades (`productos.saldo`). Una caja descuenta

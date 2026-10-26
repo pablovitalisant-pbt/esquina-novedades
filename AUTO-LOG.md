@@ -92,3 +92,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Verificación DT: mensajes de error y status HTTP idénticos (comparé los literales removidos vs agregados del diff; los 2 sin equivalente directo ahora se pasan como parámetro a `requiereAdmin`); 401 sin sesión / 403 no admin igual que antes.
 - Commit: (este)
 - Gates disparados: ninguno. Contador de slices desde el audit: 0.
+## 2026-10-26 - Go-live: dominio, Mercado Pago producción, limpieza e importación
+- Dominio laesquinadelasnovedades.store activo; NEXTAUTH_URL / NEXT_PUBLIC_SITE_URL actualizados.
+- MP producción: app 8021659669573211 (cuenta La Esquina), webhook Modo productivo; pago real $2.490 convertido con nota y cobro.
+- C6 ejecutado: base en cero (respaldo en ~/.pbt-runner/respaldo-golive-2026-10-26.json).
+- Importación: 68 productos desde "VENTAS AL DETALLE.xlsx" Hoja2 (script fuera del repo, ~/.pbt-runner/import-*.cjs), stock 0. Correcciones de Pablo: fila 70 MBC precio mayor 333 c/u; fila 71 detalle 10.000 / mayor 6.500. Excluidas: fila 26 (vendido), 61, 62, 73, 74 (sin precio), 75, 76 (sin código). 4 con precio mayor $0 importados sin precio mayor (filas 28, 35, 36, 37). Filas excluidas marcadas en rojo en el Excel de OneDrive.
+- Gates disparados: A13 (cambio de modelo de precio mayorista) requiere ciclo PBT-IA con contrato aprobado.

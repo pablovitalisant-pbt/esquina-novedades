@@ -29,6 +29,9 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 
 | A12 | **Decisión de producto pendiente:** costo de entrega en la nota de venta | Pedido `afb8e9f4…` (Delivery Iquique): pedido y cobro en caja = $56.990, pero la nota de venta #1 = $53.990 (no incluye los $3.000 de entrega). El PRD (§8.4/§8.5) no define dónde va ese costo | Pablo decide: (a) agregar línea "Despacho" a la nota al convertir, o (b) dejarlo fuera y registrarlo aparte. Luego ciclo PBT-IA | ✅ 2026-10-23 opción (a): línea Despacho |
 
+| A13 | **Mayorista por unidad desde 3 unidades** (decisión de Pablo 2026-10-26) | El precio mayor NO es por caja cerrada: es un precio unitario rebajado que aplica desde 3 unidades. La app hoy lo modela por caja (cantcaja + modalidad caja en tienda, notas y servidor), por eso la opción mayorista queda deshabilitada mientras `cantcaja` sea nulo | Notas de venta, tienda/carrito, cálculo server-side y preferencia MP aplican precio_mayor por unidad cuando cantidad ≥ 3; PRD §8.2/8.3 actualizado; tests | ⬜ |
+| A14 | Completar datos de productos | Stock inicial, costo (precio de compra: lo usan precio de catálogo e inversión en mercadería), categoría, stock mínimo y fotos (Cloudinary). Sin stock no aparecen en la tienda | Datos completos para los 68 productos | ⬜ |
+
 ## Bloque B — Infraestructura (no depende de Paola, sí de accesos)
 
 | # | Ítem | Por qué | Criterio de hecho | Estado |
@@ -41,7 +44,7 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 | # | Ítem | Qué falta de Paola | Criterio de hecho | Estado |
 |---|------|--------------------|-------------------|--------|
 | C1 | Rebranding final | Logo (PNG), colores, URLs de Facebook/Instagram/TikTok | Logo real en UI y PDF de notas (hoy wordmark de texto); tokens de color; redes enlazadas | 🟨 preparado: reemplazar `public/marca/*` y valores en `lib/empresa.ts` |
-| C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | ⬜ |
+| C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | 🟨 2026-10-26: 68 productos importados desde "VENTAS AL DETALLE.xlsx" (Hoja2): código, nombre, precio detalle y precio mayor POR UNIDAD (64; 4 venían en | C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | ⬜ |). 7 no importados (marcados en rojo en OneDrive). Faltan: stock, costo, categoría, stock mínimo, fotos |
 | C3 | Usuarios | Nombres y emails de los 4 usuarios (2 Administración, 2 Ventas) | Usuarios creados; Paola entra con el suyo | ⬜ |
 | C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ✅ 2026-10-26: app "La Esquina de las Novedades - Tienda" (8021659669573211) en la cuenta de La Esquina; webhook Modo productivo; pago real $2.490 (op. 185184493641) convertido con nota y cobro |
 | C5 | Boleta electrónica | Confirmar si la boleta de MP cubre las ventas online | Respuesta documentada (fuera del MVP) | ⬜ |

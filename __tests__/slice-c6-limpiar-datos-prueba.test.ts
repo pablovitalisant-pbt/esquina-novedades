@@ -50,6 +50,7 @@ describe('C6 — plan de limpieza de datos de prueba', () => {
       'afb8e9f4-0c9c-495d-9216-b1b4276b8613',
       'e14b5bf3-9b48-42ca-b25c-5581ba8259ce',
       '67181656-22d3-4a80-8f63-6efc18d3d45d',
+      'f715749f-2243-461e-b20c-4af74ad9d9ca',
     ]);
     expect(CODIGOS).toEqual([
       'DEMO-001',

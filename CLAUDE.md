@@ -1,3 +1,5 @@
+> **Al retomar el proyecto: lee primero `docs/TRASPASO-2026-10-28.md`.**
+
 # CLAUDE.md — La Esquina de las Novedades
 
 ERP + e-commerce para LA ESQUINA DE LAS NOVEDADES SPA (Iquique, Chile).

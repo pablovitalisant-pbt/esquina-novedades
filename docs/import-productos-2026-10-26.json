@@ -1,0 +1,530 @@
+{
+  "ok": [
+    {
+      "fila": 2,
+      "cod": "BH-7848",
+      "nom": "TRABA RUEDA",
+      "det": 15000,
+      "may": 10000
+    },
+    {
+      "fila": 3,
+      "cod": "MB-1",
+      "nom": "MOCHILA DE SEGURIDAD",
+      "det": 2990,
+      "may": 1500
+    },
+    {
+      "fila": 4,
+      "cod": "SH-309",
+      "nom": "PARLANTE INALAMBRICO",
+      "det": 7990,
+      "may": 3500
+    },
+    {
+      "fila": 5,
+      "cod": "C8491",
+      "nom": "CASCADA HOJAS CORRIENTE",
+      "det": 6990,
+      "may": 3500
+    },
+    {
+      "fila": 6,
+      "cod": "VD-027",
+      "nom": "HERVIDOR ELECTRICO 3 LITROS",
+      "det": 12990,
+      "may": 8500
+    },
+    {
+      "fila": 7,
+      "cod": "SET3R",
+      "nom": "SET DE 3 REGALOS",
+      "det": 19900,
+      "may": 16000
+    },
+    {
+      "fila": 8,
+      "cod": "AD9115",
+      "nom": "SET DE ADORNOS",
+      "det": 9900,
+      "may": 7000
+    },
+    {
+      "fila": 9,
+      "cod": "AD9003",
+      "nom": "SET DE 6 CARAMELOS",
+      "det": 2990,
+      "may": 2000
+    },
+    {
+      "fila": 10,
+      "cod": "ADYQ008",
+      "nom": "CINTA NAVIDEÑA",
+      "det": 4990,
+      "may": 3500
+    },
+    {
+      "fila": 11,
+      "cod": "CIN 041-24",
+      "nom": "CINTA DECORATIVA NAVIDEÑA",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 12,
+      "cod": "BH-6997",
+      "nom": "TARJETAS NAVIDEÑAS 128 PCS",
+      "det": 5000,
+      "may": 3330
+    },
+    {
+      "fila": 13,
+      "cod": "VIL 2539-F",
+      "nom": "VILLA NAVIDEÑA MUSICAL",
+      "det": 22000,
+      "may": 19000
+    },
+    {
+      "fila": 14,
+      "cod": "AD ESF 15 CM",
+      "nom": "ESFERAS NAVIDEÑAS 15 CM",
+      "det": 9900,
+      "may": 6500
+    },
+    {
+      "fila": 15,
+      "cod": "BH-8329",
+      "nom": "FAROL MUSICAL",
+      "det": 14990,
+      "may": 12000
+    },
+    {
+      "fila": 16,
+      "cod": "ST0162THA",
+      "nom": "INDIVIDUALES NAVIDEÑOS",
+      "det": 5990,
+      "may": 4000
+    },
+    {
+      "fila": 17,
+      "cod": "AD-2561",
+      "nom": "ADORNO NAVIDEÑOS 16 PCS",
+      "det": 11900,
+      "may": 8000
+    },
+    {
+      "fila": 18,
+      "cod": "BN-5372",
+      "nom": "COPOS DE NIEVE SOLAR",
+      "det": 2990,
+      "may": 1500
+    },
+    {
+      "fila": 19,
+      "cod": "VIL2537-F",
+      "nom": "VILLA MUSICAL NAVIDEÑA",
+      "det": 29900,
+      "may": 25000
+    },
+    {
+      "fila": 20,
+      "cod": "CERA 2516",
+      "nom": "AZUCARERO NAVIDEÑO",
+      "det": 5990,
+      "may": 4500
+    },
+    {
+      "fila": 21,
+      "cod": "CERA 2507",
+      "nom": "MANTEQUILLERO NAVIDAD",
+      "det": 6990,
+      "may": 4500
+    },
+    {
+      "fila": 22,
+      "cod": "CERA 2504",
+      "nom": "SET TAZAS NAVIDAD",
+      "det": 10000,
+      "may": 7500
+    },
+    {
+      "fila": 23,
+      "cod": "BN-5342",
+      "nom": "SET 4 PATITAS SOLAR",
+      "det": 5000,
+      "may": 3000
+    },
+    {
+      "fila": 24,
+      "cod": "VIL2540-F",
+      "nom": "VILLA MUSICAL NAVIDEÑA",
+      "det": 24990,
+      "may": 20000
+    },
+    {
+      "fila": 25,
+      "cod": "VIL 2543-F",
+      "nom": "VILLA MUSICAL NAVIDEÑA",
+      "det": 22900,
+      "may": 18000
+    },
+    {
+      "fila": 27,
+      "cod": "CRIL-22542",
+      "nom": "TREN CON LUZ",
+      "det": 15000,
+      "may": 12000
+    },
+    {
+      "fila": 28,
+      "cod": "PLC1014",
+      "nom": "MINI VILLA NAVDEÑA",
+      "det": 10000,
+      "may": null,
+      "nota": "precio mayor $0 en el Excel → sin precio mayor"
+    },
+    {
+      "fila": 29,
+      "cod": "MURO200-1",
+      "nom": "TELON NAVIDEÑO",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 30,
+      "cod": "MURO200-2",
+      "nom": "TELON NAVIDEÑO",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 31,
+      "cod": "MURO200-3",
+      "nom": "TELON NAVIDEÑO",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 32,
+      "cod": "MURO200-4",
+      "nom": "TELON NAVIDEÑO",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 33,
+      "cod": "MURO200-5",
+      "nom": "TELON NAVIDEÑO",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 34,
+      "cod": "BN-5364",
+      "nom": "ARBOL DE LOS DESEOS",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 35,
+      "cod": "VIL 2537",
+      "nom": "VILLA NAVIDEÑAS",
+      "det": 30000,
+      "may": null,
+      "nota": "precio mayor $0 en el Excel → sin precio mayor"
+    },
+    {
+      "fila": 36,
+      "cod": "VIL 2538",
+      "nom": "VILLA NAVIDEÑAS",
+      "det": 30000,
+      "may": null,
+      "nota": "precio mayor $0 en el Excel → sin precio mayor"
+    },
+    {
+      "fila": 37,
+      "cod": "VIL 2521-F",
+      "nom": "TRINEO CON LUCES",
+      "det": 18900,
+      "may": null,
+      "nota": "precio mayor $0 en el Excel → sin precio mayor"
+    },
+    {
+      "fila": 38,
+      "cod": "LN-115",
+      "nom": "CORTINAS ELECTRICAS 3*2",
+      "det": 7990,
+      "may": 4500
+    },
+    {
+      "fila": 39,
+      "cod": "LN-101",
+      "nom": "LUZ SOLAR 20 METROS CALIDO",
+      "det": 5900,
+      "may": 3500
+    },
+    {
+      "fila": 40,
+      "cod": "LN-103",
+      "nom": "LUZ SOLAR 30 METROS CALIDO",
+      "det": 7900,
+      "may": 5500
+    },
+    {
+      "fila": 41,
+      "cod": "LN-105",
+      "nom": "LUZ SOLAR 40 METROS CALIDO",
+      "det": 9900,
+      "may": 7500
+    },
+    {
+      "fila": 42,
+      "cod": "LN-125",
+      "nom": "CASCADA CORRIENTE 3 M",
+      "det": 4900,
+      "may": 2500
+    },
+    {
+      "fila": 43,
+      "cod": "LN-127",
+      "nom": "CASCADA CORRIENTE 6M",
+      "det": 6900,
+      "may": 4000
+    },
+    {
+      "fila": 44,
+      "cod": "LN-129",
+      "nom": "CASCADA CORRIENTE 8M",
+      "det": 8900,
+      "may": 4500
+    },
+    {
+      "fila": 45,
+      "cod": "LN-131",
+      "nom": "CASCADA CORRIENTE 10M",
+      "det": 9900,
+      "may": 5500
+    },
+    {
+      "fila": 46,
+      "cod": "LN-126",
+      "nom": "CASCADA CORRENTE 3M AZUL",
+      "det": 4900,
+      "may": 2500
+    },
+    {
+      "fila": 47,
+      "cod": "LN-128",
+      "nom": "CASCADA CORRIENTE 6 MT AZUL",
+      "det": 6900,
+      "may": 4000
+    },
+    {
+      "fila": 48,
+      "cod": "LN-130",
+      "nom": "CASCADAS CORRIENTE AZUL 8M AZUL",
+      "det": 8900,
+      "may": 4500
+    },
+    {
+      "fila": 49,
+      "cod": "LN-132",
+      "nom": "CASCADA CORRIENTE AZUL 10M",
+      "det": 9900,
+      "may": 5500
+    },
+    {
+      "fila": 50,
+      "cod": "LN-111",
+      "nom": "LUZ LINEAL MUSICAL 400F",
+      "det": 7900,
+      "may": 4500
+    },
+    {
+      "fila": 51,
+      "cod": "LN-112",
+      "nom": "LUZ LINEAL MUSICAL C 500F",
+      "det": 8900,
+      "may": 5500
+    },
+    {
+      "fila": 52,
+      "cod": "LN-107",
+      "nom": "LUZ SOLAR LINEAL C 50 METROS",
+      "det": 11000,
+      "may": 8500
+    },
+    {
+      "fila": 53,
+      "cod": "LN-117",
+      "nom": "CASCADA SOLAR 3 M CALIDA",
+      "det": 4900,
+      "may": 2500
+    },
+    {
+      "fila": 54,
+      "cod": "LN-119",
+      "nom": "CASCADA SOLAR6M CALIDA",
+      "det": 6900,
+      "may": 4000
+    },
+    {
+      "fila": 55,
+      "cod": "LN-121",
+      "nom": "CASCADA SOLAR 8 M CALIDA",
+      "det": 8900,
+      "may": 4500
+    },
+    {
+      "fila": 56,
+      "cod": "LN-123",
+      "nom": "CASCADA SOLAR 10 M CALIDA",
+      "det": 9900,
+      "may": 5500
+    },
+    {
+      "fila": 57,
+      "cod": "LN-118",
+      "nom": "CASCADA SOLAR 3 M AZUL",
+      "det": 4900,
+      "may": 2500
+    },
+    {
+      "fila": 58,
+      "cod": "LN-120",
+      "nom": "CASCADA SOLAR 6M AZUL",
+      "det": 6900,
+      "may": 4000
+    },
+    {
+      "fila": 59,
+      "cod": "LN-122",
+      "nom": "CASCADA SOLAR 8 M AZUL",
+      "det": 8900,
+      "may": 4500
+    },
+    {
+      "fila": 60,
+      "cod": "LN-124",
+      "nom": "CASCADA SOLAR 10 M AZUL",
+      "det": 9900,
+      "may": 5500
+    },
+    {
+      "fila": 63,
+      "cod": "HY1241",
+      "nom": "OJOS LED AUTO",
+      "det": 18900,
+      "may": 13000
+    },
+    {
+      "fila": 64,
+      "cod": "Y7548",
+      "nom": "MANGUERAS 10 M CALIDAS",
+      "det": 7000,
+      "may": 4000
+    },
+    {
+      "fila": 65,
+      "cod": "LN C8M",
+      "nom": "CASCADA LED 8 M CALIDA MULTICOLOR",
+      "det": 8900,
+      "may": 4500
+    },
+    {
+      "fila": 66,
+      "cod": "BB-3D",
+      "nom": "BOTAS DORADAS 3 D",
+      "det": 2990,
+      "may": 1500
+    },
+    {
+      "fila": 67,
+      "cod": "AD86128T",
+      "nom": "ESFERAS NAVIDEÑAS 6 CM CELESTE",
+      "det": 2990,
+      "may": 1500
+    },
+    {
+      "fila": 68,
+      "cod": "AD86107",
+      "nom": "ESFERAS NAVIDEÑAS 6 CM COLORES",
+      "det": 2990,
+      "may": 1500
+    },
+    {
+      "fila": 69,
+      "cod": "WMXSD-12A",
+      "nom": "FUNDAS DE PUERTA NAVIDEÑA",
+      "det": 4990,
+      "may": 3000
+    },
+    {
+      "fila": 70,
+      "cod": "MBC",
+      "nom": "BOTAS CASCABEL",
+      "det": 1000,
+      "may": 333,
+      "nota": "mayor \"12*5000\" → 333 c/u según Pablo"
+    },
+    {
+      "fila": 71,
+      "cod": "2023133",
+      "nom": "ARBOL ESTRELLA NAVIDEÑO LED",
+      "det": 10000,
+      "may": 6500,
+      "nota": "precios invertidos según Pablo"
+    },
+    {
+      "fila": 72,
+      "cod": "CM-35180CM",
+      "nom": "CAMINO DE MESA 35*180",
+      "det": 2990,
+      "may": 1500
+    }
+  ],
+  "no": [
+    {
+      "fila": 26,
+      "cod": "VIL 2521-F",
+      "nom": "RENO MUSICAL",
+      "motivo": "vendido (decisión de Pablo)"
+    },
+    {
+      "fila": 61,
+      "cod": "ZG-9502",
+      "nom": "MALLAS 192 LUCES ELECTRICA",
+      "motivo": "sin precio"
+    },
+    {
+      "fila": 62,
+      "cod": "ZG-9501",
+      "nom": "MALLAS144 LUCES ELECTRICAS",
+      "motivo": "sin precio"
+    },
+    {
+      "fila": 73,
+      "cod": "6476-7150CM",
+      "nom": "ARBOL NAVIDAD LED ESTRELLA",
+      "motivo": "sin precio"
+    },
+    {
+      "fila": 74,
+      "cod": "6476-8180CM",
+      "nom": "ARBOL NAVIDAD LED ESTRELLA",
+      "motivo": "sin precio"
+    },
+    {
+      "fila": 75,
+      "cod": null,
+      "nom": "ARBOL MULTICOLOR LED",
+      "motivo": "sin código"
+    },
+    {
+      "fila": 76,
+      "cod": null,
+      "nom": "ARBOL MULTICOLOR LED",
+      "motivo": "sin código"
+    }
+  ]
+}

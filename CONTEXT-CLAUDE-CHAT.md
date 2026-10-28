@@ -103,3 +103,6 @@ Pendientes:
 ## Contador de slices desde el último ponytail audit (vigente)
 
 0 — último audit: 2026-10-23 (`docs/audits/ponytail-audit-2026-10-23b.md`), con slice de limpieza aplicado.
+
+## Estado al 2026-10-28
+Ver `docs/TRASPASO-2026-10-28.md` (vigente): app en uso real, P0 mayorista abierto, siguientes A13, A14, C1.

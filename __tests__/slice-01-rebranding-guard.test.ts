@@ -37,9 +37,10 @@ describe('Slice 1: rebranding Chile', () => {
     expect(EMPRESA.whatsappUrl).toBe('https://wa.me/56973409133');
   });
 
-  test('logo y logoNota son null hasta recibir los assets de Paola', () => {
-    expect(EMPRESA.logo).toBeNull();
-    expect(EMPRESA.logoNota).toBeNull();
+  test('logo, logoGrande y logoNota apuntan a los assets de public/marca', () => {
+    expect(EMPRESA.logo).toBe('/marca/logo-320.webp');
+    expect(EMPRESA.logoGrande).toBe('/marca/logo-640.webp');
+    expect(EMPRESA.logoNota).toBe('/marca/logo-nota.png');
   });
 
   test('redes sin URL por defecto (no se renderizan)', () => {

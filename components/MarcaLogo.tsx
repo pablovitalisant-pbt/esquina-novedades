@@ -7,7 +7,7 @@ export function MarcaLogo({
   logo = EMPRESA.logo,
   nombre = EMPRESA.nombre,
   className = 'font-extrabold text-xl tracking-tight text-[var(--primary)]',
-  logoClassName = 'h-8 w-auto',
+  logoClassName = 'h-10 w-auto',
 }: {
   logo?: string | null;
   nombre?: string;
@@ -15,8 +15,17 @@ export function MarcaLogo({
   logoClassName?: string;
 }) {
   if (logo) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logo} alt={nombre} className={logoClassName} />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logo}
+        alt={nombre}
+        width={320}
+        height={149}
+        decoding="async"
+        className={logoClassName}
+      />
+    );
   }
   return <span className={className}>{nombre}</span>;
 }

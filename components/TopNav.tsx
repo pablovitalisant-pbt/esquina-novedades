@@ -80,7 +80,7 @@ export function TopNav() {
       <div className="container flex h-16 max-w-7xl items-center justify-between mx-auto px-4">
         <div className="flex items-center gap-8">
           <Link href={logoHref} className="shrink-0">
-            <MarcaLogo />
+            <MarcaLogo logoClassName="h-10 w-auto max-w-[200px]" />
           </Link>
           <nav className="flex items-center space-x-1">
 

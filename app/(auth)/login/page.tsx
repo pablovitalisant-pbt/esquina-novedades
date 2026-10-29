@@ -44,7 +44,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="space-y-3">
-            <CardTitle className="text-2xl font-bold text-center">{EMPRESA.nombre}</CardTitle>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={EMPRESA.logoGrande}
+              alt={EMPRESA.nombre}
+              width={640}
+              height={297}
+              decoding="async"
+              className="mx-auto h-24 w-auto"
+            />
+            <CardTitle className="sr-only">{EMPRESA.nombre}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -593,16 +593,21 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     doc.setFillColor(...ACENTO);
     doc.rect(0, 0, pageWidth, 4, 'F');
 
-    // Logo opcional: si Paola entrega PNG, se enchufa en EMPRESA.logoNota.
-    // Sin logo: wordmark de texto (comportamiento actual).
+    // Logo oficial (PNG 400x186 → 30x14 mm, misma proporción). Si falla el
+    // fetch o no hay logo, cae al wordmark de texto.
+    let logoDibujado = false;
     if (EMPRESA.logoNota) {
       try {
         const res = await fetch(EMPRESA.logoNota);
-        if (res.ok) doc.addImage(await blobToDataURL(await res.blob()), 'PNG', 14, 12, 30, 12);
+        if (res.ok) {
+          doc.addImage(await blobToDataURL(await res.blob()), 'PNG', 14, 12, 30, 14);
+          logoDibujado = true;
+        }
       } catch {
         // Fallback silencioso al wordmark de abajo.
       }
-    } else {
+    }
+    if (!logoDibujado) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.setTextColor(...TINTA);
@@ -611,9 +616,9 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...TINTA);
-    doc.text(EMPRESA.razonSocial, 14, 26);
-    doc.text(EMPRESA.direccion, 14, 31);
-    doc.text(EMPRESA.ciudad, 14, 36);
+    doc.text(EMPRESA.razonSocial, 14, 31);
+    doc.text(EMPRESA.direccion, 14, 36);
+    doc.text(EMPRESA.ciudad, 14, 41);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.setTextColor(...TINTA);

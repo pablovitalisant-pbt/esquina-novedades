@@ -7,9 +7,9 @@ export const EMPRESA = {
   horario: '11:00 a 20:00',
   whatsapp: '+56 9 7340 9133',
   whatsappUrl: 'https://wa.me/56973409133',
-  // Hasta que Paola entregue PNG: se usa el wordmark de texto actual.
-  logo: null,
-  logoNota: null,
+  logo: '/marca/logo-320.webp',
+  logoGrande: '/marca/logo-640.webp',
+  logoNota: '/marca/logo-nota.png',
   redes: { facebook: '', instagram: '', tiktok: '' },
   colores: {
     primario: '#590078',

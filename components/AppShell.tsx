@@ -21,7 +21,7 @@ export function AppShell({ children, session }: { children: React.ReactNode, ses
           <Link href={
             session?.user?.rol === 'bodeguero' ? '/bodega' : '/precios'
           } className="shrink-0">
-            <MarcaLogo />
+            <MarcaLogo logoClassName="h-9 w-auto max-w-[170px]" />
           </Link>
           <AlertasBell />
         </header>

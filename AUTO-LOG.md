@@ -149,3 +149,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Shrinks: `ProductoTienda` sin `cantcaja`/`umed`; `ProductoTarjeta = Pick<...>`; `filtrarProductos` compartido; un solo `type Props` en `TiendaPortada`; `botonCategoria` sin export; CSS muerto fuera; ambos `href="/productos"` → `/`.
 - Tests collateral ajustados (no listados en 13 pero obligados por el borrado): slice3b (caso LandingPage eliminado), slice2a-clp (lista), tienda-modalidad (reapuntado a TarjetaProductoTienda), slice6-paleta (aserto `.landing-page` fuera), slice8a-portada-page y productos-softdelete (ya no asumen `getProductosTienda` en `/productos`), slice8a-tienda-portada (tipo sin cantcaja/umed).
 - Verificación: tsc 0; lint 0/0; jest 229/229 suites, 1913/1913 tests; build OK. Contador de slices desde el audit: 0.
+## 2026-10-29 - logo1: logo oficial conectado (header, login, PDF)
+- Assets de Pablo en public/marca: logo-320.webp (nav), logo-640.webp (login), logo-nota.png (PDF, jsPDF no acepta webp).
+- empresa.ts: logo/logoGrande/logoNota con rutas reales. MarcaLogo: img con width 320 height 149 + decoding async; default h-10 w-auto. Tamanos: TopNav h-10, AppShell movil h-9, TiendaHeader h-10/h-12 (sm), pedido h-10, login h-24. max-w por header para no empujar botones.
+- PDF nota: logo 30x14 mm (proporcion 400x186 ≈2.15) y razonSocial/direccion/ciudad bajados a y=31/36/41; fallback de texto si el fetch falla. No hay otros generadores con hueco de logo.
+- Tests ajustados (asumian logo null): marca, slice-01-guard, appshell-smoke, nav-mvp, notas-venta-exportar-pdf (path del fetch + addImage), compartir-whatsapp, slice5cd. Nuevo test de proporcion ~2.15.
+- Verificacion: tsc 0; lint 0/0; jest 229/229 suites, 1915/1915 tests; build OK.

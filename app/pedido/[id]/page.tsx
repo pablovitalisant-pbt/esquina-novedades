@@ -120,7 +120,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
 
       <header className="border-b border-[var(--border-default)]">
         <div className="mx-auto flex h-16 items-center justify-between gap-4 px-6" style={{ maxWidth: '1152px' }}>
-          <MarcaLogo className="text-lg font-bold text-[var(--heading)]" />
+          <MarcaLogo className="text-lg font-bold text-[var(--heading)]" logoClassName="h-10 w-auto max-w-[200px]" />
           <Link href="/" className="inline-flex items-center gap-1 text-sm text-[var(--body-subtle)] transition-colors hover:text-[var(--primary)]">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Volver a la tienda

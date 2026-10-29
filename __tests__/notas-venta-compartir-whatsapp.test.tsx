@@ -65,7 +65,7 @@ function mockFetchBase() {
     if (url === '/api/caja/config') {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: { valor: '1200' } }) });
     }
-    if (typeof url === 'string' && url === '/logo-nota-venta.png') {
+    if (typeof url === 'string' && url === '/marca/logo-nota.png') {
       return Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['logo'])) });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });

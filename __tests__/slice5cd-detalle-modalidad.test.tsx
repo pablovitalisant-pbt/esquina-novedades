@@ -66,7 +66,7 @@ function mockFetch(items: any[], extra: any = {}) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: '1', titulo: 'Nota', estado: 'activa', saldo_pendiente: 0, total_pagado: 0, items, ...extra }) });
     }
     if (url === '/api/caja/config') return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: { valor: '0' } }) });
-    if (url === '/logo-nota-venta.png') return Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['x'])) });
+    if (url === '/marca/logo-nota.png') return Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['x'])) });
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   }) as any;
 }

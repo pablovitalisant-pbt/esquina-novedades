@@ -78,7 +78,7 @@ function mockFetchConImagenes(opcion: 'ok' | 'falla' | 'sin-imagen', dolar: stri
     if (url === '/api/caja/config') {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: { valor: dolar } }) });
     }
-    if (typeof url === 'string' && url === '/logo-nota-venta.png') {
+    if (typeof url === 'string' && url === '/marca/logo-nota.png') {
       // Logo del header: fetch → blob (mismo patrón que share-image)
       return Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['logo'])) });
     }
@@ -157,27 +157,37 @@ describe('exportarPDF — logo, dirección e imágenes', () => {
       (c: any[]) => typeof c[0] === 'string' && c[0].startsWith('/api/share-image')
     );
     expect(shareCalls.length).toBe(0);
-    // Sin logo ni imágenes de producto: no se dibuja ninguna imagen.
-    expect(addImage).not.toHaveBeenCalled();
+    // Sin imágenes de producto, la única imagen es el logo del header.
+    expect(addImage).toHaveBeenCalledTimes(1);
   });
 
-  // R1b: wordmark de texto + dirección en el header (sin logo PNG)
-  it('R1b: escribe nombre y dirección en el header', async () => {
+  // R1b: logo en el header + dirección debajo (el wordmark de texto ya no va)
+  it('R1b: dibuja el logo y escribe la dirección en el header', async () => {
     await renderNota(mockFetchConImagenes('ok'));
 
     fireEvent.click(screen.getByText('Exportar PDF'));
 
     await waitFor(() => {
       const todos = text.mock.calls.map((c: any[]) => c[0]);
-      expect(todos).toContain('La Esquina de las Novedades');
       expect(todos).toContain('Avenida Aeropuerto 2860');
+      expect(addImage).toHaveBeenCalledTimes(1);
     });
     // Esperar la finalización del exportPDF para que su async no filtre
     // /api/share-image al global.fetch del siguiente test.
     await waitFor(() => expect(save).toHaveBeenCalled());
   });
-});
 
+  // Fase B: el logo respeta la proporción del PNG 400x186 (~2.15) — no se estira.
+  it('logo del PDF se dibuja con proporción ~2.15 (400x186)', async () => {
+    await renderNota(mockFetchConImagenes('ok'));
+    fireEvent.click(screen.getByText('Exportar PDF'));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+
+    const logo = addImage.mock.calls.find((c: any[]) => c[2] === 14 && c[3] === 12);
+    expect(logo).toBeTruthy();
+    expect(Math.abs(logo![4] / logo![5] - 2.15)).toBeLessThan(0.1);
+  });
+});
 describe('exportarPDF — montos en CLP', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -323,7 +333,7 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     // "Firma autorizada" fue eliminada del contrato visual (no estaba en el pedido)
     expect(todos).not.toContain('Firma autorizada');
     expect(todos).toContain('+56 9 7340 9133');
-    expect(todos).toContain('La Esquina de las Novedades');
+    expect(todos).toContain('LA ESQUINA DE LAS NOVEDADES SPA');
     expect(todos).toContain('Avenida Aeropuerto 2860');
     expect(todos).toContain('Iquique');
     expect(todos).toContain('11:00 a 20:00');

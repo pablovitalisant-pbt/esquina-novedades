@@ -24,7 +24,7 @@ export function TiendaHeader({
         <Link href="/" className="flex items-center gap-2 shrink-0 min-w-0">
           <MarcaLogo
             className="font-serif text-base sm:text-xl font-bold text-[#F2B936] leading-tight truncate"
-            logoClassName="h-8 w-auto"
+            logoClassName="h-10 w-auto max-w-[150px] sm:h-12 sm:max-w-[220px]"
           />
         </Link>
 

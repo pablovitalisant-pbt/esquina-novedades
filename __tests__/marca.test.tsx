@@ -13,10 +13,18 @@ import { EMPRESA } from '@/lib/empresa';
 import manifest from '@/app/manifest';
 
 describe('MarcaLogo', () => {
-  test('con logo renderiza <img> con alt accesible', () => {
+  test('con logo renderiza <img> con alt, src y dimensiones intrínsecas', () => {
     render(<MarcaLogo logo="/marca/logo.png" />);
     const img = screen.getByRole('img', { name: EMPRESA.nombre });
     expect(img).toHaveAttribute('src', '/marca/logo.png');
+    expect(img).toHaveAttribute('width', '320');
+    expect(img).toHaveAttribute('height', '149');
+    expect(img).toHaveAttribute('decoding', 'async');
+  });
+
+  test('por defecto usa EMPRESA.logo', () => {
+    render(<MarcaLogo />);
+    expect(screen.getByRole('img', { name: EMPRESA.nombre })).toHaveAttribute('src', EMPRESA.logo);
   });
 
   test('sin logo cae al wordmark de texto actual', () => {

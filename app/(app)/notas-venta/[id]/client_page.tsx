@@ -15,7 +15,7 @@ import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
-import { EMPRESA } from '@/lib/empresa';
+import { EMPRESA, hexToRgb, hexToArgb } from '@/lib/empresa';
 
 // Convierte un Blob (de /api/share-image) a data URL base64 para doc.addImage.
 function blobToDataURL(blob: Blob): Promise<string> {
@@ -28,12 +28,12 @@ function blobToDataURL(blob: Blob): Promise<string> {
 }
 
 // Colores de marca para jsPDF (no lee CSS vars): hex de EMPRESA → [r, g, b].
-function hexToRgb(hex: string): [number, number, number] {
-  const n = parseInt(hex.replace('#', ''), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
+const PRIMARIO = hexToRgb(EMPRESA.colores.primario);
 const ACENTO = hexToRgb(EMPRESA.colores.acento);
 const TINTA = hexToRgb(EMPRESA.colores.tinta);
+const FONDO_SUAVE = hexToRgb(EMPRESA.colores.fondoSuave);
+const TEXTO_CLARO = hexToRgb(EMPRESA.colores.textoClaro);
+const BORDE = hexToRgb(EMPRESA.colores.borde);
 
 type PrenotaItem = {
   id: string;
@@ -550,10 +550,17 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
 
     const ExcelJS = await import('exceljs');
     const wb = new ExcelJS.Workbook();
+    const borde = { style: 'thin' as const, color: { argb: hexToArgb(EMPRESA.colores.borde) } };
     const addSheet = (name: string, rows: Record<string, unknown>[]) => {
       const ws = wb.addWorksheet(name);
       ws.columns = Object.keys(rows[0]).map(k => ({ header: k, key: k }));
       ws.addRows(rows);
+      // Encabezado de tabla: violeta de marca + texto claro, legible al imprimir.
+      ws.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: hexToArgb(EMPRESA.colores.primario) } };
+        cell.font = { color: { argb: hexToArgb(EMPRESA.colores.textoClaro) }, bold: true };
+        cell.border = { top: borde, left: borde, bottom: borde, right: borde };
+      });
     };
     addSheet('Info', infoRows);
     addSheet('Items', toRows(prenota.items));
@@ -580,7 +587,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
       day: '2-digit', month: 'long', year: 'numeric'
     });
 
-    // ─── Header: banda --accent (#FFB612) + logo/marca a la izquierda y
+    // ─── Header: banda --accent (#F2B936) + logo/marca a la izquierda y
     //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).
     // Sin logo: wordmark de texto hasta recibir el logo de la clienta (PRD 10.4).
     doc.setFillColor(...ACENTO);
@@ -603,7 +610,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     }
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
+    doc.setTextColor(...TINTA);
     doc.text(EMPRESA.razonSocial, 14, 26);
     doc.text(EMPRESA.direccion, 14, 31);
     doc.text(EMPRESA.ciudad, 14, 36);
@@ -619,10 +626,10 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     const leftBoxW = 96;
     const rightBoxW = 62;
     const rightBoxX = pageWidth - 14 - rightBoxW;
-    doc.setFillColor(250, 236, 218); // brand-soft
+    doc.setFillColor(...FONDO_SUAVE); // fondo suave de marca
     doc.roundedRect(14, infoY, leftBoxW, boxH, 2, 2, 'F');
     doc.roundedRect(rightBoxX, infoY, rightBoxW, boxH, 2, 2, 'F');
-    doc.setTextColor(79, 76, 77); // --body sólido (#231F20CC)
+    doc.setTextColor(...TINTA);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.text('Nota de venta para:', 20, infoY + 8);
@@ -683,14 +690,14 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
       ]],
       showFoot: 'lastPage', // fix duplicación: el foot solo se pinta en la última página
       footStyles: {
-        fillColor: ACENTO, // --accent #FFB612, mismo color que la caja de Total
-        textColor: TINTA,   // --heading
+        fillColor: ACENTO, // oro de marca, mismo color que la caja de Total
+        textColor: TINTA,
         fontStyle: 'bold',
         fontSize: 10,
       },
-      styles: { fontSize: 9, cellPadding: 3, fontStyle: 'bold' },
-      headStyles: { fillColor: [31, 41, 55], textColor: 255, fontSize: 9, fontStyle: 'bold' }, // dark + blanco
-      alternateRowStyles: { fillColor: [243, 244, 246] },       // zebra (neutral-tertiary light)
+      styles: { fontSize: 9, cellPadding: 3, fontStyle: 'bold', textColor: TINTA, lineColor: BORDE, lineWidth: 0.1 },
+      headStyles: { fillColor: PRIMARIO, textColor: TEXTO_CLARO, fontSize: 9, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: FONDO_SUAVE },
       columnStyles: {
         0: { cellWidth: 18 },            // Imagen — ancho fijo (BUG-039)
         1: { cellWidth: 24, halign: 'left' },
@@ -742,7 +749,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
       finalY = 20;
     }
 
-    doc.setFillColor(...ACENTO); // --accent #FFB612
+    doc.setFillColor(...ACENTO); // oro de marca
     doc.rect(totalBoxX, finalY, totalBoxW, 14, 'F');
     doc.setTextColor(...TINTA); // --heading
     doc.setFont('helvetica', 'bold');
@@ -769,7 +776,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     // acumulado — con pocos ítems quedaba "flotando" en el medio de la hoja).
     // footerBandH/footerBandY ya se declararon arriba (BUG-062) para medir el
     // espacio del bloque de totales.
-    doc.setFillColor(...ACENTO); // --accent #FFB612
+    doc.setFillColor(...ACENTO); // oro de marca
     doc.rect(0, footerBandY, pageWidth, footerBandH, 'F');
     doc.setTextColor(...TINTA); // --heading
     doc.setFontSize(8);

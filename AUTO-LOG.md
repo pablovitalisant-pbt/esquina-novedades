@@ -135,3 +135,6 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Base: DNA de marca de Paola (violeta noche #21002F, morado #590078, oro #F2B936, champagne, blanco cálido; fucsia solo acentos). Tokens claro/oscuro en globals.css; oscuro con fondo/tarjeta/panel/borde/input diferenciados; 16 clases de color fijas reemplazadas por tokens; empresa.ts y manifest con colores de marca.
 - Tests: 6 rojos antes (tokens, contraste WCAG por pares, clases fijas). Suite 228/228, 1953/1953; tsc 0; lint 0/0; build OK (verificado por el DT).
 - Verificación visual DT: build servido localmente contra la BD de test (usuario QA y 6 productos QA-* creados solo en test-integration), revisado en claro y oscuro (login, precios, tienda, notas). Encontrado y corregido: texto oscuro sobre degradado violeta en oscuro y botón secundario fucsia → texto #FFF8EA y secundario dorado.
+## 2026-10-29 - Slice 7: archivos generados con colores de marca
+- PDF y Excel de notas, Excel de Caja Mayor, QR de catálogo e impresión usan EMPRESA.colores (+ tokens de archivo y helpers hexToRgb/hexToArgb). Sin colores de la paleta vieja en generadores (grep verificado por el DT).
+- Tests: 8 rojos + 1 suite antes; suite 230/230, 1968/1968; tsc 0; lint 0/0; build OK (verificado por el DT).

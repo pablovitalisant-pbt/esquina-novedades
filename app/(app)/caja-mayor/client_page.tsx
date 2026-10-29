@@ -8,10 +8,20 @@ import { toast } from "sonner";
 import { Loader2, Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCLP } from "@/lib/utils";
-import { EMPRESA } from "@/lib/empresa";
+import { EMPRESA, hexToArgb } from "@/lib/empresa";
 import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
 
 import type { Cuenta } from '@/types';
+
+// Paleta de marca para el Excel (exceljs usa ARGB).
+const COLOR_EXCEL = {
+  encabezado: hexToArgb(EMPRESA.colores.primario),
+  textoClaro: hexToArgb(EMPRESA.colores.textoClaro),
+  tinta: hexToArgb(EMPRESA.colores.tinta),
+  violetaSuave: hexToArgb(EMPRESA.colores.violetaSuave),
+  champagne: hexToArgb(EMPRESA.colores.champagne),
+  borde: hexToArgb(EMPRESA.colores.borde),
+} as const;
 
 type FormaPago = MovimientoConCuenta["forma_pago"];
 
@@ -556,27 +566,29 @@ export function CajaMayorClient({
         { header: "Crédito", key: "Crédito", width: 8 },
       ];
 
-      // Style: header row — orange bg, black bold text
+      // Encabezado: violeta de marca + texto claro.
+      const borde = { style: "thin" as const, color: { argb: COLOR_EXCEL.borde } };
       const headerRow = ws.getRow(1);
       headerRow.eachCell((cell) => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF9900" } };
-        cell.font = { color: { argb: "FF000000" }, bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL.encabezado } };
+        cell.font = { color: { argb: COLOR_EXCEL.textoClaro }, bold: true };
+        cell.border = { top: borde, left: borde, bottom: borde, right: borde };
       });
 
       // Build data rows
       for (const item of items) {
         if (item.tipo_fila === "cierre") {
           const c = item.data as CierrePeriodo;
-          // Title row — blue bg, gray bold text
+          // Title row — violeta suave, tinta en negrita
           const titleRow = ws.addRow({
             Fecha: `CIERRE DE PERÍODO — ${c.fecha_desde} al ${c.fecha_hasta}`,
             Tipo: "", Cliente: "", "Org.": "", "Nota(s)": "", Monto: "", Cuenta: "", Observación: "", Crédito: "",
           });
           titleRow.eachCell((cell) => {
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9DAF8" } };
-            cell.font = { color: { argb: "FF666666" }, bold: true };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL.violetaSuave } };
+            cell.font = { color: { argb: COLOR_EXCEL.tinta }, bold: true };
           });
-          // Resumen rows — blue bg, normal text
+          // Resumen rows — violeta suave
           const activas = c.resumen.filter((r) => r.saldo_final !== 0 || r.total_cobros !== 0 || r.total_gastos !== 0);
           for (const r of activas) {
             const resumenRow = ws.addRow({
@@ -587,7 +599,7 @@ export function CajaMayorClient({
               Crédito: "",
             });
             resumenRow.eachCell((cell) => {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9DAF8" } };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL.violetaSuave } };
             });
           }
         } else {
@@ -603,13 +615,14 @@ export function CajaMayorClient({
             Observación: m.observaciones || "",
             Crédito: m.es_credito ? "Sí" : "No",
           });
-          // Color the Tipo cell (column B, index 2)
+          // Color the Tipo cell (column B, index 2): cobro=champagne, gasto/reembolso=violeta suave
           const tipoCell = movRow.getCell(2);
           tipoCell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: m.tipo === "cobro" ? "FFE2EFDA" : "FFFCE4D6" }, // cobro=verde, gasto/reembolso=rojo
+            fgColor: { argb: m.tipo === "cobro" ? COLOR_EXCEL.champagne : COLOR_EXCEL.violetaSuave },
           };
+          tipoCell.font = { color: { argb: COLOR_EXCEL.tinta } };
         }
       }
 

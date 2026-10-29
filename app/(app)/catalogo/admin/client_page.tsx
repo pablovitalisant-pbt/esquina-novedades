@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { PlusCircle, Search, Trash2, Link as LinkIcon, ExternalLink, FileDown, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SessionProp } from '@/types';
+import { EMPRESA } from '@/lib/empresa';
 // single-tenant (hook legacy eliminado, PRD §9.17)
 import { CrearCatalogoDialog } from '@/components/CrearCatalogoDialog';
 import dynamic from 'next/dynamic';
@@ -309,7 +310,13 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
                 {/* QR centrado */}
                 <div className="flex flex-col items-center gap-2 mb-4">
                   <div data-qr={cat.slug} className="bg-[#FFFFFF] p-2 rounded-lg border shadow-sm">
-                    <QRCodeSVG value={getPublicUrl(cat.slug)} size={96} level="M" />
+                    <QRCodeSVG
+                      value={getPublicUrl(cat.slug)}
+                      size={96}
+                      level="M"
+                      fgColor={EMPRESA.colores.tinta}
+                      bgColor={EMPRESA.colores.fondoSuave}
+                    />
                   </div>
                   <button onClick={() => downloadQR(cat.slug)} className="text-xs text-[var(--primary)] hover:underline">
                     Descargar QR

@@ -13,9 +13,14 @@
 
   body {
     background: white !important;
-    color: black !important;
+    color: var(--heading) !important;
     margin: 0;
     padding: 0;
+  }
+
+  /* Impresión con tinta de marca: legible en color y en blanco y negro. */
+  .print-page {
+    border-color: var(--border) !important;
   }
 
   /* Contenedor del grid: una columna en print */

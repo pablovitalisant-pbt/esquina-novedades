@@ -256,17 +256,23 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     expect(todos.some(t => t.startsWith('Fecha:'))).toBe(true);
   });
 
-  // R3: tabla — header dark #1F2937, texto blanco, zebra striping, columna renombrada.
-  it('R3: header de tabla dark, texto blanco, zebra y columnas Unidades/Modalidad', async () => {
+  // R3 (slice 7): tabla — header violeta, texto claro, zebra y textos en tinta.
+  it('R3: header violeta, texto claro, zebra y columnas Unidades/Modalidad', async () => {
     await renderNota(mockFetchConImagenes('ok'));
     fireEvent.click(screen.getByText('Exportar PDF'));
     await waitFor(() => expect(save).toHaveBeenCalled());
 
     expect(lastAutoTableConfig).toBeTruthy();
-    expect(lastAutoTableConfig.headStyles.fillColor).toEqual([31, 41, 55]); // dark #1F2937
-    expect(lastAutoTableConfig.headStyles.textColor).toBe(255);            // texto blanco
-    // Zebra striping: autoTable usa alternateRowStyles cuando se activa
-    expect(lastAutoTableConfig.alternateRowStyles).toBeTruthy();
+    expect(lastAutoTableConfig.headStyles.fillColor).toEqual([89, 0, 120]);    // #590078
+    expect(lastAutoTableConfig.headStyles.textColor).toEqual([255, 248, 234]); // #FFF8EA
+    expect(lastAutoTableConfig.alternateRowStyles.fillColor).toEqual([255, 248, 234]);
+    expect(lastAutoTableConfig.styles.lineColor).toEqual([228, 216, 234]); // #E4D8EA
+
+    // Contraste imprimible: el cuerpo de la tabla va en tinta, no en gris.
+    const tinta = setTextColor.mock.calls.some(
+      (c: number[]) => c[0] === 33 && c[1] === 0 && c[2] === 47
+    );
+    expect(tinta).toBe(true);
 
     const head = lastAutoTableConfig.head[0] as string[];
     // 3b: sin columna de cajas; cantidades siempre en unidades.

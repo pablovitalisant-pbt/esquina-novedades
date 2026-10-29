@@ -17,8 +17,15 @@ jest.mock('@/components/ui/dialog', () => {
 });
 
 const mockWs: any = { columns: [], rows: [] as any[], views: [] };
-mockWs.getRow = () => ({ eachCell: () => {} });
-mockWs.addRow = (r: any) => { mockWs.rows.push(r); return { eachCell: () => {}, getCell: () => ({}) }; };
+const celdas: any[] = [];
+mockWs.getRow = () => ({ eachCell: (cb: any) => { const cell: any = {}; cb(cell); celdas.push(cell); } });
+mockWs.addRow = (r: any) => {
+  mockWs.rows.push(r);
+  return {
+    eachCell: (cb: any) => { const cell: any = { row: r }; cb(cell); celdas.push(cell); },
+    getCell: () => { const cell: any = { row: r }; celdas.push(cell); return cell; },
+  };
+};
 jest.mock('exceljs', () => ({
   __esModule: true,
   Workbook: class { addWorksheet() { return mockWs; } xlsx = { writeBuffer: async () => new ArrayBuffer(0) }; },
@@ -106,5 +113,20 @@ describe('app/(app)/caja-mayor — CLP', () => {
     expect(headers).not.toContain('USD');
     expect(mockWs.rows.find((r: any) => r.Fecha === '2026-05-01').Monto).toBe(12345);
     expect(mockWs.rows.find((r: any) => r['Nota(s)'] === 'Banco').Monto).toBe(8500);
+  });
+
+  it('Excel slice 7: encabezado violeta con texto claro y sin naranjo', async () => {
+    (global as any).URL.createObjectURL = jest.fn(() => 'blob:x');
+    (global as any).URL.revokeObjectURL = jest.fn();
+    celdas.length = 0;
+    render(<CajaMayorClient {...props} />);
+    await screen.findByText('$12.345');
+    fireEvent.click(screen.getByText(/Exportar Excel/));
+    await waitFor(() => expect(mockWs.rows.length).toBeGreaterThan(1));
+
+    const encabezado = celdas[0];
+    expect(encabezado.fill.fgColor.argb).toBe('FF590078');
+    expect(encabezado.font.color.argb).toBe('FFFFF8EA');
+    expect(celdas.some((c: any) => c.fill?.fgColor?.argb === 'FFFF9900')).toBe(false);
   });
 });

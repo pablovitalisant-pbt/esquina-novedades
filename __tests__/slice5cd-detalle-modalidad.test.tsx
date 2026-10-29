@@ -24,6 +24,7 @@ jest.mock('exceljs', () => ({
     addWorksheet(name: string) {
       const sheet: any = { name, columns: [], rows: [] };
       sheet.addRows = (r: any[]) => { sheet.rows.push(...r); };
+      sheet.getRow = () => ({ eachCell: (cb: any) => cb({}) });
       mockSheets.push(sheet);
       return sheet;
     }

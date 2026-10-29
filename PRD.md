@@ -33,13 +33,15 @@ puede quedar en código pero no se ofrece en el selector de usuarios.
 1. **Rebranding + Chile**: nombre, logo, colores, landing, metadata, `es-CL`,
    etiqueta "RUT" en usuarios/login.
 2. **Moneda única CLP**: eliminar USD/ARS, tipo de cambio y `dolar_dia`.
-3. **Venta mayorista y detalle**: mayorista = caja completa al precio
-   mayorista por caja; detalle = unidad al precio detalle. Mismo inventario.
+3. **Venta mayorista y detalle**: cada producto tiene precio detalle y precio
+   mayor (ambos por unidad). En notas de venta el vendedor elige por línea;
+   en la tienda online el precio mayor se aplica solo como descuento desde
+   `minimo_mayor` unidades. Mismo inventario, todo en unidades.
 4. **Notas de venta con tipo** (mayor / menor / mixta, derivado de los ítems).
 5. **Clientes con etiqueta**: todos los clientes quedan registrados; etiqueta
    derivada de su historial de compras: `mayorista`, `minorista` o `ambos`.
 6. **Tienda online con pago Mercado Pago (Checkout Pro)**: carrito con
-   unidades y cajas, despacho, reserva de stock, pago, webhook, conversión
+   unidades y descuento especial por mayor, despacho, reserva de stock, pago, webhook, conversión
    automática a nota de venta y cobro en caja.
 7. **Módulos heredados que siguen**: Precios, Catálogo (admin + público),
    Categorías, Bodega (ingresos, conciliación), Usuarios, Config de caja,
@@ -109,21 +111,30 @@ Iquique, Alto Hospicio y Arica.
 
 ### 8.2 Moneda y precios
 - Solo CLP, sin decimales en la UI.
-- Cada producto tiene: `precio detalle` (por unidad) y `precio mayorista`
-  (por caja completa). `cantcaja` = unidades por caja.
+- Cada producto tiene: `costo` (obligatorio al crear), `prcventa` = precio
+  detalle por unidad, `precio_mayor` = precio mayor por unidad (opcional,
+  menor que el detalle) y `minimo_mayor` = unidades desde las que la tienda
+  online aplica el precio mayor (opcional). Los precios se ingresan directo;
+  el % de ganancia lo calcula el servidor desde el costo (cambiar el costo no
+  cambia precios). `cantcaja` queda solo para bodega.
+- Catálogos: precio = precio especial del catálogo (`catalogo_precio_override`)
+  si existe; si no, `prcventa`. No hay % sobre costo por catálogo.
 - La comisión de Mercado Pago la absorbe la tienda (precios ya la consideran).
 
-> **Decisión de Pablo (2026-10-26):** el precio mayorista es un **precio unitario rebajado** que aplica **desde 3 unidades**; no se vende por caja cerrada. Lo que sigue en §8.2/§8.3 sobre caja completa queda reemplazado por esta regla (slice A13 en `docs/BACKLOG.md`).
+> **Decisiones de Pablo y Paola (2026-10-29):** no existe venta por caja. Reemplazan la regla "desde 3 unidades" del 2026-10-26 (slices 2-4, ver `AUTO-LOG.md`).
 
 ### 8.3 Mayorista vs detalle
-- Mayorista = compra de cajas completas. Detalle = compra por unidad.
-- Un solo inventario en unidades (`productos.saldo`). Una caja descuenta
-  `cantcaja` unidades.
-- Cada ítem de nota de venta / pedido tiene `modalidad` = `unidad` | `caja`.
-  El tipo de la nota se deriva: todo caja → `mayor`; todo unidad → `menor`;
-  ambos → `mixta`.
-- Tienda online vende ambas modalidades a cualquier visitante; el carrito
-  puede mezclar unidades y cajas.
+- Un solo inventario en unidades (`productos.saldo`).
+- Cada ítem de nota de venta / pedido tiene `modalidad` = `detalle` | `mayor`
+  y `subtotal = unidades * precio`. El tipo de la nota se deriva: todo mayor →
+  `mayor`; todo detalle → `menor`; ambos → `mixta`.
+- **Notas de venta:** el vendedor elige detalle o mayor en cada línea, con
+  cualquier cantidad, y puede cambiarlo; el precio por defecto es el de la
+  modalidad y se puede ajustar a mano.
+- **Tienda online y catálogos:** se muestra solo el precio detalle. El servidor
+  aplica el precio mayor ("Descuento especial") cuando la cantidad total del
+  producto llega a `minimo_mayor` (flag `tienda-mayor-online`). El cliente no
+  elige modalidad.
 
 ### 8.4 Pedido online y pago
 - El cliente paga **al hacer el pedido**.
@@ -234,5 +245,7 @@ Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 | app/api/mercadopago/webhook/route.ts (IPN legacy) | Notificaciones `Feed v2.0` (`?id=&topic=`) sin firma: se responden 200 sin procesar (flag `mp-webhook-ignorar-ipn-legacy`). Si se procesaran, sería un bypass de la firma | No procesar nada sin `data.id` firmado |
 | lib/pedidos/reserva-stock.ts | BUG-003: el guard `1 / (SELECT COUNT(*) FROM upd)` es lo que aborta la reserva sin stock; `CASE ... ELSE 1/0` se pliega en Postgres y falla siempre | Probar cualquier cambio contra Postgres real (`__tests__/integration/reserva-stock-guard.test.ts`) |
 | lib/precio-catalogo.ts | El precio de catálogo se usa para mostrar Y para cobrar (`/api/pedidos`); la preferencia MP redondea cada ítem a entero | Mantener CLP entero; cualquier cambio de fórmula afecta cobros |
+| lib/precio-tienda.ts | La misma función decide el descuento por mayor en el carrito (estimado) y en el cobro server-side | Cambios siempre vía esta función; probar con flag true y false |
+| Migraciones con varias sentencias | El driver HTTP de neon no acepta multi-statement: aplicar con `Pool` (como `scripts/apply-migrations.ts`); `npm run migrate` completo falla en test-integration desde la 019 | Aplicar la migración nueva sola, en transacción, y verificar en information_schema |
 | config/feature-flags.json en tests | BUG-004: tests que leen el JSON real se rompen al activar flags | Mockear flags explícitamente en cada test |
 | instrumentation.ts / lib/env.ts | Valida variables al arrancar y solo loguea (no tumba la app) | No imprimir valores; mantener listas al día al agregar variables |

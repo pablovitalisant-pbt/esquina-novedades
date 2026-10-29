@@ -84,7 +84,7 @@ describe('PedidosPage — detalle del pedido (7f)', () => {
     await screen.findByText('Pablo');
     fireEvent.click(screen.getByText('Pablo'));
 
-    expect(screen.getByText('2 unidades (precio mayor)')).toBeInTheDocument();
+    expect(screen.getByText('2 unidades (por mayor)')).toBeInTheDocument();
     expect(screen.getByText('1 unidad')).toBeInTheDocument();
     expect(screen.getByText('$8')).toBeInTheDocument();
     expect(screen.getByText('$1.992')).toBeInTheDocument();

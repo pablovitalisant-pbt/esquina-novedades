@@ -490,28 +490,28 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                     <Input data-testid="edit-costo" type="number" step="0.01" min="0" value={editCosto} onChange={e => setEditCosto(e.target.value)} placeholder="Opcional" />
                   </div>
                   <div>
-                    <Label className="text-xs">Precio detalle *</Label>
+                    <Label className="text-xs">Precio por menor *</Label>
                     <Input data-testid="edit-precio-detalle" type="number" step="1" min="0" value={prcVenta} onChange={e => setPrcVenta(e.target.value)} placeholder="0" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-[var(--body)]">Ganancia detalle</p>
+                    <p className="text-xs text-[var(--body)]">Ganancia por menor</p>
                     <p data-testid="ganancia-detalle" className="text-sm font-semibold">{gananciaDetalle === null ? '—' : `${gananciaDetalle}%`}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-[var(--body)]">Ganancia mayor</p>
+                    <p className="text-xs text-[var(--body)]">Ganancia por mayor</p>
                     <p data-testid="ganancia-mayor" className="text-sm font-semibold">{gananciaMayor === null ? '—' : `${gananciaMayor}%`}</p>
                   </div>
                 </div>
                 {PRECIO_MAYOR_UI && (
                   <>
                     <div>
-                      <Label className="text-xs">Precio mayor</Label>
-                      <Input data-testid="precio-mayor-input" type="number" step="1" min="1" value={editPrecioMayor} onChange={e => setEditPrecioMayor(e.target.value)} placeholder="Sin precio mayor" />
+                      <Label className="text-xs">Precio por mayor</Label>
+                      <Input data-testid="precio-mayor-input" type="number" step="1" min="1" value={editPrecioMayor} onChange={e => setEditPrecioMayor(e.target.value)} placeholder="Sin precio por mayor" />
                     </div>
                     <div>
-                      <Label className="text-xs">Mayor en tienda desde (unidades)</Label>
+                      <Label className="text-xs">Por mayor en tienda online desde (unidades)</Label>
                       <Input data-testid="edit-minimo-mayor" type="number" step="1" min="1" value={editMinimoMayor} onChange={e => setEditMinimoMayor(e.target.value)} placeholder="3" disabled={!editPrecioMayor} />
                     </div>
                   </>
@@ -533,17 +533,17 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                     <TableCell className="text-right">{producto.margen_pct !== null ? `${Number(producto.margen_pct)}%` : '—'}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Precio venta</TableCell>
+                    <TableCell className="font-medium">Precio por menor</TableCell>
                     <TableCell className="text-right font-bold">{formatCLP(producto.prcventa)}</TableCell>
                   </TableRow>
                   {PRECIO_MAYOR_UI && producto.precio_mayor != null && (
                     <>
                       <TableRow>
-                        <TableCell className="font-medium">Precio mayor</TableCell>
+                        <TableCell className="font-medium">Precio por mayor</TableCell>
                         <TableCell className="text-right font-bold">{formatCLP(producto.precio_mayor)}</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">Ganancia mayor</TableCell>
+                        <TableCell className="font-medium">Ganancia por mayor</TableCell>
                         <TableCell className="text-right">
                           {(() => {
                             const g = calcularMargen(producto.costo, producto.precio_mayor);
@@ -555,7 +555,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                   )}
                   {PRECIO_MAYOR_UI && producto.minimo_mayor != null && (
                     <TableRow>
-                      <TableCell className="font-medium">Mayor en tienda desde</TableCell>
+                      <TableCell className="font-medium">Por mayor en tienda online desde (unidades)</TableCell>
                       <TableCell className="text-right">{producto.minimo_mayor} {producto.umed}</TableCell>
                     </TableRow>
                   )}

@@ -110,10 +110,10 @@ export function PreciosClient({ session }: PreciosClientProps) {
     if (!crearDetalle.trim()) { toast.error('Descripción requerida'); return; }
     if (!crearCosto || Number(crearCosto) <= 0) { toast.error('Costo debe ser mayor a 0'); return; }
     if (!crearPrcVenta || !Number.isInteger(Number(crearPrcVenta)) || Number(crearPrcVenta) <= 0) {
-      toast.error('Precio detalle debe ser un entero mayor a 0'); return;
+      toast.error('Precio por menor debe ser un entero mayor a 0'); return;
     }
     if (crearPrecioMayor && Number(crearPrecioMayor) >= Number(crearPrcVenta)) {
-      toast.error('Precio mayor debe ser menor al precio detalle'); return;
+      toast.error('Precio por mayor debe ser menor al precio por menor'); return;
     }
 
     setCrearLoading(true);
@@ -234,26 +234,26 @@ export function PreciosClient({ session }: PreciosClientProps) {
                     <p className="text-xs text-[var(--body-subtle)] mt-1">Costo por unidad</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Precio detalle *</label>
+                    <label className="text-sm font-medium">Precio por menor *</label>
                     <Input data-testid="crear-prcventa" type="number" step="1" min="1" value={crearPrcVenta} onChange={e => setCrearPrcVenta(e.target.value)} placeholder="2500" />
                     <p className="text-xs text-[var(--body-subtle)] mt-1">Precio por unidad en CLP</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Precio mayor (opcional)</label>
-                    <Input data-testid="crear-precio-mayor" type="number" step="1" min="1" value={crearPrecioMayor} onChange={e => setCrearPrecioMayor(e.target.value)} placeholder="Sin precio mayor" />
+                    <label className="text-sm font-medium">Precio por mayor (opcional)</label>
+                    <Input data-testid="crear-precio-mayor" type="number" step="1" min="1" value={crearPrecioMayor} onChange={e => setCrearPrecioMayor(e.target.value)} placeholder="Sin precio por mayor" />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Precio mayor en tienda online desde (unidades)</label>
+                    <label className="text-sm font-medium">Por mayor en tienda online desde (unidades)</label>
                     <Input data-testid="crear-minimo-mayor" type="number" step="1" min="1" value={crearMinimoMayor} onChange={e => setCrearMinimoMayor(e.target.value)} placeholder="3" disabled={!crearPrecioMayor} />
-                    <p className="text-xs text-[var(--body-subtle)] mt-1">Cantidad mínima para aplicar el precio mayor en la tienda</p>
+                    <p className="text-xs text-[var(--body-subtle)] mt-1">Cantidad mínima para aplicar el precio por mayor en la tienda</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-xs text-[var(--body)]">Ganancia detalle</p>
+                      <p className="text-xs text-[var(--body)]">Ganancia por menor</p>
                       <p data-testid="ganancia-detalle" className="text-sm font-semibold">{gananciaDetalle === null ? '—' : `${gananciaDetalle}%`}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-[var(--body)]">Ganancia mayor</p>
+                      <p className="text-xs text-[var(--body)]">Ganancia por mayor</p>
                       <p data-testid="ganancia-mayor" className="text-sm font-semibold">{gananciaMayor === null ? '—' : `${gananciaMayor}%`}</p>
                     </div>
                   </div>

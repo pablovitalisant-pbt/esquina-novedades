@@ -181,9 +181,9 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
                   setModalidad(m);
                   setPrecio(m === 'mayor' ? Number(producto.precio_mayor) : producto.prcventa);
                 }}
-                className={`flex-1 border rounded-lg px-4 py-2 text-sm capitalize disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-white' : 'hover:bg-[var(--muted)]'}`}
+                className={`flex-1 border rounded-lg px-4 py-2 text-sm disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-white' : 'hover:bg-[var(--muted)]'}`}
               >
-                {m}
+                {m === 'mayor' ? 'Por mayor' : 'Por menor'}
               </button>
             ))}
           </div>

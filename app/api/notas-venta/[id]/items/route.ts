@@ -84,11 +84,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
   const precioMayor = Number(prod[0].precio_mayor);
   if (modalidad === 'mayor' && !(precioMayor > 0)) {
-    return NextResponse.json({ error: 'Producto sin precio mayor' }, { status: 400 });
+    return NextResponse.json({ error: 'Producto sin precio por mayor' }, { status: 400 });
   }
   const precioFinal = precio ?? (modalidad === 'mayor' ? precioMayor : Number(prod[0].prcventa));
   if (!Number.isFinite(precioFinal)) {
-    return NextResponse.json({ error: 'Producto sin precio de venta' }, { status: 400 });
+    return NextResponse.json({ error: 'Producto sin precio por menor' }, { status: 400 });
   }
 
   // Slice 8c: liberar reservas vencidas antes de competir por el stock.

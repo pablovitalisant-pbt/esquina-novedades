@@ -201,7 +201,7 @@ describe('exportarPDF — montos en CLP', () => {
     expect(body[0][4]).toBe('$10');
     expect(body[0][5]).toBe('$20');
     // 3b: columna Modalidad al final (Detalle/Mayor).
-    expect(body[0][6]).toBe('Detalle');
+    expect(body[0][6]).toBe('Por menor');
   });
 
   // R2: Total, Pagado y Pendiente del resumen en CLP.

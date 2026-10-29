@@ -11,6 +11,9 @@ import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { formatCLP, formatSaldoPendiente } from '@/lib/utils';
 import type { SessionProp } from '@/types';
 
+const etiquetaTipo = (tipo: string) =>
+  ({ mayor: 'POR MAYOR', menor: 'POR MENOR', mixta: 'MIXTA' } as Record<string, string>)[tipo] ?? tipo.toUpperCase();
+
 type Prenota = {
   id: number;
   titulo: string;
@@ -147,7 +150,7 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
                   )}
                   {(flags as Record<string, boolean>)['notas-venta-modalidad'] === true && prenota.tipo && (
                     <Badge variant="secondary" className="text-[10px]">
-                      {prenota.tipo}
+                      {etiquetaTipo(prenota.tipo)}
                     </Badge>
                   )}
                 </div>

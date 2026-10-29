@@ -103,7 +103,7 @@ describe('5b — POST items modalidad', () => {
     mockPost({ prcventa: 1500, precio_mayor });
     const res = await POST(mk(MAYOR), ctx);
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: 'Producto sin precio mayor' });
+    expect(await res.json()).toMatchObject({ error: 'Producto sin precio por mayor' });
     expect(sql.mock.calls.some((c: any[]) => c[0].join('').includes('UPDATE public.productos'))).toBe(false);
   });
 

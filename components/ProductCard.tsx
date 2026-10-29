@@ -67,13 +67,13 @@ export function ProductCard({ producto, empresaSlug, onClick, ocultarPrecios, ro
         <div className="flex items-stretch gap-0">
           <div className="flex-1 flex flex-col justify-center">
             <div className="text-[10px] uppercase tracking-wide text-[var(--body-subtle)] font-medium mb-0.5">
-              Precio de venta
+              Precio por menor
             </div>
             <div className="text-xl font-semibold text-[var(--heading)] leading-none">
               {ocultarPrecios ? '••••' : producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
             </div>
             {(flags as Record<string, boolean>)['precio-mayorista-ui'] === true && !ocultarPrecios && producto.precio_mayor != null && (
-              <div className="text-xs text-[var(--body)] mt-1">Mayor: {formatCLP(producto.precio_mayor)}</div>
+              <div className="text-xs text-[var(--body)] mt-1">Por mayor: {formatCLP(producto.precio_mayor)}</div>
             )}
           </div>
 

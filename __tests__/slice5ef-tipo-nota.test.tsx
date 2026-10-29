@@ -20,7 +20,7 @@ it('la lista muestra el tipo devuelto por la API', async () => {
   }) as any;
   render(<PrenotasPage session={{ user: { rol: 'vendedor' } }} />);
   await screen.findByText('Nota #1');
-  expect(screen.getByText('mixta')).toBeInTheDocument();
+  expect(screen.getByText('MIXTA')).toBeInTheDocument();
 });
 
 it('el detalle muestra el badge derivado de los items', async () => {
@@ -33,5 +33,5 @@ it('el detalle muestra el badge derivado de los items', async () => {
     : Promise.resolve({ ok: true, json: async () => ({}) })) as any;
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
   await screen.findByText('C-001');
-  expect(screen.getByText('mixta')).toBeInTheDocument();
+  expect(screen.getByText('MIXTA')).toBeInTheDocument();
 });

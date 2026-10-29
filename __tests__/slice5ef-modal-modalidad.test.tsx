@@ -26,17 +26,17 @@ async function renderModal(producto: any) {
 describe('5e — selector Detalle/Mayor', () => {
   it('Mayor habilitado con precio_mayor', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    expect(screen.getByRole('button', { name: /^mayor$/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /^por mayor$/i })).not.toBeDisabled();
   });
 
   it('Mayor deshabilitado sin precio_mayor', async () => {
     await renderModal({ ...base, precio_mayor: null });
-    expect(screen.getByRole('button', { name: /^mayor$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^por mayor$/i })).toBeDisabled();
   });
 
   it('Mayor usa precio_mayor y manda modalidad sin cajas', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    fireEvent.click(screen.getByRole('button', { name: /^mayor$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^por mayor$/i }));
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('10000');
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '12' } });
     expect(screen.getByText('12 unidades')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('5e — selector Detalle/Mayor', () => {
 
   it('por defecto Detalle usa prcventa', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    expect(screen.getByRole('button', { name: /^detalle$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^por menor$/i })).toBeInTheDocument();
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('2500');
   });
 });

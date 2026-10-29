@@ -90,7 +90,7 @@ describe('POST items — modalidad detalle/mayor', () => {
     mockPostDb(producto({ precio_mayor: null }));
     const res = await POST(mkPost({ codigo: 'P1', empresa_id: 1, unidades: 1, modalidad: 'mayor' }), POST_CTX);
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: 'Producto sin precio mayor' });
+    expect(await res.json()).toMatchObject({ error: 'Producto sin precio por mayor' });
     expect(sql.mock.calls.some((c: any[]) => c[0].join('').includes('UPDATE public.productos'))).toBe(false);
   });
 
@@ -165,7 +165,7 @@ describe('PATCH items — modalidad mutable', () => {
     mockPatchDb(ITEM, producto({ precio_mayor: null }));
     const res = await PATCH(mkPatch({ modalidad: 'mayor' }), P_CTX);
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: 'Producto sin precio mayor' });
+    expect(await res.json()).toMatchObject({ error: 'Producto sin precio por mayor' });
     expect(updItem()).toBeUndefined();
   });
 

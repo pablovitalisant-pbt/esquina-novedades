@@ -59,7 +59,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Costo debe ser mayor a 0" }, { status: 400 });
     // Slice 2a: prcventa es precio directo (entero CLP). margen_pct nunca se acepta del body.
     if (changes.prcventa !== undefined && (typeof changes.prcventa !== "number" || !Number.isInteger(changes.prcventa) || changes.prcventa <= 0))
-      return NextResponse.json({ error: "Precio de venta debe ser un entero mayor a 0" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por menor debe ser un entero mayor a 0" }, { status: 400 });
     if (changes.prcminimo !== undefined && changes.prcminimo !== null && (!esNumeroValido(changes.prcminimo) || Number(changes.prcminimo) < 0))
       return NextResponse.json({ error: "Precio minimo no puede ser negativo" }, { status: 400 });
     if (changes.stock_minimo !== undefined && changes.stock_minimo !== null && (!esNumeroValido(changes.stock_minimo) || Number(changes.stock_minimo) < 0))
@@ -71,9 +71,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     if (changes.cubicaja !== undefined && (!esNumeroValido(changes.cubicaja) || Number(changes.cubicaja) < 0))
       return NextResponse.json({ error: "Cubicaje no puede ser negativo" }, { status: 400 });
     if (changes.precio_mayor !== undefined && !esPrecioMayorValido(changes.precio_mayor))
-      return NextResponse.json({ error: "Precio mayor debe ser un entero mayor a 0 o vacio" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por mayor debe ser un entero mayor a 0 o vacio" }, { status: 400 });
     if (changes.minimo_mayor !== undefined && !esMinimoMayorValido(changes.minimo_mayor))
-      return NextResponse.json({ error: "Unidades minimas para precio mayor debe ser un entero mayor o igual a 1" }, { status: 400 });
+      return NextResponse.json({ error: "Unidades minimas para precio por mayor debe ser un entero mayor o igual a 1" }, { status: 400 });
     if (changes.umed !== undefined && !esUmedValido(changes.umed))
       return NextResponse.json({ error: "Unidad de medida invalida: debe ser Unid o Set" }, { status: 400 });
     if (changes.umed !== undefined) changes.umed = changes.umed.trim();
@@ -105,9 +105,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       : (changes.precio_mayor === null ? null : Number(changes.precio_mayor));
 
     if (finalPrecioMayor !== null && finalPrcVenta !== null && finalPrecioMayor >= finalPrcVenta) {
-      return NextResponse.json({ error: "Precio mayor debe ser menor al precio de venta" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por mayor debe ser menor al precio por menor" }, { status: 400 });
     }
-    // Sin precio mayor no puede haber mínimo por cantidad.
+    // Sin precio por mayor no puede haber mínimo por cantidad.
     if (finalPrecioMayor === null && (changes.precio_mayor !== undefined || changes.minimo_mayor !== undefined)) {
       changes.minimo_mayor = null;
     }

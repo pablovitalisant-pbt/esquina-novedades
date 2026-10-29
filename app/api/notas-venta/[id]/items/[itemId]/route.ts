@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
     if (modalidadBody === 'mayor') {
       const precioMayor = Number(prod[0]?.precio_mayor);
       if (!(precioMayor > 0)) {
-        return NextResponse.json({ error: 'Producto sin precio mayor' }, { status: 400 });
+        return NextResponse.json({ error: 'Producto sin precio por mayor' }, { status: 400 });
       }
       if (precioFinal === null) precioFinal = precioMayor;
     } else if (precioFinal === null) {

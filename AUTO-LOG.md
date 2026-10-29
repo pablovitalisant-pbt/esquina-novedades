@@ -128,3 +128,6 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Hallazgo de seguridad del DT (preexistente): la página pública del catálogo enviaba `costo` de cada producto al navegador (payload RSC). Corregido; test exige que no exista `costo` en data.ts ni en el API público.
 - Tests: 226/226, 1925/1925; tsc 0; lint 0/0; build OK (verificado por el DT).
 - Gates disparados: ninguno. Contador de slices desde el audit: 0.
+## 2026-10-29 - Slice 5: textos POR MAYOR / POR MENOR
+- Pedido de Pablo: toda referencia visible a precios mayoristas dice "Por mayor" y a detalle "Por menor" (pastillas/selectores en mayúsculas). Valores internos ('detalle','mayor','menor','mixta') sin cambios; Caja Mayor y bodega intactos; etiquetas de cliente y "Descuento especial" sin cambios.
+- Tests: 12 rojos antes; suite 227/227, 1937/1937; tsc 0; lint 0/0; build OK (verificado por el DT).

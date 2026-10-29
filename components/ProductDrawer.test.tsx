@@ -118,7 +118,7 @@ describe('ProductDrawer', () => {
       const editButton = screen.getByTitle('Editar producto');
       fireEvent.click(editButton);
 
-      expect(screen.queryByText('Precio detalle *')).toBeInTheDocument();
+      expect(screen.queryByText('Precio por menor *')).toBeInTheDocument();
       expect(screen.queryByText(/% Ganancia/)).toBeNull();
     });
 
@@ -134,10 +134,10 @@ describe('ProductDrawer', () => {
       );
 
       fireEvent.click(screen.getByTitle('Editar producto'));
-      expect(screen.queryByText('Precio detalle *')).toBeInTheDocument();
+      expect(screen.queryByText('Precio por menor *')).toBeInTheDocument();
 
       fireEvent.click(screen.getByText(/cancelar/i));
-      expect(screen.queryByText('Precio detalle *')).not.toBeInTheDocument();
+      expect(screen.queryByText('Precio por menor *')).not.toBeInTheDocument();
     });
 
     it('precio de venta se muestra en tabla modo lectura', () => {
@@ -151,7 +151,7 @@ describe('ProductDrawer', () => {
         />
       );
 
-      expect(screen.queryByText('Precio venta')).toBeInTheDocument();
+      expect(screen.queryByText('Precio por menor')).toBeInTheDocument();
     });
 
     it('handleSaveProduct hace fetch a /api/productos/[id] con id real (BUG-019 fix)', () => {

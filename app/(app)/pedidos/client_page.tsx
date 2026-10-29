@@ -63,7 +63,7 @@ function badgeClass(estado: string): string {
 
 function etiquetaCantidad(it: PedidoItem): string {
   const base = `${it.cantidad} unidad${it.cantidad !== 1 ? 'es' : ''}`;
-  return it.modalidad === 'mayor' ? `${base} (precio mayor)` : base;
+  return it.modalidad === 'mayor' ? `${base} (por mayor)` : base;
 }
 
 function formatFecha(value: string): string {

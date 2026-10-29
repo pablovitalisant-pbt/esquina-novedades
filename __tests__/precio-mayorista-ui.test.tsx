@@ -35,33 +35,33 @@ beforeEach(() => {
 describe('ProductCard Mayor: $X', () => {
   test('flag on y precio_mayor => muestra', () => {
     card(base);
-    expect(screen.getByText(/Mayor:/)).toHaveTextContent('30');
+    expect(screen.getByText(/Por mayor:/)).toHaveTextContent('30');
   });
   test('flag off => no muestra', () => {
     mockFlags()['precio-mayorista-ui'] = false;
     card(base);
-    expect(screen.queryByText(/Mayor:/)).toBeNull();
+    expect(screen.queryByText(/Por mayor:/)).toBeNull();
   });
   test('precio_mayor null => no muestra', () => {
     card({ ...base, precio_mayor: null });
-    expect(screen.queryByText(/Mayor:/)).toBeNull();
+    expect(screen.queryByText(/Por mayor:/)).toBeNull();
   });
   test('ocultarPrecios => no muestra', () => {
     card(base, { ocultarPrecios: true });
-    expect(screen.queryByText(/Mayor:/)).toBeNull();
+    expect(screen.queryByText(/Por mayor:/)).toBeNull();
   });
 });
 
 describe('ProductDrawer precio mayor', () => {
   test('fila de lectura con flag on', () => {
     drawer(base);
-    expect(screen.getByText('Precio mayor')).toBeInTheDocument();
+    expect(screen.getByText('Precio por mayor')).toBeInTheDocument();
   });
   test('flag off: sin fila ni input', () => {
     mockFlags()['precio-mayorista-ui'] = false;
     drawer(base);
     fireEvent.click(screen.getByTitle('Editar producto'));
-    expect(screen.queryByText('Precio mayor')).toBeNull();
+    expect(screen.queryByText('Precio por mayor')).toBeNull();
     expect(screen.queryByTestId('precio-mayor-input')).toBeNull();
   });
   test('vaciar input envia precio_mayor null', async () => {

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     // Slice 2a: el precio de venta se ingresa directamente (entero CLP).
     // margen_pct del body se ignora: el servidor lo calcula.
     if (typeof prcventa !== "number" || !Number.isInteger(prcventa) || prcventa <= 0) {
-      return NextResponse.json({ error: "Precio de venta debe ser un entero mayor a 0" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por menor debe ser un entero mayor a 0" }, { status: 400 });
     }
     if (saldo !== undefined && Number(saldo) < 0) {
       return NextResponse.json({ error: "Stock inicial no puede ser negativo" }, { status: 400 });
@@ -49,19 +49,19 @@ export async function POST(request: Request) {
 
     const precioMayor = body.precio_mayor === undefined ? null : body.precio_mayor;
     if (!esPrecioMayorValido(precioMayor)) {
-      return NextResponse.json({ error: "Precio mayor debe ser un entero mayor a 0 o vacio" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por mayor debe ser un entero mayor a 0 o vacio" }, { status: 400 });
     }
     const pm: number | null = precioMayor === null ? null : Number(precioMayor);
     if (pm !== null && pm >= prcventa) {
-      return NextResponse.json({ error: "Precio mayor debe ser menor al precio de venta" }, { status: 400 });
+      return NextResponse.json({ error: "Precio por mayor debe ser menor al precio por menor" }, { status: 400 });
     }
 
     const minimoMayor = body.minimo_mayor === undefined ? null : body.minimo_mayor;
     if (!esMinimoMayorValido(minimoMayor)) {
-      return NextResponse.json({ error: "Unidades minimas para precio mayor debe ser un entero mayor o igual a 1" }, { status: 400 });
+      return NextResponse.json({ error: "Unidades minimas para precio por mayor debe ser un entero mayor o igual a 1" }, { status: 400 });
     }
     if (minimoMayor !== null && pm === null) {
-      return NextResponse.json({ error: "Unidades minimas para precio mayor requiere un precio mayor" }, { status: 400 });
+      return NextResponse.json({ error: "Unidades minimas para precio por mayor requiere un precio por mayor" }, { status: 400 });
     }
 
     // El margen SIEMPRE se calcula desde costo y prcventa (nunca desde el body).

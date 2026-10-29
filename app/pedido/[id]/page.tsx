@@ -55,7 +55,7 @@ function fechaCorta(valor: string | null): string {
 function cantidadTexto(cantidad: number, modalidad: string): string {
   const plural = cantidad !== 1;
   const base = `${cantidad} ${plural ? 'unidades' : 'unidad'}`;
-  return modalidad === 'mayor' ? `${base} (precio mayor)` : base;
+  return modalidad === 'mayor' ? `${base} (por mayor)` : base;
 }
 
 // Entrada escalonada (layout.md: un solo momento orquestado), desactivada con reduced motion.

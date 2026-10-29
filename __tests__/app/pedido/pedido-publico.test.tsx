@@ -88,12 +88,12 @@ describe('privacidad y 404', () => {
 });
 
 describe('cantidades en unidades', () => {
-  test('mayor → "(precio mayor)"; detalle → unidades; nunca "cajas"', async () => {
+  test('mayor → "(por mayor)"; detalle → unidades; nunca "cajas"', async () => {
     const out = await html(PEDIDO, [
       { codigo: 'A', detalle: 'Uno', cantidad: 2, modalidad: 'mayor', precio: 900, subtotal: 1800 },
       { codigo: 'B', detalle: 'Dos', cantidad: 1, modalidad: 'detalle', precio: 1500, subtotal: 1500 },
     ]);
-    expect(out).toContain('2 unidades (precio mayor)');
+    expect(out).toContain('2 unidades (por mayor)');
     expect(out).toContain('1 unidad');
     expect(out).not.toContain('cajas');
   });

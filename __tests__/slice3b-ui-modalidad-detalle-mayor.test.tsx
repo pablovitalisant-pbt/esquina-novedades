@@ -58,8 +58,8 @@ describe('tabla de items — sin cajas, modalidad por línea', () => {
   it('no muestra columna Cajas y usa etiquetas Detalle/Mayor con precio /u', async () => {
     await renderNota([DETALLE, MAYOR]);
     expect(screen.queryByText(/^cajas$/i)).toBeNull();
-    expect(screen.getByText('Detalle')).toBeInTheDocument();
-    expect(screen.getByText('Mayor')).toBeInTheDocument();
+    expect(screen.getByText('Por menor')).toBeInTheDocument();
+    expect(screen.getByText('Por mayor')).toBeInTheDocument();
     expect(screen.getByText('$2.500 /u')).toBeInTheDocument();
     expect(screen.getByText('$1.000 /u')).toBeInTheDocument();
     expect(screen.queryByText(/\/caja/)).toBeNull();
@@ -67,12 +67,12 @@ describe('tabla de items — sin cajas, modalidad por línea', () => {
 
   it('deriva el tipo de nota en el encabezado con los valores nuevos', async () => {
     await renderNota([MAYOR]);
-    expect(screen.getByText('mayor')).toBeInTheDocument();
+    expect(screen.getByText('POR MAYOR')).toBeInTheDocument();
   });
 
   it('nota solo detalle deriva "menor"', async () => {
     await renderNota([DETALLE]);
-    expect(screen.getByText('menor')).toBeInTheDocument();
+    expect(screen.getByText('POR MENOR')).toBeInTheDocument();
   });
 });
 
@@ -112,11 +112,11 @@ describe('edición — PATCH sin cajas', () => {
   });
 
   it('Mayor sin precio mayor (400 del servidor) → toast, no cambia el selector', async () => {
-    await renderNota([DETALLE], { patchBody: { error: 'Producto sin precio mayor' } });
+    await renderNota([DETALLE], { patchBody: { error: 'Producto sin precio por mayor' } });
     fireEvent.click(screen.getByRole('button', { name: /editar/i }));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'mayor' } });
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Producto sin precio mayor'));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Producto sin precio por mayor'));
     expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('detalle');
   });
 });
@@ -149,7 +149,7 @@ describe('alta rápida desde el buscador', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/buscar por c[oó]digo o descripci[oó]n/i), { target: { value: 'pro' } });
     await screen.findByText('Prod');
-    expect(screen.getByText('Mayor: $900')).toBeInTheDocument();
+    expect(screen.getByText('Por mayor: $900')).toBeInTheDocument();
     expect(screen.queryByText(/\d+ cj/)).toBeNull();
   });
 });
@@ -172,18 +172,18 @@ describe('AgregarANotaVentaModal — cantidad y modalidad', () => {
     await renderModal(base);
     expect(screen.getByText(/^cantidad$/i)).toBeInTheDocument();
     expect(screen.queryByText(/^cajas$/i)).toBeNull();
-    expect(screen.getByRole('button', { name: /^detalle$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^mayor$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^por menor$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^por mayor$/i })).toBeInTheDocument();
   });
 
   it('Mayor deshabilitado si precio_mayor es null', async () => {
     await renderModal({ ...base, precio_mayor: null });
-    expect(screen.getByRole('button', { name: /^mayor$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^por mayor$/i })).toBeDisabled();
   });
 
   it('envía {unidades, modalidad, precio} sin cajas y usa precio_mayor', async () => {
     await renderModal(base);
-    fireEvent.click(screen.getByRole('button', { name: /^mayor$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^por mayor$/i }));
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('1000');
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: /agregar/i }));

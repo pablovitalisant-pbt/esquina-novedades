@@ -81,8 +81,8 @@ describe('5c — totales, modalidad y edición', () => {
 
   it('la tabla muestra modalidad, precio /u y Total desde subtotal', async () => {
     await renderNota([mayor, detalle]);
-    expect(screen.getAllByText('Mayor').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Detalle').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Por mayor').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Por menor').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('$10.000 /u')).toBeInTheDocument();
     expect(screen.getByText('$2.500 /u')).toBeInTheDocument();
     expect(screen.getAllByText('$30.000')).toHaveLength(2);
@@ -97,14 +97,14 @@ describe('5c — totales, modalidad y edición', () => {
   it('deriva el tipo de nota en el encabezado (mixta) y respeta tipo explícito', async () => {
     mockFlags()['notas-venta-modalidad'] = false;
     await renderNota([mayor, detalle]);
-    expect(screen.getByText('Tipo: mixta')).toBeInTheDocument();
+    expect(screen.getByText('Tipo: MIXTA')).toBeInTheDocument();
   });
 
   it('con notas-venta-modalidad activo, el tipo derivado se muestra como badge', async () => {
     mockFlags()['notas-venta-modalidad'] = true;
     await renderNota([mayor, detalle]);
-    expect(screen.getByText('mixta')).toBeInTheDocument();
-    expect(screen.queryByText('Tipo: mixta')).toBeNull();
+    expect(screen.getByText('MIXTA')).toBeInTheDocument();
+    expect(screen.queryByText('Tipo: MIXTA')).toBeNull();
   });
 
   it('PATCH manda unidades y precio, sin cajas', async () => {
@@ -151,7 +151,7 @@ describe('5d — Excel, PDF y WhatsApp', () => {
     expect(mockSheets.map(s => s.name)).toEqual(['Info', 'Items']);
     const items = mockSheets[1];
     expect(items.columns.map(c => c.header)).toEqual(['Código', 'Descripción', 'Modalidad', 'Unidades', 'Precio', 'Total']);
-    expect(items.rows[0]).toMatchObject({ Código: 'M-001', Modalidad: 'Mayor', Total: 30000 });
+    expect(items.rows[0]).toMatchObject({ Código: 'M-001', Modalidad: 'Por mayor', Total: 30000 });
     expect(mockSheets[0].columns.map(c => c.header)).toEqual(['Campo', 'Valor']);
   });
 
@@ -163,7 +163,7 @@ describe('5d — Excel, PDF y WhatsApp', () => {
     expect(mockAutoTable.head[0]).not.toContain('Cantidad de Cajas');
     expect(mockAutoTable.body[0]).toHaveLength(7);
     expect(mockAutoTable.body[0][5]).toBe('$30.000');
-    expect(mockAutoTable.body[0][6]).toBe('Mayor');
+    expect(mockAutoTable.body[0][6]).toBe('Por mayor');
     expect(mockAutoTable.body[0][5]).not.toBe('$360.000');
   });
 });

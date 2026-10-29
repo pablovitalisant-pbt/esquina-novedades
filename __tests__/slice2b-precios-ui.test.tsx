@@ -92,17 +92,17 @@ describe('ProductDrawer — edicion directa', () => {
 
   test('tabla lectura: Precio mayor, Ganancia mayor y Mayor en tienda desde', () => {
     renderDrawer();
-    expect(screen.getByText('Precio mayor')).toBeInTheDocument();
+    expect(screen.getByText('Precio por mayor')).toBeInTheDocument();
     expect(screen.queryByText('Precio por caja')).toBeNull();
-    expect(screen.getByText('Ganancia mayor')).toBeInTheDocument();
-    expect(screen.getByText('Mayor en tienda desde')).toBeInTheDocument();
+    expect(screen.getByText('Ganancia por mayor')).toBeInTheDocument();
+    expect(screen.getByText('Por mayor en tienda online desde (unidades)')).toBeInTheDocument();
   });
 });
 
 describe('ProductCard — Mayor', () => {
   test('muestra "Mayor: $X"', () => {
     render(<ProductCard producto={producto} empresaSlug="x" onClick={() => {}} />);
-    expect(screen.getByText(/^Mayor: /)).toHaveTextContent('900');
+    expect(screen.getByText(/^Por mayor: /)).toHaveTextContent('900');
     expect(screen.queryByText(/Caja:/)).toBeNull();
   });
 });

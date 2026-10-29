@@ -81,7 +81,10 @@ type CellHookData = {
 // Modalidad/tipo: 'mayor' o 'detalle' (default). Filas legacy ya migradas (046).
 const esMayor = (item: Pick<PrenotaItem, 'modalidad'>) => item.modalidad === 'mayor';
 const etiquetaModalidad = (item: Pick<PrenotaItem, 'modalidad'>) =>
-  esMayor(item) ? 'Mayor' : 'Detalle';
+  esMayor(item) ? 'Por mayor' : 'Por menor';
+
+const etiquetaTipo = (tipo: string) =>
+  ({ mayor: 'POR MAYOR', menor: 'POR MENOR', mixta: 'MIXTA' } as Record<string, string>)[tipo] ?? tipo.toUpperCase();
 
 function derivarTipo(items: PrenotaItem[]): string | null {
   if (items.length === 0) return null;
@@ -258,8 +261,8 @@ function PrenotaItemsTable({
                           onChange={e => handleModalidad(item, e.target.value as 'detalle' | 'mayor')}
                           className="border rounded px-2 py-1 text-sm w-full"
                         >
-                          <option value="detalle">Detalle</option>
-                          <option value="mayor">Mayor</option>
+                          <option value="detalle">Por menor</option>
+                          <option value="mayor">Por mayor</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1 w-full">
@@ -859,8 +862,8 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
               const tipo = prenota?.tipo ?? derivarTipo(prenota?.items ?? []);
               if (!tipo) return null;
               return (flags as Record<string, boolean>)['notas-venta-modalidad'] === true
-                ? <Badge variant="secondary">{tipo}</Badge>
-                : <p className="text-sm text-[var(--body-subtle)]">Tipo: {tipo}</p>;
+                ? <Badge variant="secondary">{etiquetaTipo(tipo)}</Badge>
+                : <p className="text-sm text-[var(--body-subtle)]">Tipo: {etiquetaTipo(tipo)}</p>;
             })()}
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
@@ -976,10 +979,10 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-sm font-semibold">
-                    {formatCLP(Number(prod.prcventa))} <span className="text-xs font-normal text-[var(--body-subtle)]">detalle</span>
+                    {formatCLP(Number(prod.prcventa))} <span className="text-xs font-normal text-[var(--body-subtle)]">por menor</span>
                   </div>
                   {prod.precio_mayor != null && (
-                    <div className="text-xs text-[var(--body-subtle)]">Mayor: {formatCLP(Number(prod.precio_mayor))}</div>
+                    <div className="text-xs text-[var(--body-subtle)]">Por mayor: {formatCLP(Number(prod.precio_mayor))}</div>
                   )}
                   <div className="text-xs text-[var(--body-subtle)]">stock: {prod.saldo}</div>
                 </div>

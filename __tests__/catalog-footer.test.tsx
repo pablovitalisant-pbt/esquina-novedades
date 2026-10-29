@@ -15,6 +15,9 @@ import { render, screen } from '@testing-library/react';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 import { ProductosPublicos } from '@/app/productos/client_page';
 
+// BUG-004: el CTA de footer es del diseño anterior; fijar el flag, no leer el real.
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-portada-v2': false }));
+
 jest.mock('@/components/ImageWithFallback', () => ({
   ImageWithFallback: () => <div data-testid="image-fallback" />,
 }));

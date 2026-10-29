@@ -7,5 +7,6 @@
   "mp-webhook-ignorar-ipn-legacy": true,
   "pedido-confetti": true,
   "env-validacion-arranque": true,
-  "tienda-mayor-online": true
+  "tienda-mayor-online": true,
+  "tienda-portada-v2": false
 }

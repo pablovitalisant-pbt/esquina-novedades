@@ -14,6 +14,9 @@
 import { render, screen } from '@testing-library/react';
 import { LandingPage } from '@/components/LandingPage';
 
+// BUG-004: este test valida la landing vieja; fijar el flag, no leer el real.
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-portada-v2': false }));
+
 // ─── Helpers ───
 
 /** Reproduce la lógica del matcher de middleware.ts */

@@ -84,8 +84,9 @@ describe('filtro activo en listados', () => {
     expect(leer('app/page.tsx')).toMatch(/activo\s*=\s*true/i);
   });
 
-  test('productos publicos (app/productos/page.tsx) filtra activo', () => {
-    expect(leer('app/productos/page.tsx')).toMatch(/activo\s*=\s*true/i);
+  test('productos publicos (app/productos/page.tsx) filtra activo vía consulta compartida', () => {
+    expect(leer('app/productos/page.tsx')).toMatch(/getProductosTienda/);
+    expect(leer('lib/tienda-productos.ts')).toMatch(/activo\s*=\s*true/i);
   });
 
   // El conteo online de total_productos NO vive en client_page.tsx (esa es la

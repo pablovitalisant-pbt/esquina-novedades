@@ -35,6 +35,13 @@ export function CarritoDrawer() {
   // Error visible dentro del carrito: un toast dura segundos y puede quedar tapado.
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
 
+  // La portada v2 tiene su propio trigger en el header; comparte este drawer.
+  useEffect(() => {
+    const abrir = () => setOpen(true);
+    window.addEventListener('esquina:abrir-carrito', abrir);
+    return () => window.removeEventListener('esquina:abrir-carrito', abrir);
+  }, []);
+
   useEffect(() => {
     // Las opciones solo hacen falta al abrir el checkout.
     if (!open) return;

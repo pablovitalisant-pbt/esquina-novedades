@@ -3,6 +3,9 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 
+// BUG-004: este test valida la impresión del diseño anterior; fijar el flag.
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-portada-v2': false }));
+
 jest.mock('@/components/ImageWithFallback', () => ({
   ImageWithFallback: () => <div data-testid="image-fallback" />,
 }));

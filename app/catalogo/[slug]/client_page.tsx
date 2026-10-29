@@ -1,14 +1,35 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { CarritoProvider } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { CarritoDrawer } from '@/components/CarritoDrawer';
+import { TarjetaProductoTienda } from '@/components/TarjetaProductoTienda';
+import { TiendaHeader } from '@/components/tienda/TiendaHeader';
+import { BarraCategorias } from '@/components/tienda/BarraCategorias';
+import { TiendaFooter } from '@/components/tienda/TiendaFooter';
+import { normalizar } from '@/components/tienda/normalizar';
 import { formatCLP } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingBag } from 'lucide-react';
 import { CatalogFooter } from '@/components/CatalogFooter';
+import flags from '@/config/feature-flags.json';
+
+type CatalogoProducto = {
+  id: number;
+  codigo: string;
+  detalle?: string | null;
+  imagen_url: string | null;
+  es_nuevo: boolean;
+  saldo?: number;
+  cantcaja: number;
+  umed: string;
+  precio_catalogo: number | null;
+  precio_mayor?: number | null;
+  minimo_mayor?: number | null;
+  categoria?: string | null;
+};
 
 type CatalogoPublico = {
   titulo: string;
@@ -16,28 +37,25 @@ type CatalogoPublico = {
   empresa_slug: string;
   mostrar_precio: boolean;
   mostrar_stock?: boolean;
-  productos: Array<{
-    id: number;
-    codigo: string;
-    detalle?: string | null;
-    imagen_url: string | null;
-    es_nuevo: boolean;
-    saldo?: number;
-    cantcaja: number;
-    umed: string;
-    precio_catalogo: number | null;
-    precio_mayor?: number | null;
-    minimo_mayor?: number | null;
-  }>;
+  productos: CatalogoProducto[];
 };
 
 export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; slug: string }) {
-
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('print=1')) {
       setTimeout(() => window.print(), 800);
     }
   }, []);
+
+  // Slice 8b: con la portada v2 el catálogo usa el mismo diseño de tienda.
+  if (flags['tienda-portada-v2'] === true) {
+    return (
+      <CarritoProvider origen="catalogo" origen_slug={slug}>
+        <CatalogoTienda data={data} />
+        <CarritoDrawer />
+      </CarritoProvider>
+    );
+  }
 
   const grid = (
     <div className="min-h-screen bg-[var(--muted)] bg-[var(--muted)]950 font-sans">
@@ -112,5 +130,78 @@ export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; sl
       {grid}
       <CarritoDrawer />
     </CarritoProvider>
+  );
+}
+
+/** Catálogo con el diseño de la tienda (flag tienda-portada-v2). */
+function CatalogoTienda({ data }: { data: CatalogoPublico }) {
+  const [busqueda, setBusqueda] = useState('');
+  const [categoria, setCategoria] = useState<string | null>(null);
+
+  const categorias = useMemo(() => {
+    const nombres = new Set<string>();
+    for (const p of data.productos) if (p.categoria) nombres.add(p.categoria);
+    return [...nombres].sort().map((nombre) => ({ id: nombre, nombre }));
+  }, [data.productos]);
+
+  const filtrados = useMemo(() => {
+    let out = data.productos;
+    if (categoria) out = out.filter((p) => p.categoria === categoria);
+    const q = normalizar(busqueda);
+    if (q) out = out.filter((p) => normalizar(p.detalle ?? '').includes(q) || normalizar(p.codigo).includes(q));
+    return out;
+  }, [data.productos, categoria, busqueda]);
+
+  return (
+    <div data-testid="catalogo-tienda" className="min-h-screen bg-background font-sans">
+      <TiendaHeader busqueda={busqueda} onBusqueda={setBusqueda} />
+      <BarraCategorias categorias={categorias} categoria={categoria} onCategoria={setCategoria} />
+
+      <div className="mx-auto px-4 py-6 text-center" style={{ maxWidth: '1152px' }}>
+        <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight text-[var(--heading)]">
+          {data.titulo}
+        </h1>
+        {data.descripcion && (
+          <p className="mt-2 text-base text-[var(--body)] max-w-2xl mx-auto">{data.descripcion}</p>
+        )}
+      </div>
+
+      <div className="mx-auto px-3 sm:px-4 pb-8" style={{ maxWidth: '1152px' }}>
+        {filtrados.length === 0 ? (
+          <div className="text-center text-[var(--body)] py-16 flex flex-col items-center">
+            <ShoppingBag className="w-14 h-14 opacity-20 mb-3" aria-hidden />
+            <p className="text-lg">No hay productos disponibles en este catálogo.</p>
+          </div>
+        ) : (
+          <div
+            data-testid="catalogo-grilla"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 print:block print:space-y-0"
+          >
+            {filtrados.map((p) => (
+              <div key={p.id} className="print-page" data-testid="catalogo-item">
+                <TarjetaProductoTienda
+                  producto={{
+                    id: p.id,
+                    codigo: p.codigo,
+                    detalle: p.detalle ?? null,
+                    imagen_url: p.imagen_url,
+                    es_nuevo: p.es_nuevo,
+                    precio: p.precio_catalogo,
+                    precio_mayor: p.precio_mayor ?? null,
+                    minimo_mayor: p.minimo_mayor ?? null,
+                    saldo: p.saldo ?? null,
+                  }}
+                  empresaSlug={data.empresa_slug}
+                  mostrarPrecio={data.mostrar_precio}
+                  mostrarStock={Boolean(data.mostrar_stock)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <TiendaFooter />
+    </div>
   );
 }

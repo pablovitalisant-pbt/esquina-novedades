@@ -17,6 +17,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { LandingPage } from '@/components/LandingPage';
 
+// BUG-004: el test depende de la landing vieja; fijar el flag, no leer el real.
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-portada-v2': false }));
+
 const ROOT = path.resolve(__dirname, '..');
 
 // ─── Tests 1: Middleware regex ───

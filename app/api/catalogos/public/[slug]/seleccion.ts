@@ -17,6 +17,7 @@ type ProductoCatalogoFila = {
   codigo: string;
   detalle: string | null;
   imagen_url: string | null;
+  categoria?: string | null;
   cantcaja: string | number;
   umed: string;
   prcventa: string | number | null;
@@ -69,6 +70,7 @@ export async function seleccionarProductosCatalogo(
           MAX(p.id) as id,
           MAX(p.detalle) as detalle,
           MAX(p.imagen_url) as imagen_url,
+          MAX(p.categoria) as categoria,
           MAX(p.cantcaja) as cantcaja,
           MAX(p.umed) as umed,
           MAX(p.prcventa) as prcventa,
@@ -89,6 +91,7 @@ export async function seleccionarProductosCatalogo(
           MAX(p.id) as id,
           MAX(p.detalle) as detalle,
           MAX(p.imagen_url) as imagen_url,
+          MAX(p.categoria) as categoria,
           MAX(p.cantcaja) as cantcaja,
           MAX(p.umed) as umed,
           MAX(p.prcventa) as prcventa,

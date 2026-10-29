@@ -5,6 +5,13 @@ import { sql } from '@/lib/db';
 import { EMPRESA } from '@/lib/empresa';
 import { getLatestIngresoRealCodigos } from '@/utils/catalogo-ingreso';
 import { LandingPage } from '@/components/LandingPage';
+import { TiendaPortada } from '@/components/TiendaPortada';
+import {
+  getProductosTienda,
+  type CategoriaTienda,
+  type OpcionEntregaTienda,
+} from '@/lib/tienda-productos';
+import flags from '@/config/feature-flags.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,11 +91,53 @@ async function getLandingProductos() {
   return { productos: mapRows(rows), empresaSlug };
 }
 
+/** Categorías con al menos un producto activo con stock (barra de la portada). */
+async function getCategoriasConStock(): Promise<CategoriaTienda[]> {
+  const rows = await sql`
+    SELECT c.id, c.nombre
+    FROM categorias c
+    WHERE EXISTS (
+      SELECT 1 FROM productos p
+      WHERE p.categoria = c.nombre
+        AND p.activo = true
+        AND p.saldo > 0
+    )
+    ORDER BY c.nombre ASC
+  `;
+  return rows as CategoriaTienda[];
+}
+
+async function getOpcionesEntregaActivas(): Promise<OpcionEntregaTienda[]> {
+  const rows = await sql`
+    SELECT codigo, nombre, activa
+    FROM opciones_entrega
+    WHERE activa = true
+    ORDER BY orden ASC, codigo ASC
+  `;
+  return rows as OpcionEntregaTienda[];
+}
+
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   if (session) {
     redirect('/precios');
+  }
+
+  if (flags['tienda-portada-v2'] === true) {
+    const [{ productos, empresaSlug }, categorias, opcionesEntrega] = await Promise.all([
+      getProductosTienda(),
+      getCategoriasConStock(),
+      getOpcionesEntregaActivas(),
+    ]);
+    return (
+      <TiendaPortada
+        productos={productos}
+        categorias={categorias}
+        opcionesEntrega={opcionesEntrega}
+        empresaSlug={empresaSlug}
+      />
+    );
   }
 
   const { productos, empresaSlug } = await getLandingProductos();

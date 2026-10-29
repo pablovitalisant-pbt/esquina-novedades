@@ -11,5 +11,5 @@ export const EMPRESA = {
   logo: null,
   logoNota: null,
   redes: { facebook: '', instagram: '', tiktok: '' },
-  colores: { primario: '#E21E26', acento: '#FFB612', tinta: '#231F20' },
+  colores: { primario: '#590078', acento: '#F2B936', tinta: '#21002F' },
 } as const;

@@ -207,7 +207,7 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
             <Button
               onClick={registrar}
               disabled={saving || !cantidad}
-              className="bg-[var(--primary)] hover:bg-[var(--primary)] text-white"
+              className="bg-[var(--primary)] hover:bg-[var(--primary)] text-primary-foreground"
             >
               <PackagePlus className="w-4 h-4 mr-2" />
               {saving ? 'Registrando...' : 'Registrar ingreso'}

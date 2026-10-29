@@ -230,8 +230,8 @@ describe('Rebranding visual — tokens landing-primary', () => {
   test('globals.css define --landing-primary y --landing-surface en .landing-page', () => {
     const css = fs.readFileSync(path.join(ROOT, 'app', 'globals.css'), 'utf-8');
     const landingBlock = css.match(/\.landing-page\s*\{[^}]*\}/)?.[0] || '';
-    expect(landingBlock).toContain('--landing-primary: #E21E26');
-    expect(landingBlock).toContain('--landing-surface: #FFF8ED');
+    expect(landingBlock).toContain('--landing-primary: #590078');
+    expect(landingBlock).toContain('--landing-surface: #FFF8EA');
   });
 
   test('sección Contacto tiene contenedor con bg-landing-primary', () => {

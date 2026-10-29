@@ -129,14 +129,14 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-        <section className="pedido-entrada flex flex-col items-center gap-4 rounded-[48px] px-6 py-10 text-center" style={{ background: tono.fondo, color: '#231F20' }}>
-          <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-white" style={{ color: tono.color }}>
+        <section className="pedido-entrada flex flex-col items-center gap-4 rounded-[48px] px-6 py-10 text-center" style={{ background: tono.fondo, color: '#21002F' }}>
+          <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF8EA]" style={{ color: tono.color }}>
             <Icono className="h-7 w-7" aria-hidden="true" />
           </span>
-          <span className="rounded-full border border-[#231F201A] bg-white/70 px-2 py-1 text-sm font-medium">{estado.label}</span>
+          <span className="rounded-full border border-[#21002F1A] bg-[#FFF8EA]/70 px-2 py-1 text-sm font-medium">{estado.label}</span>
           <h1 className="text-[28px] font-bold leading-[1.1] tracking-tight md:text-[36px]">{titulo}</h1>
-          {estado.mensaje && <p className="max-w-md text-lg text-[#231F20CC]">{estado.mensaje}</p>}
-          <p className="text-sm text-[#231F2099]">
+          {estado.mensaje && <p className="max-w-md text-lg text-[#3B2A45E6]">{estado.mensaje}</p>}
+          <p className="text-sm text-[#3B2A4599]">
             Pedido <span className="font-mono font-semibold">{numero}</span>
             {!exito && <> · {pedido.nombre_contacto}</>} · {fechaCorta(pedido.created_at)}
           </p>

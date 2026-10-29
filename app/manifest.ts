@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: `Venta mayorista y al detalle en ${EMPRESA.ciudad}`,
     start_url: '/precios',
     display: 'standalone',
-    background_color: '#ffffff',
+    background_color: '#FFFCF6',
     theme_color: EMPRESA.colores.primario,
     orientation: 'portrait',
     icons: [

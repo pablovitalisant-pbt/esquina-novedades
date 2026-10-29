@@ -66,7 +66,7 @@ export function BottomNav() {
     pathname.startsWith('/alertas-stock');
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--border)] dark:border-[var(--border)] bg-white/80 dark:bg-[var(--muted)]/80 backdrop-blur-xl pb-safe">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--border)] dark:border-[var(--border)] bg-card/80 backdrop-blur-xl pb-safe">
       <div
         className="flex items-center justify-around h-full px-2"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}

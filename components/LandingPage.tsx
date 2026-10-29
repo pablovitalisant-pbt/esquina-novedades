@@ -72,7 +72,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
               href={EMPRESA.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white font-medium text-base shadow-xs transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--landing-primary)] bg-[var(--landing-primary)]"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-[var(--landing-on-primary)] font-medium text-base shadow-xs transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--landing-primary)] bg-[var(--landing-primary)]"
             >
               <MessageCircle className="w-5 h-5" />
               Contáctanos por WhatsApp
@@ -174,10 +174,10 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
       <section id="contacto" className="py-24 bg-background">
         <div className="mx-auto px-6" style={{ maxWidth: '1152px' }}>
           <div className="rounded-[48px] bg-[var(--landing-primary)] px-8 py-16 md:py-20 text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight text-white mb-6">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight text-[var(--landing-on-primary)] mb-6">
               Contacto
             </h2>
-            <p className="text-lg leading-relaxed text-white/90 mb-8 max-w-2xl mx-auto">
+            <p className="text-lg leading-relaxed text-[var(--landing-on-primary)]/90 mb-8 max-w-2xl mx-auto">
               Estamos listos para atenderte. Escríbenos por WhatsApp para consultar precios,
               realizar pedidos o resolver cualquier duda.
             </p>
@@ -185,7 +185,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
               href={EMPRESA.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-[var(--landing-primary)] font-medium text-base bg-white shadow-xs transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/50"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-[var(--landing-primary)] font-medium text-base bg-[var(--landing-surface)] shadow-xs transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--landing-on-primary)]/50"
             >
               <MessageCircle className="w-5 h-5" />
               Escríbenos a WhatsApp
@@ -195,7 +195,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
       </section>
 
       {/* 6. Footer */}
-      <footer className="bg-[#231F20] py-12 text-sm">
+      <footer className="bg-[var(--landing-ink)] py-12 text-sm">
         <div className="mx-auto px-6 text-center" style={{ maxWidth: '1152px' }}>
           <p className="text-white mb-1">© {new Date().getFullYear()} {EMPRESA.razonSocial}</p>
           <p className="text-white/70">{EMPRESA.direccion}, {EMPRESA.ciudad}</p>

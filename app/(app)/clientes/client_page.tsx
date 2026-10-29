@@ -141,7 +141,7 @@ export function ClientesPage() {
             aria-label="Filtrar por etiqueta"
             value={filtroEtiqueta}
             onChange={e => setFiltroEtiqueta(e.target.value)}
-            className="border rounded-md px-3 py-2 text-sm bg-white bg-[var(--muted)]900"
+            className="border rounded-md px-3 py-2 text-sm bg-card"
           >
             <option value="">Todas las etiquetas</option>
             {Object.entries(ETIQUETAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -151,7 +151,7 @@ export function ClientesPage() {
 
       {/* ─── Formulario ─── */}
       {showForm && (
-        <div className="bg-white bg-[var(--muted)]900 border rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+        <div className="bg-card border rounded-xl p-5 flex flex-col gap-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">{editing ? 'Editar cliente' : 'Nuevo cliente'}</h2>
             <button onClick={resetForm}><X className="w-4 h-4" /></button>

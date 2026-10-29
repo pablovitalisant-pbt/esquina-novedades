@@ -249,7 +249,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
           <h1 className="text-3xl font-extrabold tracking-tight">Catálogos Personalizados</h1>
           <p className="text-[var(--body)] mt-1">Crea listas de productos para compartir con clientes</p>
         </div>
-        <Button onClick={() => setIsCreating(true)} className="bg-[var(--primary)] hover:bg-[var(--primary)] text-white shadow-md">
+        <Button onClick={() => setIsCreating(true)} className="bg-[var(--primary)] hover:bg-[var(--primary)] text-primary-foreground shadow-md">
           <PlusCircle className="w-5 h-5 mr-2" />
           Nuevo Catálogo
         </Button>
@@ -308,7 +308,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
 
                 {/* QR centrado */}
                 <div className="flex flex-col items-center gap-2 mb-4">
-                  <div data-qr={cat.slug} className="bg-white p-2 rounded-lg border shadow-sm">
+                  <div data-qr={cat.slug} className="bg-[#FFFFFF] p-2 rounded-lg border shadow-sm">
                     <QRCodeSVG value={getPublicUrl(cat.slug)} size={96} level="M" />
                   </div>
                   <button onClick={() => downloadQR(cat.slug)} className="text-xs text-[var(--primary)] hover:underline">

@@ -391,7 +391,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
             {session.rol !== 'bodeguero' && (
               <button
                 onClick={() => setShowPrenota(true)}
-                className="absolute top-2 left-2 bg-white/80 dark:bg-[var(--muted)]/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white dark:hover:bg-[var(--muted)] transition-colors z-10"
+                className="absolute top-2 left-2 bg-card/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-card transition-colors z-10"
               >
                 <ClipboardList className="w-4 h-4 text-[var(--body)] dark:text-[var(--body)]" />
               </button>
@@ -405,7 +405,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                   `${producto.codigo} — ${producto.detalle || ''}`,
                   armarTextoCompartir()
                 )}
-                className="absolute top-2 right-2 bg-white/80 dark:bg-[var(--muted)]/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white dark:hover:bg-[var(--muted)] transition-colors z-10"
+                className="absolute top-2 right-2 bg-card/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-card transition-colors z-10"
               >
                 <Share2 className="w-4 h-4 text-[var(--body)] dark:text-[var(--body)]" />
               </button>

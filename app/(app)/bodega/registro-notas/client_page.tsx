@@ -154,7 +154,7 @@ export function RegistroNotasPage({ session }: { session: SessionProp }) {
           <Button
             onClick={handleRegistrar}
             disabled={!folio.trim() || saving}
-            className="bg-[var(--primary)] hover:bg-[var(--primary)] text-white"
+            className="bg-[var(--primary)] hover:bg-[var(--primary)] text-primary-foreground"
           >
             <PlusCircle className="w-4 h-4 mr-2" />
             {saving ? 'Registrando...' : 'Registrar'}

@@ -943,7 +943,7 @@ export function CajaMayorClient({
         <Button
           onClick={handleSubmit}
           disabled={!canSubmit || saving || justSaved}
-          className={`w-full ${justSaved ? "bg-[var(--success)] hover:bg-[var(--success)] text-white" : ""}`}
+          className={`w-full ${justSaved ? "bg-[var(--success)] hover:bg-[var(--success)] text-primary-foreground" : ""}`}
           size="lg"
         >
           {saving ? (
@@ -1081,7 +1081,7 @@ export function CajaMayorClient({
                             return (
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
                                 {activas.map((c) => (
-                                  <div key={c.cuenta_id} className="text-xs bg-white/60 bg-[var(--muted)]800/60 rounded p-1.5">
+                                  <div key={c.cuenta_id} className="text-xs bg-card/60 rounded p-1.5">
                                     <div className="font-medium truncate">{c.cuenta_nombre}</div>
                                     <div>Depósito total: {formatCLP(c.total_cobros)}</div>
                                     <div>Gasto total: {formatCLP(c.total_gastos)}</div>

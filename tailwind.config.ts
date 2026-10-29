@@ -65,7 +65,7 @@ const config: Config = {
         '2xl': '0 40px 80px -16px rgb(0 0 0 / 0.18)',
       },
       backgroundImage: {
-        'gradient-brand': 'linear-gradient(0deg, rgba(226, 30, 38, 1) 0%, rgba(245, 130, 32, 1) 100%)',
+        'gradient-brand': 'linear-gradient(0deg, #21002F 0%, #590078 100%)',
       },
     },
   },

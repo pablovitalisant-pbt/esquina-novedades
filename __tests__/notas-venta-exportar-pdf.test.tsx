@@ -235,7 +235,7 @@ describe('exportarPDF — rediseño visual (slice)', () => {
 
     // setFillColor se llama al menos una vez con brand-strong (#D4A96E)
     const accent = setFillColor.mock.calls.some(
-      (c: any[]) => c[0] === 255 && c[1] === 182 && c[2] === 18
+      (c: any[]) => c[0] === 242 && c[1] === 185 && c[2] === 54
     );
     expect(accent).toBe(true);
     // Título grande presente
@@ -373,9 +373,9 @@ describe('exportarPDF — fila de totales (foot: Unidades)', () => {
     expect(celdas[3].content).toBe('');
     expect(celdas[3].colSpan).toBe(1);
 
-    // Mismo lenguaje visual que la caja "Total": --accent #FFB612 / --heading
-    expect(lastAutoTableConfig.footStyles.fillColor).toEqual([255, 182, 18]);
-    expect(lastAutoTableConfig.footStyles.textColor).toEqual([35, 31, 32]);
+    // Mismo lenguaje visual que la caja "Total": --accent #F2B936 / --heading
+    expect(lastAutoTableConfig.footStyles.fillColor).toEqual([242, 185, 54]);
+    expect(lastAutoTableConfig.footStyles.textColor).toEqual([33, 0, 47]);
     expect(lastAutoTableConfig.footStyles.fontStyle).toBe('bold');
 
     // Fix de duplicación: el foot solo se pinta en la última página del autoTable.

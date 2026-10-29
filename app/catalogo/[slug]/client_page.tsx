@@ -41,7 +41,7 @@ export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; sl
 
   const grid = (
     <div className="min-h-screen bg-[var(--muted)] bg-[var(--muted)]950 font-sans">
-      <div className="catalogo-header bg-white bg-[var(--muted)]900 border-b py-8 px-4 text-center shadow-sm">
+      <div className="catalogo-header bg-card border-b py-8 px-4 text-center shadow-sm">
         <div className="container max-w-5xl mx-auto space-y-3">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[var(--primary)] dark:text-[var(--primary)]">
             {data.titulo}
@@ -63,7 +63,7 @@ export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; sl
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 print:block print:space-y-0">
             {data.productos.map((p) => (
-              <div key={p.id} className="print-page bg-white bg-[var(--muted)]900 border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group">
+              <div key={p.id} className="print-page bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group">
                 <div className="relative aspect-square bg-[var(--muted)] bg-[var(--muted)]800">
                   <ImageWithFallback
                     src={p.imagen_url}

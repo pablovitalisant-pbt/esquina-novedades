@@ -131,3 +131,7 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 ## 2026-10-29 - Slice 5: textos POR MAYOR / POR MENOR
 - Pedido de Pablo: toda referencia visible a precios mayoristas dice "Por mayor" y a detalle "Por menor" (pastillas/selectores en mayúsculas). Valores internos ('detalle','mayor','menor','mixta') sin cambios; Caja Mayor y bodega intactos; etiquetas de cliente y "Descuento especial" sin cambios.
 - Tests: 12 rojos antes; suite 227/227, 1937/1937; tsc 0; lint 0/0; build OK (verificado por el DT).
+## 2026-10-29 - Slice 6: paleta de La Esquina de las Novedades + modo oscuro legible
+- Base: DNA de marca de Paola (violeta noche #21002F, morado #590078, oro #F2B936, champagne, blanco cálido; fucsia solo acentos). Tokens claro/oscuro en globals.css; oscuro con fondo/tarjeta/panel/borde/input diferenciados; 16 clases de color fijas reemplazadas por tokens; empresa.ts y manifest con colores de marca.
+- Tests: 6 rojos antes (tokens, contraste WCAG por pares, clases fijas). Suite 228/228, 1953/1953; tsc 0; lint 0/0; build OK (verificado por el DT).
+- Verificación visual DT: build servido localmente contra la BD de test (usuario QA y 6 productos QA-* creados solo en test-integration), revisado en claro y oscuro (login, precios, tienda, notas). Encontrado y corregido: texto oscuro sobre degradado violeta en oscuro y botón secundario fucsia → texto #FFF8EA y secundario dorado.

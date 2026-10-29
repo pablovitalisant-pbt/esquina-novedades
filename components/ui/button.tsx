@@ -10,13 +10,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        brand: "bg-gradient-brand text-primary-foreground hover:scale-[1.02] shadow-xs",
+        brand: "bg-gradient-brand text-[#FFF8EA] hover:scale-[1.02] shadow-xs",
         default:
           "bg-primary text-primary-foreground hover:bg-primary/80",
         secondary:
           "bg-secondary text-secondary-foreground border border-border hover:bg-accent hover:text-foreground",
         outline:
-          "bg-background text-foreground border-border hover:bg-muted",
+          "bg-card text-foreground border-border hover:bg-muted",
         ghost:
           "bg-transparent text-foreground shadow-none hover:bg-muted",
         destructive:

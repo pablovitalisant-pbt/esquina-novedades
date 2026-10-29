@@ -166,13 +166,13 @@ export function UsuariosClient({ currentUserId }: { currentUserId: number }) {
           </h1>
           <p className="text-[var(--body)] mt-1">Administración de Usuarios y Permisos</p>
         </div>
-        <Button onClick={openCreate} className="bg-[var(--primary)] hover:bg-[var(--primary)] text-white shadow-md">
+        <Button onClick={openCreate} className="bg-[var(--primary)] hover:bg-[var(--primary)] text-primary-foreground shadow-md">
           <UserPlus className="w-5 h-5 mr-2" />
           Crear Usuario
         </Button>
       </div>
 
-      <div className="bg-white bg-[var(--muted)]950 border rounded-card shadow-sm overflow-hidden">
+      <div className="bg-card border rounded-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-[var(--muted)] border-b">
             <TableRow>

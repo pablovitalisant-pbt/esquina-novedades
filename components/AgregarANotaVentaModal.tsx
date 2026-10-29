@@ -134,7 +134,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white dark:bg-[var(--muted)] rounded-xl p-6 max-w-sm w-full mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+      <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
         <h2 className="font-bold text-lg">Agregar a Nota de Venta</h2>
 
         {/* ─── Cliente (nuevo: Slice 18b) ─── */}
@@ -181,7 +181,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
                   setModalidad(m);
                   setPrecio(m === 'mayor' ? Number(producto.precio_mayor) : producto.prcventa);
                 }}
-                className={`flex-1 border rounded-lg px-4 py-2 text-sm disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-white' : 'hover:bg-[var(--muted)]'}`}
+                className={`flex-1 border rounded-lg px-4 py-2 text-sm disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-primary-foreground' : 'hover:bg-[var(--muted)]'}`}
               >
                 {m === 'mayor' ? 'Por mayor' : 'Por menor'}
               </button>
@@ -199,7 +199,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
         </div>
         <div className="flex gap-3 mt-2">
           <button onClick={onClose} className="flex-1 border rounded-lg px-4 py-2 text-sm hover:bg-[var(--muted)]">Cancelar</button>
-          <button onClick={handleAgregar} disabled={saving} className="flex-1 bg-[var(--primary)] text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-[var(--primary)] disabled:opacity-50">
+          <button onClick={handleAgregar} disabled={saving} className="flex-1 bg-[var(--primary)] text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium hover:bg-[var(--primary)] disabled:opacity-50">
             {saving ? 'Agregando...' : 'Agregar'}
           </button>
         </div>

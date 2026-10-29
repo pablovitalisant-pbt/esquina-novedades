@@ -87,48 +87,48 @@
 @layer base {
   :root {
     /* Backgrounds & surfaces */
-    --background: #FFFFFF;
-    --foreground: #4B5563;
+    --background: #FFFCF6;
+    --foreground: #3B2A45;
     --card: #FFFFFF;
-    --card-foreground: #111827;
+    --card-foreground: #21002F;
     --popover: #FFFFFF;
-    --popover-foreground: #111827;
-    --primary: #E21E26;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F58220;
-    --secondary-foreground: #231F20;
-    --muted: #F9FAFB;
-    --muted-foreground: #6B7280;
-    --accent: #FFB612;
-    --accent-foreground: #231F20;
-    --destructive: #A50036;
+    --popover-foreground: #21002F;
+    --primary: #590078;
+    --primary-foreground: #FFF8EA;
+    --secondary: #F2B936;
+    --secondary-foreground: #21002F;
+    --muted: #F5EEF8;
+    --muted-foreground: #6B5A75;
+    --accent: #F2B936;
+    --accent-foreground: #21002F;
+    --destructive: #B42318;
     --destructive-foreground: #FFFFFF;
-    --border: #231F2026;
-    --input: #231F2026;
-    --ring: #F58220;
+    --border: #E4D8EA;
+    --input: #D6C7DE;
+    --ring: #D83AE8;
 
     /* Design token extras */
-    --heading: #231F20;
-    --body: #231F20CC;
-    --body-subtle: #231F2066;
+    --heading: #21002F;
+    --body: #3B2A45;
+    --body-subtle: #7A6884;
 
     /* Border tokens */
-    --border-default: #E5E7EB;
-    --border-muted: #F9FAFB;
-    --border-brand: #D4A96E;
+    --border-default: #E4D8EA;
+    --border-muted: #F5EEF8;
+    --border-brand: #F2B936;
 
     /* Disabled */
-    --disabled: #F3F4F6;
-    --fg-disabled: #9CA3AF;
+    --disabled: #F1ECF3;
+    --fg-disabled: #A397AA;
 
     /* Status base (botones) */
     --success: #007A55;
     --warning: #F97316;
 
     /* Badge / pastel tokens */
-    --brand-soft: #FAECDA;
-    --fg-brand-strong: #7D5C2E;
-    --border-brand-subtle: #FAECDA;
+    --brand-soft: #FFF3D1;
+    --fg-brand-strong: #7A5200;
+    --border-brand-subtle: #FFE6A0;
     --success-soft: #ECFDF5;
     --fg-success-strong: #065F46;
     --border-success-subtle: #A7F3D0;
@@ -150,38 +150,38 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: #101828;
-      --foreground: #9CA3AF;
-      --card: #1E2939;
-      --card-foreground: #FFFFFF;
-      --popover: #030712;
-      --popover-foreground: #FFFFFF;
-      --primary: #E21E26;
-      --primary-foreground: #FFFFFF;
-      --secondary: #F58220;
-      --secondary-foreground: #231F20;
-      --muted: #101828;
-      --muted-foreground: #9CA3AF;
-      --accent: #FFB612;
-      --accent-foreground: #231F20;
-      --destructive: #A50036;
+      --background: #140019;
+      --foreground: #E9DFF0;
+      --card: #24082F;
+      --card-foreground: #FFF8EA;
+      --popover: #2C0C3A;
+      --popover-foreground: #FFF8EA;
+      --primary: #F2B936;
+      --primary-foreground: #21002F;
+      --secondary: #F2B936;
+      --secondary-foreground: #21002F;
+      --muted: #2E1040;
+      --muted-foreground: #C7B5D2;
+      --accent: #F2B936;
+      --accent-foreground: #21002F;
+      --destructive: #B42318;
       --destructive-foreground: #FFFFFF;
-      --border: #1F2937;
-      --input: #1F2937;
-      --ring: #F58220;
-      --heading: #FFFFFF;
-      --body: #9CA3AF;
-      --body-subtle: #9CA3AF;
-      --border-default: #1F2937;
-      --border-muted: #111827;
-      --border-brand: #F5DFBB;
-      --disabled: #1F2937;
-      --fg-disabled: #6B7280;
+      --border: #5A3A6E;
+      --input: #6B4782;
+      --ring: #F2B936;
+      --heading: #FFF8EA;
+      --body: #E9DFF0;
+      --body-subtle: #B9A6C4;
+      --border-default: #5A3A6E;
+      --border-muted: #2E1040;
+      --border-brand: #F2B936;
+      --disabled: #2A1636;
+      --fg-disabled: #8C7A96;
       --success: #009966;
       --warning: #F97316;
-      --brand-soft: #5C4520;
-      --fg-brand-strong: #EDD1A3;
-      --border-brand-subtle: #5C4520;
+      --brand-soft: #3D2A05;
+      --fg-brand-strong: #FFE6A0;
+      --border-brand-subtle: #6B4E12;
       --success-soft: #002C22;
       --fg-success-strong: #10B981;
       --border-success-subtle: #064E3B;
@@ -191,7 +191,7 @@
       --warning-soft: #7C2D12;
       --fg-warning: #FBBF24;
       --border-warning-subtle: #7C2D12;
-      --neutral-primary-soft: #101828;
+      --neutral-primary-soft: #24082F;
     }
   }
 
@@ -206,27 +206,38 @@
 
 /* Landing page pública — tokens scoped */
 .landing-page {
-  --landing-primary: #E21E26;
-  --landing-surface: #FFF8ED;
+  --landing-primary: #590078;
+  --landing-surface: #FFF8EA;
+  --landing-ink: #21002F;
+  --landing-on-primary: #FFF8EA;
+}
+
+@media (prefers-color-scheme: dark) {
+  .landing-page {
+    --landing-primary: #F2B936;
+    --landing-surface: #24082F;
+    --landing-ink: #100A14;
+    --landing-on-primary: #21002F;
+  }
 }
 
 @layer components {
   .stat-label {
-    @apply text-[10px] uppercase tracking-wide text-zinc-400 font-medium;
+    @apply text-[10px] uppercase tracking-wide text-[var(--body-subtle)] font-medium;
   }
   .location-badge {
-    @apply font-mono text-sm font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-2.5 py-1 rounded;
+    @apply font-mono text-sm font-bold bg-[var(--brand-soft)] text-[var(--fg-brand-strong)] px-2.5 py-1 rounded;
   }
   .saldo-positive {
-    @apply text-blue-700 dark:text-blue-400 font-semibold;
+    @apply text-[var(--primary)] font-semibold;
   }
   .saldo-zero {
-    @apply text-emerald-700 dark:text-emerald-400 font-semibold;
+    @apply text-[var(--fg-success-strong)] font-semibold;
   }
   .saldo-negative {
-    @apply text-red-700 dark:text-red-400 font-semibold;
+    @apply text-[var(--fg-danger-strong)] font-semibold;
   }
   .saldo-surplus {
-    @apply text-emerald-700 dark:text-emerald-400 font-semibold;
+    @apply text-[var(--fg-success-strong)] font-semibold;
   }
 }

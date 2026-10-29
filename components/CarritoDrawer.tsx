@@ -125,7 +125,7 @@ export function CarritoDrawer() {
       {totalItems > 0 && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-pill bg-[var(--primary)] text-white px-5 h-12 shadow-lg hover:opacity-90 transition-opacity"
+          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-pill bg-[var(--primary)] text-primary-foreground px-5 h-12 shadow-lg hover:opacity-90 transition-opacity"
           aria-label="Abrir carrito"
         >
           <ShoppingBag className="w-5 h-5" />
@@ -240,7 +240,7 @@ export function CarritoDrawer() {
               <p
                 role="alert"
                 data-testid="error-envio"
-                className="text-sm rounded-lg border border-red-300 bg-red-50 text-red-700 px-3 py-2"
+                className="text-sm rounded-lg border border-[var(--border-danger-subtle)] bg-[var(--danger-soft)] text-[var(--fg-danger-strong)] px-3 py-2"
               >
                 {errorEnvio}
               </p>

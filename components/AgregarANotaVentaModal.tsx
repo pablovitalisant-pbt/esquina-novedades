@@ -14,7 +14,6 @@ interface Props {
     empresa_id: number;
     prcventa: number;
     precio_mayor?: number | null;
-    cantcaja: number;
     saldo: number;
   };
 }

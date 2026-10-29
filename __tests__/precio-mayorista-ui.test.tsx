@@ -17,9 +17,9 @@ const base: any = {
 };
 const admin: any = { id: '1', rut: '1-1', nombre: 'A', rol: 'admin', empresas: [1] };
 const card = (p: any, extra: any = {}) =>
-  render(<ProductCard producto={p} empresaSlug="x" empresaNombre="x" onClick={() => {}} {...extra} />);
+  render(<ProductCard producto={p} empresaSlug="x" onClick={() => {}} {...extra} />);
 const drawer = (p: any) =>
-  render(<ProductDrawer producto={p} empresaNombre="" session={admin} open onOpenChange={() => {}} onUpdated={() => {}} />);
+  render(<ProductDrawer producto={p} session={admin} open onOpenChange={() => {}} onUpdated={() => {}} />);
 const guardar = async () => {
   fireEvent.click(screen.getByText(/guardar/i));
   const put = () => (global.fetch as jest.Mock).mock.calls.find((c: any[]) => c[1]?.method === 'PUT');

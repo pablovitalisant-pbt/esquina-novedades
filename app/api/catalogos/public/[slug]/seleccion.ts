@@ -19,8 +19,9 @@ type ProductoCatalogoFila = {
   imagen_url: string | null;
   cantcaja: string | number;
   umed: string;
-  costo: string | number;
   prcventa: string | number | null;
+  precio_mayor: string | number | null;
+  minimo_mayor: string | number | null;
   saldo: string | number;
   es_nuevo: boolean;
 };
@@ -70,8 +71,9 @@ export async function seleccionarProductosCatalogo(
           MAX(p.imagen_url) as imagen_url,
           MAX(p.cantcaja) as cantcaja,
           MAX(p.umed) as umed,
-          MAX(p.costo) as costo,
           MAX(p.prcventa) as prcventa,
+          MAX(p.precio_mayor) as precio_mayor,
+          MAX(p.minimo_mayor) as minimo_mayor,
           SUM(p.saldo) as saldo,
           BOOL_OR(p.es_nuevo) as es_nuevo
         FROM productos p
@@ -89,8 +91,9 @@ export async function seleccionarProductosCatalogo(
           MAX(p.imagen_url) as imagen_url,
           MAX(p.cantcaja) as cantcaja,
           MAX(p.umed) as umed,
-          MAX(p.costo) as costo,
           MAX(p.prcventa) as prcventa,
+          MAX(p.precio_mayor) as precio_mayor,
+          MAX(p.minimo_mayor) as minimo_mayor,
           SUM(p.saldo) as saldo,
           BOOL_OR(p.es_nuevo) as es_nuevo
         FROM productos p

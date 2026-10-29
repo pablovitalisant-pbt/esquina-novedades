@@ -29,7 +29,7 @@ type PedidoReplay = {
   mp_init_point: string | null;
 };
 
-type ItemEntrada = { producto_id: number; cantidad: number; modalidad?: 'unidad' | 'detalle' | 'caja' | 'mayor' | null };
+type ItemEntrada = { producto_id: number; cantidad: number };
 type ProductoFila = ProductoPrecio & { costo: number | string; saldo: number };
 type PedidoLista = Record<string, unknown> & { id: string; cliente_id: string };
 type ItemLista = {
@@ -129,14 +129,6 @@ export async function POST(request: NextRequest) {
       }
       if (!Number.isInteger(it?.cantidad) || it.cantidad <= 0) {
         return NextResponse.json({ error: 'cada item.cantidad debe ser un entero > 0' }, { status: 400 });
-      }
-      // La modalidad la decide el servidor; si viene, solo debe ser conocida.
-      if (
-        it?.modalidad !== undefined && it?.modalidad !== null &&
-        it.modalidad !== 'unidad' && it.modalidad !== 'detalle' &&
-        it.modalidad !== 'caja' && it.modalidad !== 'mayor'
-      ) {
-        return NextResponse.json({ error: "cada item.modalidad debe ser 'unidad' o 'detalle'" }, { status: 400 });
       }
     }
 

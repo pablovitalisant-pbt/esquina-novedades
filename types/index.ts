@@ -57,7 +57,6 @@ export interface UbicacionBodega {
   detalle: string | null;
   cantcaja: number;
   saldo: number;
-  saldocajas: number;
   fisico: number | null;
   diferencia: number | null;
   observaciones: string | null;

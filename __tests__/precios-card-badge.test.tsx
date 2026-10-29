@@ -28,7 +28,6 @@ describe('ProductCard empresa badge (Slice 2)', () => {
       <ProductCardAny
         producto={producto}
         empresaSlug="sanjh"
-        empresaNombre="IMPORT EXPORT SANJH LTDA."
         onClick={() => {}}
       />
     );

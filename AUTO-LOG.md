@@ -122,3 +122,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Verificación DT: diff revisado por sub-slice; 047 aplicada en test-integration y en producción (Pool, transacción) antes del push.
 - Hallazgo: `catalogo-precio-override` T6 intermitente con la BD de test real (probable concurrencia con el test real de 4a que crea productos) → BACKLOG A15.
 - Lección: migraciones con varias sentencias se aplican con Pool (WebSocket); el driver HTTP de neon no acepta multi-statement.
+## 2026-10-29 - Señal 2: ponytail audit 2026-10-29 + limpieza
+- Audit de lo cambiado desde c5fe864: 11 hallazgos (`docs/audits/ponytail-audit-2026-10-29.md`).
+- Limpieza: aplicados 1-9 y 11 (código neto −152; con test de equivalencia ≈ −50). Rechazados los DROP de `pedido_items.precio_referencia` y `catalogos.margen_precio` (destructivos, sin beneficio).
+- Hallazgo de seguridad del DT (preexistente): la página pública del catálogo enviaba `costo` de cada producto al navegador (payload RSC). Corregido; test exige que no exista `costo` en data.ts ni en el API público.
+- Tests: 226/226, 1925/1925; tsc 0; lint 0/0; build OK (verificado por el DT).
+- Gates disparados: ninguno. Contador de slices desde el audit: 0.

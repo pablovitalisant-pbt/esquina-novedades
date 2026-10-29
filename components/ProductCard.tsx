@@ -12,14 +12,12 @@ import flags from '@/config/feature-flags.json';
 interface ProductCardProps {
   producto: Producto;
   empresaSlug: string;
-  empresaNombre: string;
   onClick: (producto: Producto) => void;
   ocultarPrecios?: boolean;
   rol?: string;
 }
 
-export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocultarPrecios, rol }: ProductCardProps) {
-  void empresaNombre;
+export function ProductCard({ producto, empresaSlug, onClick, ocultarPrecios, rol }: ProductCardProps) {
   const [showPrenota, setShowPrenota] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 

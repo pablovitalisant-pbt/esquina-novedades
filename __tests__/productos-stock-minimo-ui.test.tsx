@@ -51,7 +51,6 @@ describe('T7-A — ProductDrawer stock_minimo sync', () => {
     render(
       <ProductDrawer
         producto={productoConMinimo}
-        empresaNombre=""
         session={mockAdmin}
         open={true}
         onOpenChange={() => {}}
@@ -67,7 +66,6 @@ describe('T7-A — ProductDrawer stock_minimo sync', () => {
     render(
       <ProductDrawer
         producto={{ ...mockProducto, stock_minimo: null }}
-        empresaNombre=""
         session={mockAdmin}
         open={true}
         onOpenChange={() => {}}
@@ -93,7 +91,6 @@ describe('T7-A — ProductDrawer stock_minimo sync', () => {
     render(
       <ProductDrawer
         producto={{ ...mockProducto, stock_minimo: 15 }}
-        empresaNombre=""
         session={mockAdmin}
         open={true}
         onOpenChange={() => {}}
@@ -123,7 +120,6 @@ describe('T7-A — ProductDrawer stock_minimo sync', () => {
     render(
       <ProductDrawer
         producto={mockProducto}
-        empresaNombre=""
         session={mockAdmin}
         open={true}
         onOpenChange={() => {}}

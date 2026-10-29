@@ -85,7 +85,7 @@ export function ProductosPublicos({ productos, empresaSlug }: { productos: Produ
                     </div>
                     <div className="mt-3">
                       <BotonAgregarPedido
-                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio, precio_mayor: p.precio_mayor, minimo_mayor: p.minimo_mayor, stock: p.saldo, umed: p.umed }}
+                        item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle, precio: p.precio, precio_mayor: p.precio_mayor, minimo_mayor: p.minimo_mayor }}
                       />
                     </div>
                   </div>

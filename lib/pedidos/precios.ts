@@ -6,9 +6,9 @@
  */
 
 import flags from '@/config/feature-flags.json';
-import { precioLineaTienda } from '@/lib/precio-tienda';
+import { precioLineaTienda, type ModalidadTienda } from '@/lib/precio-tienda';
 
-export type Modalidad = 'detalle' | 'mayor';
+export type Modalidad = ModalidadTienda;
 export type Origen = 'productos' | 'catalogo';
 
 export class ErrorPrecio extends Error {
@@ -25,7 +25,6 @@ export interface ProductoPrecio {
   prcventa: number | string | null;
   precio_mayor: number | string | null;
   minimo_mayor?: number | string | null;
-  cantcaja?: number | string | null;
   activo?: boolean | null;
   [extra: string]: unknown; // el body del cliente se tolera pero nunca se lee
 }
@@ -73,17 +72,6 @@ export interface PedidoCalculado {
   total: number;
 }
 
-const MODALIDADES_CLIENTE = new Set(['unidad', 'detalle', 'caja', 'mayor']);
-
-// La modalidad que mande el cliente se ignora; solo se valida que, si viene,
-// sea un valor conocido (u omitida).
-function validarModalidadCliente(modalidad: unknown): void {
-  if (modalidad === undefined || modalidad === null) return;
-  if (typeof modalidad !== 'string' || !MODALIDADES_CLIENTE.has(modalidad)) {
-    throw new ErrorPrecio("modalidad debe ser 'unidad', 'detalle', 'caja' o 'mayor'");
-  }
-}
-
 function precioBase(
   producto: ProductoPrecio,
   origen: Origen,
@@ -118,7 +106,6 @@ export function calcularPedido(
     const producto = porId.get(item.producto_id);
     if (!producto) throw new ErrorPrecio('producto inexistente');
     if (producto.activo === false) throw new ErrorPrecio(`producto ${producto.codigo} inactivo`);
-    validarModalidadCliente(item.modalidad);
     const cantidad = item.cantidad as number;
     if (!Number.isInteger(cantidad) || cantidad <= 0) {
       throw new ErrorPrecio('cada item.cantidad debe ser un entero > 0');

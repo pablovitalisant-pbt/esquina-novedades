@@ -12,8 +12,6 @@ export type ProductoPedido = {
   precio: number | null; // precio unidad (prcventa o precio de catálogo)
   precio_mayor?: number | null;
   minimo_mayor?: number | null;
-  stock?: number;
-  umed?: string;
 };
 
 /**

@@ -22,7 +22,6 @@ import { mensajeError } from '@/lib/errores';
 
 interface ProductDrawerProps {
   producto: Producto | null;
-  empresaNombre: string;
   session: UserSession;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,8 +29,7 @@ interface ProductDrawerProps {
   ocultarPrecios?: boolean;
 }
 
-export function ProductDrawer({ producto, empresaNombre, session, open, onOpenChange, onUpdated, ocultarPrecios }: ProductDrawerProps) {
-  void empresaNombre;
+export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated, ocultarPrecios }: ProductDrawerProps) {
   const { shareImage } = useShareImage();
   const [isEditing, setIsEditing] = useState(false);
   const [prcVenta, setPrcVenta] = useState('');

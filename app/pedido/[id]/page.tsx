@@ -14,8 +14,17 @@ export const dynamic = 'force-dynamic';
 // UUID como capability URL. Validar antes de consultar evita 22P02.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Tono = 'exito' | 'espera' | 'revision' | 'error';
-// Pastel del design-skill (cards.md); el texto va fijo oscuro para contraste también en modo oscuro.
+type ItemPedido = {
+  codigo: string;
+  detalle: string | null;
+  cantidad: number | string;
+  modalidad: string | null;
+  precio: number | string;
+  precio_lista?: number | string | null;
+  subtotal?: number | string | null;
+};
+
+type Tono = 'exito' | 'espera' | 'revision' | 'error';// Pastel del design-skill (cards.md); el texto va fijo oscuro para contraste también en modo oscuro.
 const TONOS: Record<Tono, { fondo: string; icono: LucideIcon; color: string }> = {
   exito: { fondo: '#D9F2D8', icono: CircleCheck, color: '#007A55' },
   espera: { fondo: '#DAEFF8', icono: Clock, color: '#0B6E99' },
@@ -98,11 +107,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const vencido = !pedido.expira_en || new Date(pedido.expira_en).getTime() <= Date.now();
   const puedePagar = pedido.estado === 'pendiente_pago' && !!pedido.mp_init_point && !vencido;
   const confetti = flags['pedido-confetti'] === true && ['pagado', 'convertido'].includes(pedido.estado);
-  const ahorroTotal = (items as Array<{
-    cantidad: number | string;
-    precio: number | string;
-    precio_lista?: number | string | null;
-  }>).reduce((acc, item) => {
+  const ahorroTotal = (items as ItemPedido[]).reduce((acc, item) => {
     const lista = item.precio_lista == null ? null : Number(item.precio_lista);
     const precio = Number(item.precio);
     return lista != null && lista > precio ? acc + (lista - precio) * Number(item.cantidad) : acc;
@@ -143,15 +148,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
             Tu compra
           </h2>
           <ul className="flex flex-col divide-y divide-[var(--border-default)]">
-            {(items as Array<{
-              codigo: string;
-              detalle: string | null;
-              cantidad: number | string;
-              modalidad: string | null;
-              precio: number | string;
-              precio_lista?: number | string | null;
-              subtotal?: number | string | null;
-            }>).map((item, i) => {
+            {(items as ItemPedido[]).map((item, i) => {
               const subtotal = item.subtotal ?? Number(item.precio) * Number(item.cantidad);
               const lista = item.precio_lista == null ? null : Number(item.precio_lista);
               const conDescuento = lista != null && lista > Number(item.precio);

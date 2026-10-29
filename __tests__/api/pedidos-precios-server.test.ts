@@ -58,8 +58,9 @@ describe('modalidad enviada por el cliente (se ignora)', () => {
     expect(r.lineas[0]).toMatchObject({ precio: 1500, modalidad: 'detalle', ahorro: 0 });
   });
 
-  test('modalidad desconocida → ErrorPrecio', () => {
-    expect(() => calcular('docena', 1)).toThrow(ErrorPrecio);
+  test('modalidad desconocida se ignora también', () => {
+    const r = calcular('docena', 1);
+    expect(r.lineas[0]).toMatchObject({ precio: 1500, modalidad: 'detalle' });
   });
 });
 

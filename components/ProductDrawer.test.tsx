@@ -54,7 +54,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre="IMPORT EXPORT SANJH LTDA."
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -77,7 +76,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre="IMPORT EXPORT SANJH LTDA."
           session={mockUser}
           open={true}
           onOpenChange={() => {}}
@@ -95,7 +93,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -111,7 +108,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -130,7 +126,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -149,7 +144,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -169,7 +163,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -208,7 +201,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={legacyProducto}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}
@@ -252,7 +244,6 @@ describe('ProductDrawer', () => {
       render(
         <ProductDrawer
           producto={{ ...mockProducto, ...overrides }}
-          empresaNombre=""
           session={mockAdmin}
           open={true}
           onOpenChange={() => {}}

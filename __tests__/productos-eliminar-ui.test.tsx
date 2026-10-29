@@ -50,7 +50,6 @@ const renderDrawer = (session: UserSession, onOpenChange = jest.fn(), onUpdated 
   render(
     <ProductDrawer
       producto={mockProducto}
-      empresaNombre=""
       session={session}
       open={true}
       onOpenChange={onOpenChange}

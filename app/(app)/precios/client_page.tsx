@@ -361,7 +361,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
               key={p.id}
               producto={p}
               empresaSlug={EMPRESA.slug}
-              empresaNombre={(p as Producto & { nombre_empresa?: string }).nombre_empresa ?? ''}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
               rol={session?.rol}
@@ -375,7 +374,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         session={session}
-        empresaNombre={(selectedProduct as Producto & { nombre_empresa?: string } | null)?.nombre_empresa || ''}
         onUpdated={handleProductUpdate}
         ocultarPrecios={ocultarPrecios}
       />

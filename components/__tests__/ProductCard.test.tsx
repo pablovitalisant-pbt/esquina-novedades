@@ -33,7 +33,6 @@ describe('ProductCard - Cantidad por Caja', () => {
       <ProductCard
         producto={producto}
         empresaSlug="test-empresa"
-        empresaNombre="IMPORT EXPORT SANJH LTDA."
         onClick={() => {}}
       />
     );
@@ -81,7 +80,6 @@ describe('ProductCard - Precio de venta (CLP)', () => {
       <ProductCard
         producto={producto}
         empresaSlug="test-empresa"
-        empresaNombre="IMPORT EXPORT SANJH LTDA."
         onClick={() => {}}
         ocultarPrecios={props.ocultarPrecios}
       />

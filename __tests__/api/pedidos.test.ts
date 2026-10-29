@@ -108,7 +108,6 @@ describe('POST /api/pedidos — validaciones', () => {
     ['entrega_codigo vacío', { entrega_codigo: '' }],
     ['items vacío', { items: [] }],
     ['cantidad <= 0', { items: [{ producto_id: 118, modalidad: 'unidad', cantidad: 0 }] }],
-    ['modalidad inválida', { items: [{ producto_id: 118, modalidad: 'docena', cantidad: 1 }] }],
     ['origen inválido', { origen: 'otro' }],
     ['origen catalogo sin slug', { origen: 'catalogo' }],
   ])('%s → 400 sin tocar DB', async (_label, over) => {

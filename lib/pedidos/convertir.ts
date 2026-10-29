@@ -88,7 +88,7 @@ export async function convertirPedido(
         SELECT (SELECT id FROM nueva), pi.codigo, pi.detalle, p.imagen_url, ${empresaId},
                0,
                COALESCE(pi.unidades, pi.cantidad),
-               COALESCE(NULLIF(pi.precio, 0), pi.precio_referencia),
+               NULLIF(pi.precio, 0),
                CASE WHEN pi.modalidad IN ('mayor','caja') THEN 'mayor' ELSE 'detalle' END
         FROM public.pedido_items pi
         JOIN public.productos p ON p.id = pi.producto_id AND p.empresa_id = ${empresaId}
@@ -129,7 +129,7 @@ export async function convertirPedido(
 
   // 3. Ítems del pedido → descuento de stock + prenota_items por ítem
   const items = await sql`
-    SELECT codigo, detalle, cantidad, precio_referencia, precio, modalidad
+    SELECT codigo, detalle, cantidad, precio, modalidad
     FROM public.pedido_items
     WHERE pedido_id = ${id}
   `;
@@ -142,7 +142,7 @@ export async function convertirPedido(
     // Venta mayorista = precio_mayor POR UNIDAD: nunca se multiplica por cantcaja.
     const unidades = Number(item.cantidad);
     const modalidad = item.modalidad === 'mayor' || item.modalidad === 'caja' ? 'mayor' : 'detalle';
-    const precio = Number(item.precio) > 0 ? Number(item.precio) : (item.precio_referencia ?? null);
+    const precio = Number(item.precio) > 0 ? Number(item.precio) : null;
 
     const prod = await sql`
       SELECT imagen_url FROM public.productos WHERE codigo = ${codigo} AND empresa_id = ${empresaId}

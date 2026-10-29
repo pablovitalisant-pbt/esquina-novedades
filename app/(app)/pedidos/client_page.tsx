@@ -15,7 +15,6 @@ interface PedidoItem {
   modalidad: string;
   precio: number;
   subtotal: number | null;
-  cantcaja: number | null;
 }
 
 interface Pedido {

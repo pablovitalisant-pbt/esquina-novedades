@@ -275,8 +275,8 @@ describe('convertir pedidos', () => {
 
   it('ruta legacy: unidades = cantidad y precio del item (no cantidad*cantcaja)', async () => {
     mockConvertir('pendiente', false, [
-      { codigo: 'A', detalle: 'A', cantidad: 3, precio_referencia: 500, precio: 0, unidades: null, modalidad: 'unidad' },
-      { codigo: 'B', detalle: 'B', cantidad: 1, precio_referencia: 100, precio: 120, unidades: null, modalidad: 'caja' },
+      { codigo: 'A', detalle: 'A', cantidad: 3, precio: 500, unidades: null, modalidad: 'unidad' },
+      { codigo: 'B', detalle: 'B', cantidad: 1, precio: 120, unidades: null, modalidad: 'caja' },
     ]);
     const { convertirPedido } = await import('@/lib/pedidos/convertir');
     const r = await convertirPedido('x', 9, 'MP');
@@ -301,9 +301,7 @@ describe('convertir pedidos', () => {
 describe('tienda: precios y pedidos', () => {
   it('precios deriva la modalidad del servidor (Slice 4b)', () => {
     const s = read('lib/pedidos/precios.ts');
-    expect(s).toContain("export type Modalidad = 'detalle' | 'mayor'");
-    expect(s).toMatch(/'unidad'|'detalle'/);
-    expect(s).toMatch(/'caja'|'mayor'/);
+    expect(s).toContain('export type Modalidad = ModalidadTienda');
     expect(s).toContain('precioLineaTienda');
   });
   it('POST pedidos calcula la modalidad y guarda precio_lista; GET sin cantcaja', () => {

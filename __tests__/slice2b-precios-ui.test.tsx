@@ -44,7 +44,7 @@ const putBody = async () => {
 };
 
 const renderDrawer = (p: any = producto) =>
-  render(<ProductDrawer producto={p} empresaNombre="" session={admin} open onOpenChange={() => {}} onUpdated={() => {}} />);
+  render(<ProductDrawer producto={p} session={admin} open onOpenChange={() => {}} onUpdated={() => {}} />);
 
 describe('ProductDrawer — edicion directa', () => {
   test('no hay % de ganancia editable ni rama legacy; siempre costo/precio detalle/precio mayor/minimo', () => {
@@ -101,7 +101,7 @@ describe('ProductDrawer — edicion directa', () => {
 
 describe('ProductCard — Mayor', () => {
   test('muestra "Mayor: $X"', () => {
-    render(<ProductCard producto={producto} empresaSlug="x" empresaNombre="x" onClick={() => {}} />);
+    render(<ProductCard producto={producto} empresaSlug="x" onClick={() => {}} />);
     expect(screen.getByText(/^Mayor: /)).toHaveTextContent('900');
     expect(screen.queryByText(/Caja:/)).toBeNull();
   });

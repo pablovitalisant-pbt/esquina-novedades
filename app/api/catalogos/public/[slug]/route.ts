@@ -47,10 +47,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)
         : null;
       return {
-        ...p,
-        saldo: parseInt(String(p.saldo)),
-        costo: parseFloat(String(p.costo)),
+        ...p,        saldo: parseInt(String(p.saldo)),
         cantcaja: parseInt(String(p.cantcaja)),
+        precio_mayor: p.precio_mayor == null ? null : parseFloat(String(p.precio_mayor)),
+        minimo_mayor: p.minimo_mayor == null ? null : parseInt(String(p.minimo_mayor)),
         precio_catalogo: mostrarPrecio ? precioEnCatalogo(p.prcventa, precioOverride) : null,
         precio_override: precioOverride,
       };

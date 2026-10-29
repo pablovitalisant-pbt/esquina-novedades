@@ -135,6 +135,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Hotfix: la tienda online no vende por mayor (flag apagado = bloqueo).
+    if (flags['tienda-mayor-online'] !== true && items.some((it) => it?.modalidad === 'caja')) {
+      return NextResponse.json(
+        { error: 'El precio por mayor no está disponible en la tienda online' },
+        { status: 400 },
+      );
+    }
+
     const origen = body?.origen as Origen;
     if (!ORIGENES.includes(origen)) {
       return NextResponse.json({ error: "origen debe ser 'productos' o 'catalogo'" }, { status: 400 });

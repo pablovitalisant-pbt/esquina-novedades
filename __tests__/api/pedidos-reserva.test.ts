@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server';
 const sql = jest.fn();
 const sqlTransaction = jest.fn();
 
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': true }));
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': true, 'tienda-mayor-online': false }));
 jest.mock('@/lib/pedidos/preferencia', () => ({
   crearPreferenciaPedido: jest.fn(async () => ({
     preferenceId: 'pref-1', initPoint: 'https://mp/sandbox',
@@ -79,7 +79,7 @@ beforeEach(() => {
 
 test('reserva: descuenta ambas tablas, guarda unidades y deja pendiente_pago 36 h', async () => {
   productos = [{ ...PRODUCTO, saldo: 20 }];
-  const res = await POST(postReq({ ...VALID_BODY, items: [{ producto_id: 118, modalidad: 'caja', cantidad: 2 }] }));
+  const res = await POST(postReq({ ...VALID_BODY, items: [{ producto_id: 118, modalidad: 'unidad', cantidad: 12 }] }));
   expect(res.status).toBe(201);
   expect((await res.json()).data.estado).toBe('pendiente_pago');
 
@@ -89,7 +89,7 @@ test('reserva: descuenta ambas tablas, guarda unidades y deja pendiente_pago 36 
   // BUG-003: el divisor debe depender de upd; un `1 / 0` constante se pliega al planificar.
   expect(prod.strings.join('')).toMatch(/1\s*\/\s*\(SELECT COUNT\(\*\) FROM upd\)/);
   expect(prod.strings.join('')).not.toMatch(/ELSE\s+1\s*\/\s*0/);
-  expect(prod.values).toContain(12); // 2 cajas * cantcaja 6
+  expect(prod.values).toContain(12); // 12 unidades
 
   expect(txQuery('UPDATE public.ubicaciones_bodega').values).toContain(12);
   const item = txQuery('INSERT INTO public.pedido_items');

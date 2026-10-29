@@ -18,7 +18,7 @@ jest.mock('next-auth', () => ({
 
 // Este archivo cubre el camino SIN pago online; el camino con pago online está en
 // pedidos-reserva.test.ts y pedidos-mercadopago.test.ts. No depender del JSON real.
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': false }));
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': false, 'tienda-mayor-online': false }));
 
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
@@ -179,15 +179,14 @@ describe('POST /api/pedidos — precios server-side', () => {
     expect(pedido.values).toContain(0); // entrega_costo real de retiro
   });
 
-  test('caja cobra precio_mayor y guarda modalidad', async () => {
+  test('caja bloqueada en tienda online → 400 sin escribir', async () => {
     const res = await POST(postReq({
       ...VALID_BODY,
       items: [{ producto_id: 118, modalidad: 'caja', cantidad: 2, precio: 1 }],
     }));
-    expect(res.status).toBe(201);
-
-    const item = txQuery('INSERT INTO public.pedido_items');
-    expect(item.values).toEqual(expect.arrayContaining(['caja', 12000]));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('El precio por mayor no está disponible en la tienda online');
+    expect(sqlTransaction).not.toHaveBeenCalled();
   });
 
   test('origen catalogo usa la misma fórmula que la página (costo + margen)', async () => {

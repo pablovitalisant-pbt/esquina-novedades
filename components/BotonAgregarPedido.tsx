@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CarritoGateModal } from '@/components/CarritoGateModal';
 import { SelectorModalidad } from '@/components/SelectorModalidad';
 import { useCarrito, ItemCarrito, ContactoCarrito, Modalidad } from '@/contexts/CarritoContext';
+import flags from '@/config/feature-flags.json';
 
 export type ProductoPedido = {
   producto_id: number;
@@ -25,12 +26,17 @@ export type ProductoPedido = {
  */
 export function BotonAgregarPedido({ item }: { item: ProductoPedido }) {
   const { contacto, agregarItem, setContacto } = useCarrito();
-  const [modalidad, setModalidad] = useState<Modalidad>(item.modalidad ?? 'unidad');
+  // Hotfix: con el flag apagado la tienda solo vende por unidad.
+  const cajaHabilitada = flags['tienda-mayor-online'] === true;
+  const [modalidad, setModalidad] = useState<Modalidad>(
+    cajaHabilitada ? item.modalidad ?? 'unidad' : 'unidad',
+  );
   const [pendiente, setPendiente] = useState<ItemCarrito | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
 
   function itemCarrito(): ItemCarrito {
-    const esCaja = modalidad === 'caja' && Number(item.precio_mayor) > 0 && Number(item.cantcaja) > 0;
+    const esCaja = cajaHabilitada && modalidad === 'caja'
+      && Number(item.precio_mayor) > 0 && Number(item.cantcaja) > 0;
     const precio = esCaja ? Number(item.precio_mayor) : item.precio;
     return {
       producto_id: item.producto_id,

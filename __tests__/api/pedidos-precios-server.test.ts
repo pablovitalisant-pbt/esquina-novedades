@@ -2,6 +2,8 @@
  * Slice 7b — Fase B: precios y totales calculados en el servidor.
  * Pruebas unitarias de lib/pedidos/precios.ts (aún no toca POST /api/pedidos).
  */
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
+
 import { calcularLinea, calcularPedido, ErrorPrecio } from '@/lib/pedidos/precios';
 import { precioCatalogoBase } from '@/lib/precio-catalogo';
 
@@ -51,15 +53,12 @@ describe("modalidad 'caja'", () => {
     )).toThrow(ErrorPrecio);
   });
 
-  test('cobra precio_mayor y descuenta cantidad * cantcaja unidades', () => {
-    const linea = calcularLinea(
+  test('bloqueada en tienda online → ErrorPrecio con el mensaje del contrato', () => {
+    expect(() => calcularLinea(
       { producto_id: 1, modalidad: 'caja', cantidad: 2 },
       producto(),
       { origen: 'productos' },
-    );
-    expect(linea.precio).toBe(12000);
-    expect(linea.subtotal).toBe(24000);
-    expect(linea.unidades).toBe(12);
+    )).toThrow('El precio por mayor no está disponible en la tienda online');
   });
 });
 
@@ -94,11 +93,11 @@ describe('total', () => {
     const r = calcularPedido(
       [
         { producto_id: 1, modalidad: 'unidad', cantidad: 2 },
-        { producto_id: 2, modalidad: 'caja', cantidad: 1 },
+        { producto_id: 2, modalidad: 'unidad', cantidad: 1 },
       ],
       [
         producto(),
-        producto({ id: 2, codigo: 'P-2', precio_mayor: 5000, cantcaja: 6 }),
+        producto({ id: 2, codigo: 'P-2', prcventa: 5000 }),
       ],
       { origen: 'productos', entrega: DELIVERY, direccion_entrega: 'Calle 1' },
     );

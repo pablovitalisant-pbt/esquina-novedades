@@ -5,6 +5,8 @@
  * Funciones puras: reciben las filas de DB ya leídas por el route handler.
  */
 
+import flags from '@/config/feature-flags.json';
+
 export type Modalidad = 'unidad' | 'caja';
 export type Origen = 'productos' | 'catalogo';
 
@@ -93,6 +95,11 @@ export function calcularLinea(
   const modalidad = item?.modalidad;
   if (modalidad !== 'unidad' && modalidad !== 'caja') {
     throw new ErrorPrecio("modalidad debe ser 'unidad' o 'caja'");
+  }
+
+  // Hotfix: defensa en profundidad — la tienda online no vende por mayor.
+  if (flags['tienda-mayor-online'] !== true && modalidad === 'caja') {
+    throw new ErrorPrecio('El precio por mayor no está disponible en la tienda online');
   }
 
   let precio: number;

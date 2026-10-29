@@ -14,6 +14,8 @@ import { CarritoProvider, useCarrito, ItemCarrito } from '@/contexts/CarritoCont
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { CarritoDrawer } from '@/components/CarritoDrawer';
 
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
+
 jest.mock('sonner', () => ({
   toast: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }));
@@ -89,7 +91,8 @@ describe('R1 — Hydration (localStorage solo en effect)', () => {
       KEY,
       JSON.stringify({
         contacto: { nombre: 'Juana', telefono: '591700' },
-        items: [ITEM_A],
+        // Hotfix: las líneas caja se descartan al hidratar; se guarda unidad.
+        items: [{ ...ITEM_A, modalidad: 'unidad' }],
       })
     );
 

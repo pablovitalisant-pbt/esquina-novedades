@@ -97,4 +97,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - MP producción: app 8021659669573211 (cuenta La Esquina), webhook Modo productivo; pago real $2.490 convertido con nota y cobro.
 - C6 ejecutado: base en cero (respaldo en ~/.pbt-runner/respaldo-golive-2026-10-26.json).
 - Importación: 68 productos desde "VENTAS AL DETALLE.xlsx" Hoja2 (script fuera del repo, ~/.pbt-runner/import-*.cjs), stock 0. Correcciones de Pablo: fila 70 MBC precio mayor 333 c/u; fila 71 detalle 10.000 / mayor 6.500. Excluidas: fila 26 (vendido), 61, 62, 73, 74 (sin precio), 75, 76 (sin código). 4 con precio mayor $0 importados sin precio mayor (filas 28, 35, 36, 37). Filas excluidas marcadas en rojo en el Excel de OneDrive.
-- Gates disparados: A13 (cambio de modelo de precio mayorista) requiere ciclo PBT-IA con contrato aprobado.
+- Gates disparados: A13 (cambio de modelo de precio mayorista) requiere ciclo PBT-IA con contrato aprobado.## 2026-10-29 - Hotfix P0: precio mayor bloqueado en la tienda online
+- Decisión de Pablo/Paola (2026-10-29): en notas el vendedor elige detalle o mayor por línea (cualquier cantidad); la tienda online muestra solo precio detalle y aplicará el mayor como descuento automático desde `minimo_mayor` por producto (slice posterior).
+- Contrato: flag `tienda-mayor-online=false` → POST /api/pedidos rechaza `modalidad:'caja'` con 400 antes de cualquier SQL; `calcularLinea` igual (defensa); sin botón Caja en tienda/catálogos; el carrito guardado descarta líneas caja al hidratar. Notas de venta sin cambios.
+- Tests: 8 nuevos (hotfix-tienda-mayor-*), rojos 6/8 antes de implementar; 5 tests de tienda ajustados al bloqueo. Suite 218/218, 1806/1806; tsc 0; lint 0/0; build OK.
+- Verificación DT: diff revisado línea a línea; verificación completa ejecutada por el DT (no se usó el reporte de claude-deep).
+- Gates disparados: ninguno.

@@ -12,6 +12,8 @@ import { ProductosPublicos } from '@/app/productos/client_page';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 import { formatCLP } from '@/lib/utils';
 
+jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
+
 jest.mock('@/components/ImageWithFallback', () => ({
   ImageWithFallback: () => <div data-testid="image-fallback" />,
 }));
@@ -130,26 +132,13 @@ function SelectorHarness({ precioMayor, cantcaja }: { precioMayor: number | null
 }
 
 describe('SelectorModalidad', () => {
-  it('muestra ambos precios y permite elegir caja cuando es válida', () => {
+  it('con tienda-mayor-online=false solo ofrece unidad, aunque haya precio mayorista', () => {
     render(<SelectorHarness precioMayor={3000} cantcaja={6} />);
     expect(screen.getByText(formatCLP(500))).toBeInTheDocument();
-    expect(screen.getByText(formatCLP(3000))).toBeInTheDocument();
     expect(screen.getByText(/stock: 20/i)).toBeInTheDocument();
-
-    const cajaBtn = screen.getByRole('button', { name: /^caja/i });
-    expect(cajaBtn).toBeEnabled();
-    fireEvent.click(cajaBtn);
-    expect(screen.getByTestId('sel').textContent).toBe('caja');
-  });
-
-  it('caja deshabilitada sin precio_mayor', () => {
-    render(<SelectorHarness precioMayor={null} cantcaja={6} />);
-    expect(screen.getByRole('button', { name: /^caja/i })).toBeDisabled();
-  });
-
-  it('caja deshabilitada con cantcaja <= 0', () => {
-    render(<SelectorHarness precioMayor={3000} cantcaja={0} />);
-    expect(screen.getByRole('button', { name: /^caja/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^caja/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(formatCLP(3000))).not.toBeInTheDocument();
+    expect(screen.getByTestId('sel').textContent).toBe('unidad');
   });
 });
 
@@ -164,8 +153,8 @@ const PRODUCTO = {
   umed: 'UND',
 };
 
-describe('BotonAgregarPedido — dos modalidades', () => {
-  it('agrega unidad por defecto y caja al seleccionarla', () => {
+describe('BotonAgregarPedido — solo unidad en tienda', () => {
+  it('no ofrece caja y agrega siempre unidad con precio unidad', () => {
     render(
       <CarritoProvider origen="productos">
         <Seed contacto />
@@ -174,16 +163,13 @@ describe('BotonAgregarPedido — dos modalidades', () => {
       </CarritoProvider>
     );
 
+    expect(screen.queryByRole('button', { name: /^caja/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /agregar al pedido/i }));
     expect(screen.getByTestId('item-unidad').textContent).toBe('1:500');
-
-    fireEvent.click(screen.getByRole('button', { name: /^caja/i }));
-    fireEvent.click(screen.getByRole('button', { name: /agregar al pedido/i }));
-    expect(screen.getByTestId('item-caja').textContent).toBe('1:3000');
-    expect(screen.getByTestId('total').textContent).toBe('2');
+    expect(screen.queryByTestId('item-caja')).not.toBeInTheDocument();
   });
 
-  it('sin precio_mayor la opción caja queda bloqueada', () => {
+  it('sin precio_mayor sigue agregando unidad', () => {
     render(
       <CarritoProvider origen="productos">
         <Seed contacto />
@@ -192,7 +178,7 @@ describe('BotonAgregarPedido — dos modalidades', () => {
       </CarritoProvider>
     );
 
-    expect(screen.getByRole('button', { name: /^caja/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^caja/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /agregar al pedido/i }));
     expect(screen.getByTestId('item-unidad').textContent).toBe('1:500');
   });
@@ -225,13 +211,15 @@ describe('Páginas públicas — wiring de precio_mayor y stock', () => {
     es_nuevo: false,
   };
 
-  it('productos pasa precio mayorista al selector', () => {
+  it('productos muestra unidad y stock sin precio mayorista', () => {
     render(<ProductosPublicos productos={[productoPagina]} empresaSlug="demo" />);
-    expect(screen.getByText(formatCLP(3000))).toBeInTheDocument();
-    expect(screen.getByText(/stock: 20/i)).toBeInTheDocument();
+    const selector = within(screen.getByRole('group', { name: /modalidad de compra/i }));
+    expect(selector.getByText(formatCLP(500))).toBeInTheDocument();
+    expect(selector.getByText(/stock: 20/i)).toBeInTheDocument();
+    expect(selector.queryByText(formatCLP(3000))).not.toBeInTheDocument();
   });
 
-  it('catálogo pasa precio mayorista al selector usando el precio de catálogo para unidad', () => {
+  it('catálogo usa el precio de catálogo para unidad y no ofrece caja', () => {
     const data = {
       titulo: 'Catálogo',
       descripcion: null,
@@ -243,6 +231,6 @@ describe('Páginas públicas — wiring de precio_mayor y stock', () => {
     render(<PublicCatalogoClient data={data} slug="demo" />);
     const selector = within(screen.getByRole('group', { name: /modalidad de compra/i }));
     expect(selector.getByText(formatCLP(900))).toBeInTheDocument();
-    expect(selector.getByText(formatCLP(3000))).toBeInTheDocument();
+    expect(selector.queryByText(formatCLP(3000))).not.toBeInTheDocument();
   });
 });

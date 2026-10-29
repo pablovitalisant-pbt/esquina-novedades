@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import flags from '@/config/feature-flags.json';
 
 export type ContactoCarrito = { nombre: string; telefono: string; email?: string };
 
@@ -71,7 +72,11 @@ export function CarritoProvider({
     const persistido = leerPersistido();
     if (persistido) {
       setContactoState(persistido.contacto);
-      setItems(persistido.items);
+      // Hotfix: carritos guardados con líneas por mayor se sanean al hidratar.
+      const itemsValidos = flags['tienda-mayor-online'] === true
+        ? persistido.items
+        : persistido.items.filter((i) => i.modalidad !== 'caja');
+      setItems(itemsValidos);
     }
     setHydrated(true);
   }, []);

@@ -10,7 +10,7 @@ Falta el **slice 11 — Deploy producción**, que se descompone abajo.
 
 ---
 
-## ⚠️ P0 — Mayorista aplicable a 1 unidad en producción
+## ✅ P0 — Mayorista aplicable a 1 unidad en producción (mitigado 2026-10-29: bloqueado en tienda online con flag `tienda-mayor-online`; en notas el vendedor elige)
 Ver `docs/TRASPASO-2026-10-28.md` §0: `cantcaja` DEFAULT 1 + `precio_mayor` cargado ⇒ opción "caja" = 1 unidad a precio mayor, sin mínimo de 3. Mitigar (con OK de Pablo) y luego A13.
 
 ## Bloque A — Calidad y Señal 3 (no depende de nadie)

@@ -84,8 +84,8 @@ describe('filtro activo en listados', () => {
     expect(leer('app/page.tsx')).toMatch(/activo\s*=\s*true/i);
   });
 
-  test('productos publicos (app/productos/page.tsx) filtra activo vía consulta compartida', () => {
-    expect(leer('app/productos/page.tsx')).toMatch(/getProductosTienda/);
+  test('productos publicos (app/page.tsx) filtra activo vía consulta compartida', () => {
+    expect(leer('app/page.tsx')).toMatch(/getProductosTienda/);
     expect(leer('lib/tienda-productos.ts')).toMatch(/activo\s*=\s*true/i);
   });
 

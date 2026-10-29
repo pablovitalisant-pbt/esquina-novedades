@@ -12,23 +12,20 @@ import { TiendaHeader } from '@/components/tienda/TiendaHeader';
 import { BarraCategorias } from '@/components/tienda/BarraCategorias';
 import { FranjaConfianza } from '@/components/tienda/FranjaConfianza';
 import { TiendaFooter } from '@/components/tienda/TiendaFooter';
-import { normalizar } from '@/components/tienda/normalizar';
+import { filtrarProductos } from '@/components/tienda/filtrarProductos';
 import type { CategoriaTienda, OpcionEntregaTienda, ProductoTienda } from '@/lib/tienda-productos';
 import { ShoppingBag } from 'lucide-react';
 
 type Orden = 'novedades' | 'menor' | 'mayor';
 
-export function TiendaPortada({
-  productos,
-  categorias,
-  opcionesEntrega,
-  empresaSlug,
-}: {
+type Props = {
   productos: ProductoTienda[];
   categorias: CategoriaTienda[];
   opcionesEntrega: OpcionEntregaTienda[];
   empresaSlug: string;
-}) {
+};
+
+export function TiendaPortada({ productos, categorias, opcionesEntrega, empresaSlug }: Props) {
   return (
     <CarritoProvider origen="productos">
       <TiendaPortadaInner
@@ -42,17 +39,7 @@ export function TiendaPortada({
   );
 }
 
-function TiendaPortadaInner({
-  productos,
-  categorias,
-  opcionesEntrega,
-  empresaSlug,
-}: {
-  productos: ProductoTienda[];
-  categorias: CategoriaTienda[];
-  opcionesEntrega: OpcionEntregaTienda[];
-  empresaSlug: string;
-}) {
+function TiendaPortadaInner({ productos, categorias, opcionesEntrega, empresaSlug }: Props) {
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState<string | null>(null);
   const [orden, setOrden] = useState<Orden>('novedades');
@@ -61,13 +48,7 @@ function TiendaPortadaInner({
   const conStock = useMemo(() => productos.filter((p) => p.saldo > 0), [productos]);
 
   const filtrados = useMemo(() => {
-    let out = conStock;
-    if (categoria) out = out.filter((p) => p.categoria === categoria);
-    const q = normalizar(busqueda);
-    if (q) {
-      out = out.filter((p) => normalizar(p.detalle ?? '').includes(q) || normalizar(p.codigo).includes(q));
-    }
-    const copia = [...out];
+    const copia = filtrarProductos(conStock, { categoria, busqueda });
     if (orden === 'menor') copia.sort((a, b) => a.precio - b.precio);
     else if (orden === 'mayor') copia.sort((a, b) => b.precio - a.precio);
     else copia.sort((a, b) => Number(b.es_nuevo) - Number(a.es_nuevo) || b.id - a.id);

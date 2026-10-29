@@ -61,10 +61,11 @@ describe('flag tienda-portada-v2 ON', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/precios');
   });
 
-  test('la consulta de productos está compartida con /productos', () => {
+  test('/productos ya no consulta productos: solo redirige a "/"', () => {
     const home = fs.readFileSync(path.join(ROOT, 'app', 'page.tsx'), 'utf-8');
     const productos = fs.readFileSync(path.join(ROOT, 'app', 'productos', 'page.tsx'), 'utf-8');
     expect(home).toContain('getProductosTienda');
-    expect(productos).toContain('getProductosTienda');
+    expect(productos).toContain('permanentRedirect');
+    expect(productos).not.toContain('getProductosTienda');
   });
 });

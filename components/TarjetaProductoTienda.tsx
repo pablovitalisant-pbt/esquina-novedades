@@ -4,17 +4,14 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { formatCLP } from '@/lib/utils';
 import { ShoppingBag } from 'lucide-react';
+import type { ProductoTienda } from '@/lib/tienda-productos';
 
 /** Forma mínima que necesitan las tarjetas de la tienda. */
-export type ProductoTarjeta = {
-  id: number;
-  codigo: string;
-  detalle: string | null;
-  imagen_url: string | null;
-  es_nuevo: boolean;
+export type ProductoTarjeta = Pick<
+  ProductoTienda,
+  'id' | 'codigo' | 'detalle' | 'imagen_url' | 'es_nuevo' | 'precio_mayor' | 'minimo_mayor'
+> & {
   precio: number | null;
-  precio_mayor?: number | null;
-  minimo_mayor?: number | null;
   saldo?: number | null;
 };
 

@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { CarritoProvider, useCarrito, ItemCarrito } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
-import { ProductosPublicos } from '@/app/productos/client_page';
+import { TarjetaProductoTienda } from '@/components/TarjetaProductoTienda';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 import { formatCLP } from '@/lib/utils';
 
@@ -113,7 +113,11 @@ describe('Páginas públicas — sin precio mayor ni mínimo visibles', () => {
   };
 
   it('productos muestra el precio detalle y oculta el mayor', () => {
-    render(<ProductosPublicos productos={[productoPagina]} empresaSlug="demo" />);
+    render(
+      <CarritoProvider origen="productos">
+        <TarjetaProductoTienda producto={productoPagina} empresaSlug="demo" />
+      </CarritoProvider>,
+    );
     expect(screen.getByText(formatCLP(500))).toBeInTheDocument();
     expect(screen.queryByText(formatCLP(3000))).not.toBeInTheDocument();
     expect(screen.queryByText(/precio mayor/i)).not.toBeInTheDocument();

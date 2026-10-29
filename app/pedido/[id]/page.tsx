@@ -121,7 +121,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
       <header className="border-b border-[var(--border-default)]">
         <div className="mx-auto flex h-16 items-center justify-between gap-4 px-6" style={{ maxWidth: '1152px' }}>
           <MarcaLogo className="text-lg font-bold text-[var(--heading)]" />
-          <Link href="/productos" className="inline-flex items-center gap-1 text-sm text-[var(--body-subtle)] transition-colors hover:text-[var(--primary)]">
+          <Link href="/" className="inline-flex items-center gap-1 text-sm text-[var(--body-subtle)] transition-colors hover:text-[var(--primary)]">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Volver a la tienda
           </Link>
@@ -198,7 +198,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
             </a>
           ) : (
             <Link
-              href="/productos"
+              href="/"
               className="inline-flex h-12 items-center justify-center rounded-[var(--radius-pill)] border border-transparent bg-[var(--accent)] px-6 text-base font-medium text-[var(--accent-foreground)] shadow-[0_2px_4px_0_rgb(0_0_0/0.04)] transition hover:brightness-95 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               Seguir comprando

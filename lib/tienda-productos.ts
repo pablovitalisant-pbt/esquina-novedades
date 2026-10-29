@@ -9,8 +9,6 @@ export type ProductoTienda = {
   detalle: string | null;
   imagen_url: string | null;
   categoria: string | null;
-  cantcaja: number;
-  umed: string;
   precio: number;
   precio_mayor: number | null;
   minimo_mayor: number | null;
@@ -32,8 +30,6 @@ type ProductoRow = {
   detalle: string | null;
   imagen_url: string | null;
   categoria: string | null;
-  cantcaja: string;
-  umed: string;
   precio: string;
   precio_mayor: string | null;
   minimo_mayor: string | null;
@@ -66,8 +62,6 @@ export async function getProductosTienda(): Promise<{
       MAX(detalle) as detalle,
       MAX(imagen_url) as imagen_url,
       MAX(categoria) as categoria,
-      MAX(cantcaja) as cantcaja,
-      MAX(umed) as umed,
       MAX(prcventa) as precio,
       MAX(precio_mayor) as precio_mayor,
       MAX(minimo_mayor) as minimo_mayor,
@@ -87,7 +81,6 @@ export async function getProductosTienda(): Promise<{
     precio: parseFloat(r.precio),
     precio_mayor: r.precio_mayor == null ? null : parseFloat(r.precio_mayor),
     minimo_mayor: r.minimo_mayor == null ? null : parseInt(r.minimo_mayor),
-    cantcaja: parseInt(r.cantcaja),
     es_nuevo: Boolean(r.es_nuevo),
   }));
 

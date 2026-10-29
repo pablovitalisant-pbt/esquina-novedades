@@ -38,7 +38,7 @@ export function BarraCategorias({
   );
 }
 
-export function botonCategoria(activo: boolean): string {
+function botonCategoria(activo: boolean): string {
   return [
     'shrink-0 rounded-full px-3.5 h-8 text-sm font-medium border transition-colors',
     activo

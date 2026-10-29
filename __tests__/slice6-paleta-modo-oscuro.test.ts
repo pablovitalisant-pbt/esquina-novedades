@@ -121,14 +121,6 @@ describe('Slice 6 — tokens de la paleta', () => {
       expect({ token: key, value: dark[key]?.toUpperCase() }).toEqual({ token: key, value: value.toUpperCase() });
     }
   });
-
-  test('landing page usa la nueva paleta', () => {
-    const css = readCss();
-    const block = css.match(/\.landing-page\s*\{[^}]*\}/)?.[0] ?? '';
-    expect(block).toContain('--landing-primary: #590078');
-    expect(block).toContain('--landing-surface: #FFF8EA');
-    expect(block).toContain('--landing-ink: #21002F');
-  });
 });
 
 describe('Slice 6 — contraste WCAG', () => {

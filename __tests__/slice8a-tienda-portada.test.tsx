@@ -20,8 +20,6 @@ const producto = (over: Partial<ProductoTienda>): ProductoTienda => ({
   id: 1,
   detalle: 'Producto',
   imagen_url: null,
-  cantcaja: 1,
-  umed: 'UN',
   precio: 1000,
   precio_mayor: null,
   minimo_mayor: null,

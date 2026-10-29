@@ -17,7 +17,7 @@ describe('formatCLP', () => {
 const FILES = [
   'lib/calcular-precio.ts', 'lib/inversion-mercaderia.ts', 'contexts/CarritoContext.tsx',
   'components/ProductCard.tsx', 'components/ProductDrawer.tsx', 'components/CarritoDrawer.tsx',
-  'components/LandingPage.tsx', 'app/productos/page.tsx', 'app/productos/client_page.tsx',
+  'app/productos/page.tsx',
   'app/catalogo/[slug]/page.tsx', 'app/catalogo/[slug]/client_page.tsx',
   'app/(app)/precios/client_page.tsx', 'app/(app)/pedidos/client_page.tsx',
   'app/(app)/clientes/client_page.tsx', 'app/(app)/admin/inversion-mercaderia/client_page.tsx',

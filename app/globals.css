@@ -7,10 +7,6 @@
     display: none !important;
   }
 
-  .catalogo-header {
-    display: none !important;
-  }
-
   body {
     background: white !important;
     color: var(--heading) !important;
@@ -21,11 +17,6 @@
   /* Impresión con tinta de marca: legible en color y en blanco y negro. */
   .print-page {
     border-color: var(--border) !important;
-  }
-
-  /* Contenedor del grid: una columna en print */
-  .print-page-container {
-    display: block !important;
   }
 
   /* Cada producto ocupa su propia pagina */
@@ -60,11 +51,6 @@
   /* Texto del producto */
   .print-page .p-4 {
     padding: 0.5cm 0 !important;
-  }
-
-  /* Ocultar footer del catalogo */
-  .catalogo-footer {
-    display: none !important;
   }
 
   @page {
@@ -206,23 +192,6 @@
   body {
     @apply bg-background text-foreground;
     -webkit-text-size-adjust: 100%;
-  }
-}
-
-/* Landing page pública — tokens scoped */
-.landing-page {
-  --landing-primary: #590078;
-  --landing-surface: #FFF8EA;
-  --landing-ink: #21002F;
-  --landing-on-primary: #FFF8EA;
-}
-
-@media (prefers-color-scheme: dark) {
-  .landing-page {
-    --landing-primary: #F2B936;
-    --landing-surface: #24082F;
-    --landing-ink: #100A14;
-    --landing-on-primary: #21002F;
   }
 }
 

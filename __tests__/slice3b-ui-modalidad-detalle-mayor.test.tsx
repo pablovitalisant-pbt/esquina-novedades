@@ -13,7 +13,6 @@ import path from 'path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
-import { LandingPage } from '@/components/LandingPage';
 import { toast } from 'sonner';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
@@ -199,16 +198,6 @@ describe('AgregarANotaVentaModal — cantidad y modalidad', () => {
   it('sin precio_mayor por defecto va en detalle con prcventa', async () => {
     await renderModal({ ...base, precio_mayor: null });
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('2500');
-  });
-});
-
-describe('landing — mayor sin cajas', () => {
-  it('no habla de cajas', () => {
-    render(<LandingPage productos={[]} empresaSlug="esquina" />);
-    const text = document.body.textContent ?? '';
-    expect(text).toContain('Venta por mayor y al detalle');
-    expect(text).toContain('vende por mayor y al detalle');
-    expect(text).not.toContain('mayor (cajas)');
   });
 });
 

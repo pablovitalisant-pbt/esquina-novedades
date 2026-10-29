@@ -59,7 +59,7 @@ describe('POST /api/productos — duplicado de código (409)', () => {
     const res = await POST(makeReq('/api/productos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Test', costo: 10, margen_pct: 30 }),
+      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Test', costo: 10, prcventa: 30 }),
     }));
     expect(res.status).toBe(401);
   });
@@ -69,7 +69,7 @@ describe('POST /api/productos — duplicado de código (409)', () => {
     const res = await POST(makeReq('/api/productos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Producto test duplicado', costo: 10, margen_pct: 30 }),
+      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Producto test duplicado', costo: 10, prcventa: 30 }),
     }));
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -81,7 +81,7 @@ describe('POST /api/productos — duplicado de código (409)', () => {
     const res = await POST(makeReq('/api/productos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Producto test duplicado', costo: 10, margen_pct: 30 }),
+      body: JSON.stringify({ codigo: TEST_CODIGO, detalle: 'Producto test duplicado', costo: 10, prcventa: 30 }),
     }));
     expect(res.status).toBe(409);
     const body = await res.json();

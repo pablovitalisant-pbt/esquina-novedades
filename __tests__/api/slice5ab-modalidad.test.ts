@@ -190,15 +190,13 @@ describe('5b — PUT productos propaga por modalidad (H1)', () => {
     PUT(new NextRequest('http://localhost/api/productos/1', { method: 'PUT', body: JSON.stringify(body) }), { params: { id: '1' } });
 
   it('prcventa solo actualiza items unidad; precio_mayor solo items caja', async () => {
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'P1' }])
-      .mockResolvedValueOnce([{ costo: null, margen_pct: null }]);
+    sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'P1', costo: null, prcventa: 50000, precio_mayor: null }]);
     sqlTransaction.mockResolvedValueOnce([[{ id: 1 }]]);
-    expect((await put({ prcventa: 2500, precio_mayor: 30000 })).status).toBe(200);
+    expect((await put({ prcventa: 50000, precio_mayor: 30000 })).status).toBe(200);
     const qs = sqlQuery.mock.calls.map((c) => c[0] as string).slice(1);
     const uni = qs.find((q) => q.includes("modalidad = 'unidad'"))!;
     const caja = qs.find((q) => q.includes("modalidad = 'caja'"))!;
-    expect(sqlQuery.mock.calls.find((c) => c[0] === uni)![1]).toEqual([2500, 'P1']);
+    expect(sqlQuery.mock.calls.find((c) => c[0] === uni)![1]).toEqual([50000, 'P1']);
     expect(sqlQuery.mock.calls.find((c) => c[0] === caja)![1]).toEqual([30000, 'P1']);
     for (const q of [uni, caja]) {
       expect(q).toContain("estado = 'activa'");

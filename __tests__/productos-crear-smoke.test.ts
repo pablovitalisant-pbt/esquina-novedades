@@ -50,17 +50,16 @@ describe('crear productos — smoke', () => {
       expect(block).toContain('400');
     });
 
-    test('valida margen_pct >= 0 (400)', () => {
+    test('valida prcventa entero > 0 (400)', () => {
       const block = postBlock();
-      expect(block).toContain('margen');
+      expect(block).toContain('prcventa');
       expect(block).toContain('400');
     });
 
-    test('prcventa lo calcula el servidor (importa calcularPrecio)', () => {
+    test('prcventa es precio directo del body (el servidor ya no la calcula)', () => {
       const block = postBlock();
-      expect(block).toMatch(/calcularPrecio/);
-      // No debe validar prcventa del body como obligatorio
-      expect(block).not.toMatch(/body\.prcventa/);
+      expect(block).not.toMatch(/calcularPrecio/);
+      expect(block).toMatch(/const \{[^}]*prcventa/);
     });
 
     test('detecta código duplicado (409)', () => {
@@ -119,18 +118,18 @@ describe('crear productos — smoke', () => {
       expect(content).toMatch(/toast.*sonner/);
     });
 
-    test('precio de venta es calculado desde costo + margen', () => {
-      expect(content).toMatch(/precioCalculado/);
-      expect(content).toMatch(/Math\.round.*Number.*crearCosto.*\*.*\(1.*Number.*crearMargen.*100.*100.*100/);
+    test('precio detalle es directo (sin cálculo de margen en el cliente)', () => {
+      expect(content).toMatch(/crearPrcVenta/);
+      expect(content).not.toMatch(/precioCalculado/);
+      expect(content).not.toMatch(/crearMargen/);
     });
 
-    test('costo y margen_pct son requeridos en el POST body', () => {
+    test('costo y prcventa son requeridos en el POST body; margen_pct no se envia', () => {
       expect(content).toMatch(/costo.*Number/);
-      expect(content).toMatch(/margen_pct/);
-      // prcventa ya no se envía en el body del POST
-      const postBodyMatch = content.match(/JSON\.stringify\([\s\S]*?\}\)\)/);
+      const postBodyMatch = content.match(/body: JSON\.stringify\(\{[\s\S]*?\}\),/);
       const postBody = postBodyMatch ? postBodyMatch[0] : '';
-      expect(postBody).not.toMatch(/prcventa/);
+      expect(postBody).toMatch(/prcventa/);
+      expect(postBody).not.toMatch(/margen_pct/);
     });
 
     test('modal tiene input "Unidades por caja" (crearCantCaja) con min 1 y step 1', () => {

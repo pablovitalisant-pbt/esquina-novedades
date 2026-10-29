@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { calcularPrecio } from "@/lib/calcular-precio";
-import { esPrecioMayorValido } from "@/lib/precio-mayor";
+import { calcularMargen } from "@/lib/calcular-precio";
+import { esPrecioMayorValido, esMinimoMayorValido } from "@/lib/precio-mayor";
 import { mensajeError } from '@/lib/errores';
 
 // ponytail: rechazar NaN/null — ver PBT-IA NaN/null bypass hallazgo
@@ -20,14 +20,16 @@ const esUmedValido = (v: unknown): v is string =>
 
 // ponytail: whitelist de columnas — única fuente de verdad para el UPDATE dinámico.
 // Nunca interpolar nombres de columna desde el body directamente.
+// margen_pct está en el mapa porque el servidor lo escribe, pero NO se acepta del body.
 const WHITELIST: Record<string, string> = {
   detalle: "detalle", costo: "costo", margen_pct: "margen_pct",
   prcventa: "prcventa", prcminimo: "prcminimo", umed: "umed",
   cantcaja: "cantcaja", pesocaja: "pesocaja", cubicaja: "cubicaja",
   es_nuevo: "es_nuevo", categoria: "categoria", imagen_url: "imagen_url",
-  precio_mayor: "precio_mayor",
+  precio_mayor: "precio_mayor", minimo_mayor: "minimo_mayor",
   stock_minimo: "stock_minimo", no_reponer: "no_reponer", // Slice 15: "no reponer" offline
 };
+const CAMPOS_CLIENTE = Object.keys(WHITELIST).filter((k) => k !== "margen_pct");
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -44,7 +46,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     // Paso 1: extraer solo campos del whitelist presentes en el body
     const changes: Record<string, string | number | boolean | null> = {};
-    for (const key of Object.keys(WHITELIST)) {
+    for (const key of CAMPOS_CLIENTE) {
       if (body[key] !== undefined) changes[key] = body[key];
     }
     if (Object.keys(changes).length === 0) {
@@ -55,10 +57,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     // Nota: esNumeroValido rechaza NaN, null, boolean — previene bypass NaN > 0 = false
     if (changes.costo !== undefined && (!esNumeroValido(changes.costo) || Number(changes.costo) <= 0))
       return NextResponse.json({ error: "Costo debe ser mayor a 0" }, { status: 400 });
-    if (changes.margen_pct !== undefined && (!esNumeroValido(changes.margen_pct) || Number(changes.margen_pct) < 0))
-      return NextResponse.json({ error: "Porcentaje de ganancia no puede ser negativo" }, { status: 400 });
-    if (changes.prcventa !== undefined && (!esNumeroValido(changes.prcventa) || Number(changes.prcventa) <= 0))
-      return NextResponse.json({ error: "Precio de venta debe ser mayor a 0" }, { status: 400 });
+    // Slice 2a: prcventa es precio directo (entero CLP). margen_pct nunca se acepta del body.
+    if (changes.prcventa !== undefined && (typeof changes.prcventa !== "number" || !Number.isInteger(changes.prcventa) || changes.prcventa <= 0))
+      return NextResponse.json({ error: "Precio de venta debe ser un entero mayor a 0" }, { status: 400 });
     if (changes.prcminimo !== undefined && changes.prcminimo !== null && (!esNumeroValido(changes.prcminimo) || Number(changes.prcminimo) < 0))
       return NextResponse.json({ error: "Precio minimo no puede ser negativo" }, { status: 400 });
     if (changes.stock_minimo !== undefined && changes.stock_minimo !== null && (!esNumeroValido(changes.stock_minimo) || Number(changes.stock_minimo) < 0))
@@ -70,13 +71,15 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     if (changes.cubicaja !== undefined && (!esNumeroValido(changes.cubicaja) || Number(changes.cubicaja) < 0))
       return NextResponse.json({ error: "Cubicaje no puede ser negativo" }, { status: 400 });
     if (changes.precio_mayor !== undefined && !esPrecioMayorValido(changes.precio_mayor))
-      return NextResponse.json({ error: "Precio por caja debe ser un entero mayor a 0 o vacio" }, { status: 400 });
+      return NextResponse.json({ error: "Precio mayor debe ser un entero mayor a 0 o vacio" }, { status: 400 });
+    if (changes.minimo_mayor !== undefined && !esMinimoMayorValido(changes.minimo_mayor))
+      return NextResponse.json({ error: "Unidades minimas para precio mayor debe ser un entero mayor o igual a 1" }, { status: 400 });
     if (changes.umed !== undefined && !esUmedValido(changes.umed))
       return NextResponse.json({ error: "Unidad de medida invalida: debe ser Unid o Set" }, { status: 400 });
     if (changes.umed !== undefined) changes.umed = changes.umed.trim();
 
-    // Paso 3: access check
-    const existing = await sql`SELECT empresa_id, codigo FROM productos WHERE id = ${pid}`;
+    // Paso 3: access check + valores actuales para derivar el margen
+    const existing = await sql`SELECT empresa_id, codigo, costo, prcventa, precio_mayor FROM productos WHERE id = ${pid}`;
     if (existing.length === 0)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
     if (!user.empresas.includes(existing[0].empresa_id))
@@ -90,37 +93,37 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         return NextResponse.json({ error: "Categoria no valida" }, { status: 400 });
     }
 
-    // Paso 5: invariante anti-drift — cuando el servidor debe calcular prcventa
-    const hasCosto = changes.costo !== undefined;
-    const hasMargen = changes.margen_pct !== undefined;
-    const hasPrcVenta = changes.prcventa !== undefined;
-    // S4: registrar qué campos propagables vienen del cliente (no del anti-drift)
+    // Paso 5: precios directos. prcventa nunca se recalcula desde costo/margen.
+    const cur = existing[0];
+    const curCosto = cur.costo != null ? Number(cur.costo) : null;
+    const curPrcVenta = cur.prcventa != null ? Number(cur.prcventa) : null;
+    const curPrecioMayor = cur.precio_mayor != null ? Number(cur.precio_mayor) : null;
+
+    const finalPrcVenta = changes.prcventa !== undefined ? Number(changes.prcventa) : curPrcVenta;
+    const finalPrecioMayor: number | null = changes.precio_mayor === undefined
+      ? curPrecioMayor
+      : (changes.precio_mayor === null ? null : Number(changes.precio_mayor));
+
+    if (finalPrecioMayor !== null && finalPrcVenta !== null && finalPrecioMayor >= finalPrcVenta) {
+      return NextResponse.json({ error: "Precio mayor debe ser menor al precio de venta" }, { status: 400 });
+    }
+    // Sin precio mayor no puede haber mínimo por cantidad.
+    if (finalPrecioMayor === null && (changes.precio_mayor !== undefined || changes.minimo_mayor !== undefined)) {
+      changes.minimo_mayor = null;
+    }
+
+    // El margen SIEMPRE se deriva de costo y prcventa finales (leyendo DB lo que no venga).
+    if (changes.costo !== undefined || changes.prcventa !== undefined) {
+      changes.margen_pct = calcularMargen(
+        changes.costo !== undefined ? Number(changes.costo) : curCosto,
+        finalPrcVenta,
+      );
+    }
+
+    // S4: campos propagables que vienen del cliente
     const clientDetalle = changes.detalle;
     const clientImagenUrl = changes.imagen_url;
-    const clientPrcVenta = hasPrcVenta ? changes.prcventa : undefined;
-
-    if (hasCosto && hasMargen) {
-      // Ambos provistos → calcular prcventa sin leer DB
-      const c = Number(changes.costo);
-      const m = Number(changes.margen_pct);
-      if (c > 0 && m >= 0) changes.prcventa = calcularPrecio(c, m);
-    } else if (hasCosto || hasMargen) {
-      // Solo uno provisto → leer el otro de DB
-      const cur = await sql`SELECT costo, margen_pct FROM productos WHERE codigo = ${codigo} LIMIT 1`;
-      const curCosto = cur.length > 0 ? Number(cur[0].costo) : null;
-      const curMargen = cur.length > 0 ? Number(cur[0].margen_pct) : null;
-      const cf = hasCosto ? Number(changes.costo) : curCosto;
-      const mf = hasMargen ? Number(changes.margen_pct) : curMargen;
-      if (cf !== null && cf > 0 && mf !== null && mf >= 0)
-        changes.prcventa = calcularPrecio(cf, mf);
-    } else if (hasPrcVenta) {
-      // Solo prcventa — aceptar, derivar margen de costo actual si existe
-      const cur = await sql`SELECT costo, margen_pct FROM productos WHERE codigo = ${codigo} LIMIT 1`;
-      const curCosto = cur.length > 0 ? Number(cur[0].costo) : null;
-      changes.margen_pct = (curCosto !== null && curCosto > 0)
-        ? Math.round(((Number(changes.prcventa) / curCosto) - 1) * 10000) / 100
-        : null;
-    }
+    const clientPrcVenta = changes.prcventa;
 
     // Paso 6: construir y ejecutar UPDATE + propagación en transacción atómica
     const setClauses: string[] = [];

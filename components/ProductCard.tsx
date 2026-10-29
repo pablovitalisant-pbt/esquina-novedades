@@ -75,7 +75,7 @@ export function ProductCard({ producto, empresaSlug, empresaNombre, onClick, ocu
               {ocultarPrecios ? '••••' : producto.prcventa > 0 ? formatCLP(producto.prcventa) : '—'}
             </div>
             {(flags as Record<string, boolean>)['precio-mayorista-ui'] === true && !ocultarPrecios && producto.precio_mayor != null && (
-              <div className="text-xs text-[var(--body)] mt-1">Caja: {formatCLP(producto.precio_mayor)}</div>
+              <div className="text-xs text-[var(--body)] mt-1">Mayor: {formatCLP(producto.precio_mayor)}</div>
             )}
           </div>
 

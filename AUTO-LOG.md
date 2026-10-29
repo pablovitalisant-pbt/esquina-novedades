@@ -103,3 +103,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Tests: 8 nuevos (hotfix-tienda-mayor-*), rojos 6/8 antes de implementar; 5 tests de tienda ajustados al bloqueo. Suite 218/218, 1806/1806; tsc 0; lint 0/0; build OK.
 - Verificación DT: diff revisado línea a línea; verificación completa ejecutada por el DT (no se usó el reporte de claude-deep).
 - Gates disparados: ninguno.
+## 2026-10-29 - Slice 2: precios directos en productos (2a servidor + 2b UI)
+- Decisión de Pablo: al crear/editar producto se ingresan precio detalle y precio mayor directo; el % de ganancia lo deriva el servidor desde el costo; costo obligatorio al crear. Nuevo `minimo_mayor` (unidades para precio mayor en tienda online).
+- Contrato: migración 045 (`productos.minimo_mayor`); `calcularMargen` reemplaza `calcularPrecio`; POST exige prcventa entero; PUT nunca recalcula prcventa desde costo; precio_mayor < prcventa; minimo_mayor requiere precio_mayor. UI de crear/editar sin % editable, ganancias en vivo. Al editar el costo es opcional (68 productos sin costo) — decisión DT, reversible.
+- Tests: 2a 49 rojos antes; 2b 17 rojos antes. Suite 220/220, 1847/1847; tsc 0; lint 0/0; build OK.
+- Verificación DT: diff revisado; producción sin productos con mayor >= detalle ni precios con decimales (SELECT de solo lectura). 045 aplicada en test-integration y en producción antes del push (idempotente, verificada). `npm run migrate` falla en test-integration en 019 (no idempotente; preexistente, no de este slice).
+- Gates disparados: excede 200 líneas (~300 prod) porque servidor y UI deben desplegarse juntos; aceptado.

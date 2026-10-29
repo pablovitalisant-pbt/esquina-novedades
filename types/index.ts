@@ -34,6 +34,7 @@ export interface Producto {
   prcventa: number;
   prcminimo: number;
   precio_mayor?: number | null;
+  minimo_mayor?: number | null;
   cantcaja: number;
   pesocaja: number;
   cubicaja: number;

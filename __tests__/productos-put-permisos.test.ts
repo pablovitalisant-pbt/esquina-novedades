@@ -134,9 +134,7 @@ describe('PUT /api/productos/[id] — permisos admin', () => {
 
     test('admin edita costo → 200', async () => {
       setAdmin();
-      sql
-        .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]) // access check
-        .mockResolvedValueOnce([{ costo: 10, margen_pct: 25 }]); // lectura anti-drift
+      sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01', costo: 10, prcventa: 12.5, precio_mayor: null }]);
       sqlTransaction.mockResolvedValueOnce([[{ id: 1, costo: 10, margen_pct: 25, prcventa: 12.50 }]]);
       const res = await PUT(makeReq({ costo: 10 }), ctx);
       expect(res.status).toBe(200);

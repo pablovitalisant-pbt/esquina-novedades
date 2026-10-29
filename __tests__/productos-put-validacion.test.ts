@@ -91,26 +91,19 @@ describe('PUT /api/productos/[id] — validacion de campos', () => {
   });
 
   describe('margen_pct', () => {
-    test('margen_pct negativo → 400', async () => {
+    // Slice 2a: margen_pct es calculado por el servidor; lo que llegue del body se ignora.
+    test('margen_pct del body se ignora (sin otros campos → "Nada que actualizar")', async () => {
+      authAdmin();
+      const res = await PUT(makeReq({ margen_pct: 30 }), ctx);
+      expect(res.status).toBe(200);
+      expect(sql).not.toHaveBeenCalled();
+    });
+
+    test('margen_pct negativo también se ignora (no es un campo editable)', async () => {
       authAdmin();
       const res = await PUT(makeReq({ margen_pct: -1 }), ctx);
-      expect(res.status).toBe(400);
-    });
-
-    test('margen_pct null → 400 (null bypass)', async () => {
-      authAdmin();
-      const res = await PUT(makeReq({ margen_pct: null }), ctx);
-      expect(res.status).toBe(400);
-    });
-
-    test('margen_pct = 0 valido (sin ganancia)', async () => {
-      authAdmin();
-      sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]);
-      sqlTransaction.mockResolvedValueOnce([[{
-        id: 1, costo: 10, margen_pct: 0, prcventa: 10,
-      }]]);
-      const res = await PUT(makeReq({ margen_pct: 0, costo: 10 }), ctx);
       expect(res.status).toBe(200);
+      expect(sql).not.toHaveBeenCalled();
     });
   });
 
@@ -175,6 +168,18 @@ describe('PUT /api/productos/[id] — validacion de campos', () => {
     test('prcventa <= 0 → 400', async () => {
       authAdmin();
       const res = await PUT(makeReq({ prcventa: 0 }), ctx);
+      expect(res.status).toBe(400);
+    });
+
+    test('prcventa no entero → 400', async () => {
+      authAdmin();
+      const res = await PUT(makeReq({ prcventa: 12.5 }), ctx);
+      expect(res.status).toBe(400);
+    });
+
+    test('prcventa como string → 400 (precio directo debe ser número)', async () => {
+      authAdmin();
+      const res = await PUT(makeReq({ prcventa: '100' }), ctx);
       expect(res.status).toBe(400);
     });
   });

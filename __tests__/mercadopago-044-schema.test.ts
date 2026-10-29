@@ -77,7 +77,7 @@ describe('MIGRATION_ORDER', () => {
   it('incluye 044 exactamente una vez y queda al final', () => {
     const { MIGRATION_ORDER } = require('../scripts/migrations-order');
     expect(MIGRATION_ORDER.filter((f: string) => f === '044_mercadopago.sql')).toHaveLength(1);
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('044_mercadopago.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('045_productos_minimo_mayor.sql');
   });
 
   it('no edita la migración 043 ya aplicada', () => {

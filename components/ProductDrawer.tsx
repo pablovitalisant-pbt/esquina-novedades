@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ImageWithFallback } from './ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
+import { calcularMargen } from '@/lib/calcular-precio';
 import { EMPRESA } from '@/lib/empresa';
 import { toast } from 'sonner';
 import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
@@ -51,7 +52,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
 
   // BUG-019 fix: estado para edición completa de producto
   const [editCosto, setEditCosto] = useState('');
-  const [editMargenPct, setEditMargenPct] = useState('');
+  const [editMinimoMayor, setEditMinimoMayor] = useState('');
   const [editDetalle, setEditDetalle] = useState('');
   const [editUmed, setEditUmed] = useState('');
   const [editCantCaja, setEditCantCaja] = useState('');
@@ -72,10 +73,10 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
   const canEditPrices = ['admin'].includes(session.rol);
   const isAdmin = session.rol === 'admin';
 
-  // Precio calculado en vivo (mismo patrón que S1)
-  const precioCalculado = editCosto && editMargenPct
-    ? Math.round(Number(editCosto) * (1 + Number(editMargenPct) / 100) * 100) / 100
-    : null;
+  // Ganancias derivadas en vivo (solo lectura). Sin costo → "—".
+  const costoNum = editCosto ? Number(editCosto) : null;
+  const gananciaDetalle = calcularMargen(costoNum, prcVenta ? Number(prcVenta) : null);
+  const gananciaMayor = calcularMargen(costoNum, editPrecioMayor ? Number(editPrecioMayor) : null);
 
   useEffect(() => {
     fetch('/api/categorias')
@@ -93,7 +94,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       setCategoria(producto.categoria ?? '');
       setEditStockMinimo(producto.stock_minimo?.toString() ?? '');
       setEditCosto(producto.costo?.toString() ?? '');
-      setEditMargenPct(producto.margen_pct != null ? String(Number(producto.margen_pct)) : '');
+      setEditMinimoMayor(producto.minimo_mayor?.toString() ?? '');
       setEditDetalle(producto.detalle ?? '');
       setEditUmed(['U', 'SET'].includes(producto.umed) ? producto.umed : 'U');
       setEditCantCaja(producto.cantcaja.toString());
@@ -124,7 +125,7 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
       setPrcMinimo(producto.prcminimo?.toString() ?? '');
       setCategoria(producto.categoria ?? '');
       setEditCosto(producto.costo?.toString() ?? '');
-      setEditMargenPct(producto.margen_pct != null ? String(Number(producto.margen_pct)) : '');
+      setEditMinimoMayor(producto.minimo_mayor?.toString() ?? '');
       setEditDetalle(producto.detalle ?? '');
       setEditUmed(['U', 'SET'].includes(producto.umed) ? producto.umed : 'U');
       setEditCantCaja(producto.cantcaja.toString());
@@ -208,10 +209,12 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
     const body: Record<string, unknown> = {};
 
     if (editCosto) body.costo = Number(editCosto);
-    if (editMargenPct) body.margen_pct = Number(editMargenPct);
     if (prcVenta) body.prcventa = Number(prcVenta);
     if (prcMinimo) body.prcminimo = Number(prcMinimo) || null;
-    if (PRECIO_MAYOR_UI) body.precio_mayor = editPrecioMayor === '' ? null : Number(editPrecioMayor);
+    if (PRECIO_MAYOR_UI) {
+      body.precio_mayor = editPrecioMayor === '' ? null : Number(editPrecioMayor);
+      body.minimo_mayor = editMinimoMayor === '' ? null : Number(editMinimoMayor);
+    }
     if (editDetalle) body.detalle = editDetalle;
     if (editUmed) body.umed = editUmed;
     body.cantcaja = Number(editCantCaja);
@@ -483,39 +486,37 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
 
             {isEditing ? (
               <div className="space-y-3 bg-[var(--muted)] p-4 rounded-card">
-                {producto.costo ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Costo *</Label>
-                        <Input type="number" step="0.01" min="0.01" value={editCosto} onChange={e => setEditCosto(e.target.value)} placeholder="0.00" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">% Ganancia *</Label>
-                        <Input type="number" step="0.01" min="0" value={editMargenPct} onChange={e => setEditMargenPct(e.target.value)} placeholder="30" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Precio de venta</Label>
-                      <div className="h-9 px-3 rounded-md border border-[var(--border)] bg-background flex items-center text-sm">
-                        {precioCalculado !== null ? formatCLP(precioCalculado) : 'Ingresa costo y % de ganancia'}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xs text-[var(--body)] italic">Producto legacy — ingresa precio manual</p>
-                    <div>
-                      <Label className="text-xs">Precio de venta *</Label>
-                      <Input data-testid="legacy-price-input" type="number" step="0.01" min="0.01" value={prcVenta} onChange={e => setPrcVenta(e.target.value)} placeholder="0.00" />
-                    </div>
-                  </>
-                )}
-                {PRECIO_MAYOR_UI && (
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Precio por caja</Label>
-                    <Input data-testid="precio-mayor-input" type="number" step="1" min="1" value={editPrecioMayor} onChange={e => setEditPrecioMayor(e.target.value)} placeholder="Sin precio por caja" />
+                    <Label className="text-xs">Costo</Label>
+                    <Input data-testid="edit-costo" type="number" step="0.01" min="0" value={editCosto} onChange={e => setEditCosto(e.target.value)} placeholder="Opcional" />
                   </div>
+                  <div>
+                    <Label className="text-xs">Precio detalle *</Label>
+                    <Input data-testid="edit-precio-detalle" type="number" step="1" min="0" value={prcVenta} onChange={e => setPrcVenta(e.target.value)} placeholder="0" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-[var(--body)]">Ganancia detalle</p>
+                    <p data-testid="ganancia-detalle" className="text-sm font-semibold">{gananciaDetalle === null ? '—' : `${gananciaDetalle}%`}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--body)]">Ganancia mayor</p>
+                    <p data-testid="ganancia-mayor" className="text-sm font-semibold">{gananciaMayor === null ? '—' : `${gananciaMayor}%`}</p>
+                  </div>
+                </div>
+                {PRECIO_MAYOR_UI && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Precio mayor</Label>
+                      <Input data-testid="precio-mayor-input" type="number" step="1" min="1" value={editPrecioMayor} onChange={e => setEditPrecioMayor(e.target.value)} placeholder="Sin precio mayor" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Mayor en tienda desde (unidades)</Label>
+                      <Input data-testid="edit-minimo-mayor" type="number" step="1" min="1" value={editMinimoMayor} onChange={e => setEditMinimoMayor(e.target.value)} placeholder="3" disabled={!editPrecioMayor} />
+                    </div>
+                  </>
                 )}
                 <div>
                   <Label className="text-xs">Stock minimo</Label>
@@ -538,9 +539,26 @@ export function ProductDrawer({ producto, empresaNombre, session, open, onOpenCh
                     <TableCell className="text-right font-bold">{formatCLP(producto.prcventa)}</TableCell>
                   </TableRow>
                   {PRECIO_MAYOR_UI && producto.precio_mayor != null && (
+                    <>
+                      <TableRow>
+                        <TableCell className="font-medium">Precio mayor</TableCell>
+                        <TableCell className="text-right font-bold">{formatCLP(producto.precio_mayor)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Ganancia mayor</TableCell>
+                        <TableCell className="text-right">
+                          {(() => {
+                            const g = calcularMargen(producto.costo, producto.precio_mayor);
+                            return g === null ? '—' : `${g}%`;
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  )}
+                  {PRECIO_MAYOR_UI && producto.minimo_mayor != null && (
                     <TableRow>
-                      <TableCell className="font-medium">Precio por caja</TableCell>
-                      <TableCell className="text-right font-bold">{formatCLP(producto.precio_mayor)}</TableCell>
+                      <TableCell className="font-medium">Mayor en tienda desde</TableCell>
+                      <TableCell className="text-right">{producto.minimo_mayor} {producto.umed}</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

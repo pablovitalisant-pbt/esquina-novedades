@@ -107,7 +107,7 @@ describe('ProductDrawer', () => {
       expect(editButton).toBeInTheDocument();
     });
 
-    it('al hacer clic en editar muestra inputs de costo y margen', () => {
+    it('al hacer clic en editar muestra inputs directos de precio (sin % de ganancia)', () => {
       render(
         <ProductDrawer
           producto={mockProducto}
@@ -122,8 +122,8 @@ describe('ProductDrawer', () => {
       const editButton = screen.getByTitle('Editar producto');
       fireEvent.click(editButton);
 
-      expect(screen.queryByText('Costo *')).toBeInTheDocument();
-      expect(screen.queryByText('% Ganancia *')).toBeInTheDocument();
+      expect(screen.queryByText('Precio detalle *')).toBeInTheDocument();
+      expect(screen.queryByText(/% Ganancia/)).toBeNull();
     });
 
     it('al cancelar la edicion vuelve al modo lectura', () => {
@@ -139,10 +139,10 @@ describe('ProductDrawer', () => {
       );
 
       fireEvent.click(screen.getByTitle('Editar producto'));
-      expect(screen.queryByText('Costo *')).toBeInTheDocument();
+      expect(screen.queryByText('Precio detalle *')).toBeInTheDocument();
 
       fireEvent.click(screen.getByText(/cancelar/i));
-      expect(screen.queryByText('Costo *')).not.toBeInTheDocument();
+      expect(screen.queryByText('Precio detalle *')).not.toBeInTheDocument();
     });
 
     it('precio de venta se muestra en tabla modo lectura', () => {
@@ -190,10 +190,10 @@ describe('ProductDrawer', () => {
     });
   });
 
-  describe('Costo NULL legacy', () => {
+  describe('Costo NULL — edicion directa', () => {
     const legacyProducto = { ...mockProducto, costo: null as any, margen_pct: null };
 
-    it('permite editar precio manual cuando costo es null — PUT body tiene prcventa sin costo/margen', () => {
+    it('permite editar precio directo cuando costo es null — PUT sin costo/margen', () => {
       let capturedBody: any = null;
       (global.fetch as jest.Mock).mockImplementation((url: string, opts: any) => {
         if (opts?.body) {
@@ -218,8 +218,8 @@ describe('ProductDrawer', () => {
 
       fireEvent.click(screen.getByTitle('Editar producto'));
 
-      // Verifica que hay un input de precio conectado a prcVenta
-      const priceInput = screen.getByTestId('legacy-price-input') as HTMLInputElement;
+      // Precio directo editable aunque no haya costo
+      const priceInput = screen.getByTestId('edit-precio-detalle') as HTMLInputElement;
       expect(priceInput).toBeInTheDocument();
 
       // Cambia el precio a un valor nuevo

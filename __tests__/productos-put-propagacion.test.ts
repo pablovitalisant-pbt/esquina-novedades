@@ -82,9 +82,7 @@ describe('PUT /api/productos/[id] — propagacion S4', () => {
 
   test('2 — editar prcventa: propaga solo a prenota_items', async () => {
     authAdmin();
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]) // access check
-      .mockResolvedValueOnce([{ costo: null, margen_pct: null }]); // anti-drift
+    sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01', costo: null, prcventa: 20, precio_mayor: null }]);
     sqlTransaction.mockResolvedValueOnce([
       [{ id: 1, prcventa: 25 }], // producto UPDATE result
       [],                          // prenota_items UPDATE result
@@ -93,7 +91,7 @@ describe('PUT /api/productos/[id] — propagacion S4', () => {
     const res = await PUT(makeReq({ prcventa: 25 }), ctx);
     expect(res.status).toBe(200);
 
-    expect(sql).toHaveBeenCalledTimes(2); // access + anti-drift
+    expect(sql).toHaveBeenCalledTimes(1); // access check (incluye valores actuales)
     expect(sqlQuery).toHaveBeenCalledTimes(2); // UPDATE + prenota query
     expect(sqlTransaction).toHaveBeenCalledTimes(1);
   });
@@ -113,17 +111,15 @@ describe('PUT /api/productos/[id] — propagacion S4', () => {
     expect(sqlTransaction).toHaveBeenCalledTimes(1);
   });
 
-  test('4 — editar costo: NO propaga (anti-drift calcula prcventa)', async () => {
+  test('4 — editar costo: NO propaga; prcventa queda igual y solo cambia margen', async () => {
     authAdmin();
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]) // access check
-      .mockResolvedValueOnce([{ costo: 8, margen_pct: 25 }]); // anti-drift
+    sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01', costo: 8, prcventa: 12.5, precio_mayor: null }]);
     sqlTransaction.mockResolvedValueOnce([[{ id: 1, costo: 10, margen_pct: 25, prcventa: 12.50 }]]);
 
     const res = await PUT(makeReq({ costo: 10 }), ctx);
     expect(res.status).toBe(200);
 
-    expect(sql).toHaveBeenCalledTimes(2);
+    expect(sql).toHaveBeenCalledTimes(1);
     expect(sqlQuery).toHaveBeenCalledTimes(1); // solo UPDATE
     expect(sqlTransaction).toHaveBeenCalledTimes(1);
   });

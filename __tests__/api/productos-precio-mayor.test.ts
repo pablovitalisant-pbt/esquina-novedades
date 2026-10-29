@@ -28,7 +28,7 @@ import { PUT } from '../../app/api/productos/[id]/route';
 const postReq = (body: any) => ({ json: () => Promise.resolve(body) }) as any;
 const putReq = (body: any) => ({ json: () => Promise.resolve(body) }) as any;
 const ctx = { params: Promise.resolve({ id: '1' }) };
-const BASE = { codigo: 'PM-1', detalle: 'x', costo: 10, margen_pct: 30 };
+const BASE = { codigo: 'PM-1', detalle: 'x', costo: 10, prcventa: 20000 };
 const INVALIDOS: any[] = [0, -1, 1.5, 'abc', '1000', '', NaN, Infinity, true, false];
 
 beforeEach(() => {
@@ -47,7 +47,7 @@ describe('PUT precio_mayor', () => {
   });
 
   it.each([null, 10000])('%p → 200 y entra al UPDATE', async (v) => {
-    sql.mockResolvedValueOnce([{ empresa_id: 1, codigo: 'PM-1' }]);
+    sql.mockResolvedValueOnce([{ empresa_id: 1, codigo: 'PM-1', costo: 10, prcventa: 20000, precio_mayor: null }]);
     const res = await PUT(putReq({ precio_mayor: v }), ctx);
     expect(res.status).toBe(200);
     expect(sqlQuery.mock.calls[0][0]).toMatch(/precio_mayor = \$1/);
@@ -55,7 +55,7 @@ describe('PUT precio_mayor', () => {
   });
 
   it('ausente no toca precio_mayor', async () => {
-    sql.mockResolvedValueOnce([{ empresa_id: 1, codigo: 'PM-1' }]);
+    sql.mockResolvedValueOnce([{ empresa_id: 1, codigo: 'PM-1', costo: 10, prcventa: 20000, precio_mayor: null }]);
     await PUT(putReq({ detalle: 'y' }), ctx);
     expect(sqlQuery.mock.calls[0][0]).not.toMatch(/precio_mayor/);
   });
@@ -98,6 +98,6 @@ describe('Migracion 040', () => {
   });
   it('se agrega al final de MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('044_mercadopago.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('045_productos_minimo_mayor.sql');
   });
 });

@@ -22,7 +22,7 @@ function makePostRequest(body: any) {
   return { json: () => Promise.resolve(body) } as any;
 }
 
-const BASE_BODY = { codigo: 'SM-TEST', detalle: 'Test stock_minimo', costo: 10, margen_pct: 30 };
+const BASE_BODY = { codigo: 'SM-TEST', detalle: 'Test stock_minimo', costo: 10, prcventa: 30 };
 
 describe('T3 — POST /api/productos con stock_minimo', () => {
   beforeEach(() => {

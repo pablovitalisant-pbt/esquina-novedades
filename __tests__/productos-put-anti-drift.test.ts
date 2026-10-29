@@ -2,10 +2,9 @@
  * @jest-environment node
  */
 /**
- * Fase B — PUT /api/productos/[id]: invariante anti-drift.
- * Verifica que el servidor recalcula prcventa desde costo+margen_pct
- * y que nunca acepta los tres del cliente sin recalcular.
- * Reutiliza lib/calcular-precio.ts (ya testeada en S1).
+ * Fase B — Slice 2a: PUT /api/productos/[id] con precios directos.
+ * prcventa se ingresa; el servidor deriva margen_pct desde costo y prcventa.
+ * Cambiar el costo NUNCA cambia prcventa.
  */
 import { NextRequest } from 'next/server';
 
@@ -25,9 +24,12 @@ jest.mock('@/lib/db', () => {
   return { sql: fn };
 });
 
-const PRECIO_CALCULADO = 13.00; // calcularPrecio(10, 30) = 13.00
+const updateCall = () => {
+  const call = sqlQuery.mock.calls.find((c: any[]) => /UPDATE public\.productos/.test(c[0]));
+  return { query: String(call?.[0] ?? ''), params: (call?.[1] ?? []) as unknown[] };
+};
 
-describe('PUT /api/productos/[id] — invariante anti-drift', () => {
+describe('PUT /api/productos/[id] — precios directos', () => {
   let PUT: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
 
   beforeAll(async () => {
@@ -41,6 +43,8 @@ describe('PUT /api/productos/[id] — invariante anti-drift', () => {
     sqlQuery.mockClear();
     sqlQuery.mockReturnValue({ queryData: {} });
     sqlTransaction.mockClear();
+    getServerSession.mockResolvedValue({ user: { rol: 'admin', empresas: [2] } });
+    sqlTransaction.mockResolvedValue([[{ id: 1 }]]);
   });
 
   const makeReq = (body: unknown) =>
@@ -52,128 +56,100 @@ describe('PUT /api/productos/[id] — invariante anti-drift', () => {
 
   const ctx = { params: { id: '1' } };
 
-  test('1 — costo + margen_pct: servidor recalcula prcventa (no necesita SELECT previo)', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]);
-    sqlTransaction.mockResolvedValueOnce([[{
-      id: 1, costo: 10, margen_pct: 30, prcventa: PRECIO_CALCULADO,
-    }]]);
+  const current = (over: Record<string, unknown> = {}) => ({
+    empresa_id: 2,
+    codigo: 'PROD-01',
+    costo: 1000,
+    prcventa: 1500,
+    precio_mayor: null,
+    ...over,
+  });
 
-    const res = await PUT(makeReq({ costo: 10, margen_pct: 30 }), ctx);
+  test('1 — costo + prcventa: margen calculado, sin recálculo de prcventa', async () => {
+    sql.mockResolvedValueOnce([current()]);
+
+    const res = await PUT(makeReq({ costo: 1000, prcventa: 1500 }), ctx);
     expect(res.status).toBe(200);
 
-    // Solo 1 SELECT (access check): no necesita leer valores actuales porque vienen ambos
+    expect(sql).toHaveBeenCalledTimes(1); // solo access check
+    const { query, params } = updateCall();
+    expect(query).toMatch(/margen_pct = \$/);
+    expect(params).toContain(50);
+    expect(params).toContain(1500);
+    // prcventa viene del cliente → se propaga a prenota_items
+    expect(sqlQuery).toHaveBeenCalledTimes(2);
+  });
+
+  test('2 — costo solo: lee prcventa de DB, recalcula margen y NO toca prcventa', async () => {
+    sql.mockResolvedValueOnce([current()]);
+
+    const res = await PUT(makeReq({ costo: 1200 }), ctx);
+    expect(res.status).toBe(200);
+
     expect(sql).toHaveBeenCalledTimes(1);
-    // 1 UPDATE con prcventa calculado
     expect(sqlQuery).toHaveBeenCalledTimes(1);
-    const body = await res.json();
-    expect(body.data.prcventa).toBe(PRECIO_CALCULADO);
+    const { query, params } = updateCall();
+    expect(query).not.toMatch(/prcventa = \$/);
+    expect(params).toContain(1200);
+    expect(params).toContain(25); // (1500/1200 - 1) * 100
   });
 
-  test('2 — costo sin margen_pct: lee margen actual de DB, recalcula', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }])
-      .mockResolvedValueOnce([{ costo: 8, margen_pct: 25 }]); // valores actuales
-    sqlTransaction.mockResolvedValueOnce([[{
-      id: 1, costo: 10, margen_pct: 25, prcventa: 12.50, // 10 * 1.25 = 12.50
-    }]]);
-
-    const res = await PUT(makeReq({ costo: 10 }), ctx);
-    expect(res.status).toBe(200);
-
-    // 2 SELECTs: access check + lectura valores actuales
-    expect(sql).toHaveBeenCalledTimes(2);
-    // 1 UPDATE
-    expect(sqlQuery).toHaveBeenCalledTimes(1);
-    const body = await res.json();
-    expect(body.data.prcventa).toBe(12.50);
-    expect(body.data.margen_pct).toBe(25);
-  });
-
-  test('3 — margen_pct sin costo: lee costo actual de DB, recalcula', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }])
-      .mockResolvedValueOnce([{ costo: 8, margen_pct: 25 }]);
-    sqlTransaction.mockResolvedValueOnce([[{
-      id: 1, costo: 8, margen_pct: 40, prcventa: 11.20, // 8 * 1.40 = 11.20
-    }]]);
-
-    const res = await PUT(makeReq({ margen_pct: 40 }), ctx);
-    expect(res.status).toBe(200);
-
-    expect(sql).toHaveBeenCalledTimes(2);
-    expect(sqlQuery).toHaveBeenCalledTimes(1);
-    const body = await res.json();
-    expect(body.data.prcventa).toBe(11.20);
-    expect(body.data.costo).toBe(8);
-  });
-
-  test('4 — prcventa solo con costo NULL en DB: acepta, margen_pct queda NULL', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }])
-      .mockResolvedValueOnce([{ costo: null, margen_pct: null }]);
-    // Unica transaccion: UPDATE + prenota_items (prcventa enviada por cliente)
-    sqlTransaction.mockResolvedValueOnce([[
-      { id: 1, costo: null, margen_pct: null, prcventa: 25 },
-    ], []]);
+  test('3 — prcventa solo: deriva margen del costo actual de DB', async () => {
+    sql.mockResolvedValueOnce([current({ costo: 20, prcventa: 20 })]);
 
     const res = await PUT(makeReq({ prcventa: 25 }), ctx);
     expect(res.status).toBe(200);
 
-    expect(sql).toHaveBeenCalledTimes(2);
-    expect(sqlQuery).toHaveBeenCalledTimes(2);
-    const body = await res.json();
-    expect(body.data.prcventa).toBe(25);
-    expect(body.data.margen_pct).toBeNull();
+    expect(sql).toHaveBeenCalledTimes(1);
+    expect(sqlQuery).toHaveBeenCalledTimes(2); // UPDATE + prenota_items
+    const { params } = updateCall();
+    expect(params).toContain(25);
+    expect(params).toContain(25); // margen_pct también 25
   });
 
-  test('5 — prcventa solo con costo > 0 en DB: acepta, deriva margen_pct', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql
-      .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }])
-      .mockResolvedValueOnce([{ costo: 20, margen_pct: null }]);
-
-    // Unica transaccion: UPDATE + prenota_items (prcventa enviada por cliente)
-    sqlTransaction.mockResolvedValueOnce([[
-      { id: 1, costo: 20, margen_pct: 25, prcventa: 25 },
-    ], []]);
+  test('4 — prcventa con costo NULL en DB: margen_pct queda NULL', async () => {
+    sql.mockResolvedValueOnce([current({ costo: null, prcventa: 20 })]);
 
     const res = await PUT(makeReq({ prcventa: 25 }), ctx);
     expect(res.status).toBe(200);
-    expect(sqlTransaction).toHaveBeenCalledTimes(1);
-    expect(sql).toHaveBeenCalledTimes(2);
+
     expect(sqlQuery).toHaveBeenCalledTimes(2);
-    const body = await res.json();
-    expect(body.data.prcventa).toBe(25);
-    expect(body.data.margen_pct).toBe(25);
+    const { params } = updateCall();
+    expect(params).toContain(null);
   });
 
-  test('6 — no se envían campos de precio: no hay recalculo', async () => {
-    getServerSession.mockResolvedValue({
-      user: { rol: 'admin', empresas: [2] },
-    });
-    sql.mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }]);
+  test('5 — costo cambia y prcventa NO cambia aunque el body traiga ambos', async () => {
+    sql.mockResolvedValueOnce([current({ costo: 800, prcventa: 1500 })]);
+
+    const res = await PUT(makeReq({ costo: 1000, prcventa: 1500 }), ctx);
+    expect(res.status).toBe(200);
+
+    const { query, params } = updateCall();
+    expect(query).toMatch(/prcventa = \$/); // vino del cliente
+    expect(params).toContain(1500);
+  });
+
+  test('6 — margen_pct del body se ignora si no hay costo/prcventa', async () => {
+    sql.mockResolvedValueOnce([current()]);
+
+    const res = await PUT(makeReq({ margen_pct: 999 }), ctx);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.message).toMatch(/nada/i);
+    expect(sql).toHaveBeenCalledTimes(0);
+  });
+
+  test('7 — no se envían campos de precio: no hay recalculo', async () => {
+    sql.mockResolvedValueOnce([current()]);
     sql.mockResolvedValueOnce([]); // propagacion ubicaciones_bodega (detalle enviado por cliente)
-    // 3 queries en la transaccion: UPDATE + ubicaciones + prenota_items
-    sqlTransaction.mockResolvedValueOnce([[{ id: 1, detalle: 'Nuevo nombre' }], [], []]);
 
     const res = await PUT(makeReq({ detalle: 'Nuevo nombre' }), ctx);
     expect(res.status).toBe(200);
 
     expect(sql).toHaveBeenCalledTimes(2); // access check + propagacion
-    expect(sqlQuery).toHaveBeenCalledTimes(2); // UPDATE + propagacion
+    const { query } = updateCall();
+    expect(query).not.toMatch(/margen_pct/);
+    expect(query).not.toMatch(/prcventa/);
   });
 });

@@ -38,7 +38,7 @@ describe('T5 — E2E smoke: POST producto → alertas/lista', () => {
 
     const postRes = await POST({
       json: () => Promise.resolve({
-        codigo: 'E2E-SM', detalle: 'E2E test', costo: 10, margen_pct: 30,
+        codigo: 'E2E-SM', detalle: 'E2E test', costo: 10, prcventa: 30,
         stock_minimo: 5, saldo: 2,
       }),
     } as any);

@@ -171,7 +171,7 @@ describe('T7-B — PreciosClient Dialog "Nuevo producto" envia stock_minimo', ()
     fireEvent.change(screen.getByPlaceholderText('Ej: BZ-001'), { target: { value: 'BZ-001' } });
     fireEvent.change(screen.getByPlaceholderText('Nombre del producto'), { target: { value: 'Producto test' } });
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '15' } }); // costo
-    fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '20' } }); // margen
+    fireEvent.change(screen.getByPlaceholderText('2500'), { target: { value: '20' } }); // precio detalle
 
     // Stock minimo — placeholder no fijo, buscar por label
     const stockMinimoInput = screen.getByLabelText(/alerta de Stock Bajo/i);
@@ -207,7 +207,7 @@ describe('T7-B — PreciosClient Dialog "Nuevo producto" envia stock_minimo', ()
     fireEvent.change(screen.getByPlaceholderText('Ej: BZ-001'), { target: { value: 'BZ-002' } });
     fireEvent.change(screen.getByPlaceholderText('Nombre del producto'), { target: { value: 'Producto sin minimo' } });
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10' } }); // costo
-    fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '25' } }); // margen
+    fireEvent.change(screen.getByPlaceholderText('2500'), { target: { value: '25' } }); // precio detalle
 
     // Click "Crear producto"
     fireEvent.click(screen.getByText('Crear producto'));

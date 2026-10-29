@@ -32,36 +32,36 @@ beforeEach(() => {
   (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: base }) });
 });
 
-describe('ProductCard Caja: $X', () => {
+describe('ProductCard Mayor: $X', () => {
   test('flag on y precio_mayor => muestra', () => {
     card(base);
-    expect(screen.getByText(/Caja:/)).toHaveTextContent('30');
+    expect(screen.getByText(/Mayor:/)).toHaveTextContent('30');
   });
   test('flag off => no muestra', () => {
     mockFlags()['precio-mayorista-ui'] = false;
     card(base);
-    expect(screen.queryByText(/Caja:/)).toBeNull();
+    expect(screen.queryByText(/Mayor:/)).toBeNull();
   });
   test('precio_mayor null => no muestra', () => {
     card({ ...base, precio_mayor: null });
-    expect(screen.queryByText(/Caja:/)).toBeNull();
+    expect(screen.queryByText(/Mayor:/)).toBeNull();
   });
   test('ocultarPrecios => no muestra', () => {
     card(base, { ocultarPrecios: true });
-    expect(screen.queryByText(/Caja:/)).toBeNull();
+    expect(screen.queryByText(/Mayor:/)).toBeNull();
   });
 });
 
-describe('ProductDrawer precio por caja', () => {
+describe('ProductDrawer precio mayor', () => {
   test('fila de lectura con flag on', () => {
     drawer(base);
-    expect(screen.getByText('Precio por caja')).toBeInTheDocument();
+    expect(screen.getByText('Precio mayor')).toBeInTheDocument();
   });
   test('flag off: sin fila ni input', () => {
     mockFlags()['precio-mayorista-ui'] = false;
     drawer(base);
     fireEvent.click(screen.getByTitle('Editar producto'));
-    expect(screen.queryByText('Precio por caja')).toBeNull();
+    expect(screen.queryByText('Precio mayor')).toBeNull();
     expect(screen.queryByTestId('precio-mayor-input')).toBeNull();
   });
   test('vaciar input envia precio_mayor null', async () => {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import flags from '@/config/feature-flags.json';
 import { Producto, UserSession } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDrawer } from '@/components/ProductDrawer';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Search, Eye, EyeOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCLP } from '@/lib/utils';
+import { calcularMargen } from '@/lib/calcular-precio';
 import { EMPRESA } from '@/lib/empresa';
 
 // ponytail: single-tenant (empresa única, migración 018)
@@ -19,8 +18,8 @@ interface PreciosClientProps {
 }
 
 export function PreciosClient({ session }: PreciosClientProps) {
-  const PRECIO_MAYOR_UI = (flags as Record<string, boolean>)['precio-mayorista-ui'] === true;
   const [crearPrecioMayor, setCrearPrecioMayor] = useState('');
+  const [crearMinimoMayor, setCrearMinimoMayor] = useState('');
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +38,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
   const [crearCodigo, setCrearCodigo] = useState('');
   const [crearDetalle, setCrearDetalle] = useState('');
   const [crearCosto, setCrearCosto] = useState('');
-  const [crearMargen, setCrearMargen] = useState('');
+  const [crearPrcVenta, setCrearPrcVenta] = useState('');
   const [crearSaldo, setCrearSaldo] = useState('');
   const [crearStockMinimo, setCrearStockMinimo] = useState('');
   const [crearCantCaja, setCrearCantCaja] = useState('');
@@ -102,20 +101,24 @@ export function PreciosClient({ session }: PreciosClientProps) {
     fetchProducts();
   }, [debouncedSearch, soloStock, soloNuevo]);
 
-  const precioCalculado =
-    crearCosto && crearMargen
-      ? Math.round(Number(crearCosto) * (1 + Number(crearMargen) / 100) * 100) / 100
-      : null;
+  const costoNum = crearCosto ? Number(crearCosto) : null;
+  const gananciaDetalle = calcularMargen(costoNum, crearPrcVenta ? Number(crearPrcVenta) : null);
+  const gananciaMayor = calcularMargen(costoNum, crearPrecioMayor ? Number(crearPrecioMayor) : null);
 
   const handleCrearProducto = async () => {
     if (!crearCodigo.trim()) { toast.error('Código requerido'); return; }
     if (!crearDetalle.trim()) { toast.error('Descripción requerida'); return; }
     if (!crearCosto || Number(crearCosto) <= 0) { toast.error('Costo debe ser mayor a 0'); return; }
-    if (crearMargen === '' || Number(crearMargen) < 0) { toast.error('Porcentaje de ganancia no puede ser negativo'); return; }
+    if (!crearPrcVenta || !Number.isInteger(Number(crearPrcVenta)) || Number(crearPrcVenta) <= 0) {
+      toast.error('Precio detalle debe ser un entero mayor a 0'); return;
+    }
+    if (crearPrecioMayor && Number(crearPrecioMayor) >= Number(crearPrcVenta)) {
+      toast.error('Precio mayor debe ser menor al precio detalle'); return;
+    }
 
     setCrearLoading(true);
     try {
-      // 1. Crear producto — el servidor calcula prcventa desde costo + margen_pct
+      // 1. Crear producto — precios directos; el servidor deriva margen_pct
       const res = await fetch('/api/productos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,11 +126,12 @@ export function PreciosClient({ session }: PreciosClientProps) {
           codigo: crearCodigo.trim(),
           detalle: crearDetalle.trim(),
           costo: Number(crearCosto),
-          margen_pct: Number(crearMargen),
+          prcventa: Number(crearPrcVenta),
+          precio_mayor: crearPrecioMayor ? Number(crearPrecioMayor) : null,
+          minimo_mayor: crearPrecioMayor && crearMinimoMayor ? Number(crearMinimoMayor) : null,
           saldo: crearSaldo ? Number(crearSaldo) : undefined,
           stock_minimo: crearStockMinimo ? Number(crearStockMinimo) : undefined,
           cantcaja: crearCantCaja ? Number(crearCantCaja) : undefined,
-          precio_mayor: PRECIO_MAYOR_UI && crearPrecioMayor ? Number(crearPrecioMayor) : undefined,
         }),
       });
       if (!res.ok) {
@@ -155,10 +159,11 @@ export function PreciosClient({ session }: PreciosClientProps) {
       setCrearCodigo('');
       setCrearDetalle('');
       setCrearCosto('');
-      setCrearMargen('');
+      setCrearPrcVenta('');
       setCrearSaldo('');
       setCrearCantCaja('');
       setCrearPrecioMayor('');
+      setCrearMinimoMayor('');
       setCrearFile(null);
       setCrearPreview(null);
       setSearch('');
@@ -217,36 +222,44 @@ export function PreciosClient({ session }: PreciosClientProps) {
                 <div className="space-y-4 py-2">
                   <div>
                     <label className="text-sm font-medium">Código *</label>
-                    <Input value={crearCodigo} onChange={e => setCrearCodigo(e.target.value)} placeholder="Ej: BZ-001" />
+                    <Input data-testid="crear-codigo" value={crearCodigo} onChange={e => setCrearCodigo(e.target.value)} placeholder="Ej: BZ-001" />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Descripción *</label>
-                    <Input value={crearDetalle} onChange={e => setCrearDetalle(e.target.value)} placeholder="Nombre del producto" />
+                    <Input data-testid="crear-detalle" value={crearDetalle} onChange={e => setCrearDetalle(e.target.value)} placeholder="Nombre del producto" />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Costo *</label>
-                    <Input type="number" step="0.01" min="0.01" value={crearCosto} onChange={e => setCrearCosto(e.target.value)} placeholder="0.00" />
+                    <Input data-testid="crear-costo" type="number" step="0.01" min="0.01" value={crearCosto} onChange={e => setCrearCosto(e.target.value)} placeholder="0.00" />
                     <p className="text-xs text-[var(--body-subtle)] mt-1">Costo por unidad</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Precio detalle *</label>
+                    <Input data-testid="crear-prcventa" type="number" step="1" min="1" value={crearPrcVenta} onChange={e => setCrearPrcVenta(e.target.value)} placeholder="2500" />
+                    <p className="text-xs text-[var(--body-subtle)] mt-1">Precio por unidad en CLP</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Precio mayor (opcional)</label>
+                    <Input data-testid="crear-precio-mayor" type="number" step="1" min="1" value={crearPrecioMayor} onChange={e => setCrearPrecioMayor(e.target.value)} placeholder="Sin precio mayor" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Precio mayor en tienda online desde (unidades)</label>
+                    <Input data-testid="crear-minimo-mayor" type="number" step="1" min="1" value={crearMinimoMayor} onChange={e => setCrearMinimoMayor(e.target.value)} placeholder="3" disabled={!crearPrecioMayor} />
+                    <p className="text-xs text-[var(--body-subtle)] mt-1">Cantidad mínima para aplicar el precio mayor en la tienda</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-[var(--body)]">Ganancia detalle</p>
+                      <p data-testid="ganancia-detalle" className="text-sm font-semibold">{gananciaDetalle === null ? '—' : `${gananciaDetalle}%`}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--body)]">Ganancia mayor</p>
+                      <p data-testid="ganancia-mayor" className="text-sm font-semibold">{gananciaMayor === null ? '—' : `${gananciaMayor}%`}</p>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium">¿Cuántas unidades hay en cada caja?</label>
                     <Input type="number" step="1" min="1" value={crearCantCaja} onChange={e => setCrearCantCaja(e.target.value)} placeholder="12" />
-                  </div>
-                  {PRECIO_MAYOR_UI && (
-                    <div>
-                      <label className="text-sm font-medium">Precio por caja (opcional)</label>
-                      <Input type="number" step="1" min="1" value={crearPrecioMayor} onChange={e => setCrearPrecioMayor(e.target.value)} placeholder="Sin precio por caja" />
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-sm font-medium">% de ganancia *</label>
-                    <Input type="number" step="0.01" min="0" value={crearMargen} onChange={e => setCrearMargen(e.target.value)} placeholder="30" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Precio de venta</label>
-                    <div className="h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] flex items-center text-sm text-[var(--body)]">
-                      {precioCalculado !== null ? formatCLP(precioCalculado) : 'Ingresa costo y % de ganancia'}
-                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium">¿Cuántas unidades están ingresando?</label>

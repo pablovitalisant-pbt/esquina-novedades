@@ -44,7 +44,7 @@ export const CajaMovimientoCreateSchema = z.object({
   nombre_cliente: z.string().nullable().optional(),
   cuenta_id: z.coerce.number().int().positive("Selecciona una cuenta"),
   monto: z.coerce.number().int("El monto debe ser entero").positive("El monto debe ser mayor a 0"),
-  forma_pago: z.enum(["efectivo", "cheque", "transferencia", "mercadopago"]),
+  forma_pago: z.enum(["efectivo", "cheque", "transferencia", "tarjeta", "mercadopago"]),
   observaciones: z.string().nullable().optional(),
   empresa: z.string().nullable().optional(),
   es_credito: z.boolean().default(false),
@@ -61,7 +61,7 @@ export const CajaMovimientoUpdateSchema = z.object({
   nombre_cliente: z.string().nullable().optional(),
   cuenta_id: z.coerce.number().int().positive().optional(),
   monto: z.coerce.number().int().positive().optional(),
-  forma_pago: z.enum(["efectivo", "cheque", "transferencia", "mercadopago"]).optional(),
+  forma_pago: z.enum(["efectivo", "cheque", "transferencia", "tarjeta", "mercadopago"]).optional(),
   observaciones: z.string().nullable().optional(),
   empresa: z.string().nullable().optional(),
   es_credito: z.boolean().optional(),
@@ -89,7 +89,7 @@ export interface CajaMovimiento {
   cuenta_id: number;
   cuenta_nombre?: string;
   monto: number;
-  forma_pago: "efectivo" | "cheque" | "transferencia" | "mercadopago";
+  forma_pago: "efectivo" | "cheque" | "transferencia" | "tarjeta" | "mercadopago";
   observaciones: string | null;
   empresa?: string | null;
   es_credito: boolean;

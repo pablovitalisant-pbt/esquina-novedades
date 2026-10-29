@@ -65,7 +65,7 @@ export function CajaMayorClient({
   const [empresa, setEmpresa] = useState<string>("");
   const [monto, setMonto] = useState("");
   const [cuentaId, setCuentaId] = useState("");
-  const [formaPago, setFormaPago] = useState<"efectivo" | "cheque" | "transferencia">("transferencia");
+  const [formaPago, setFormaPago] = useState<"efectivo" | "cheque" | "transferencia" | "tarjeta">("transferencia");
   const [observaciones, setObservaciones] = useState("");
   const [esCredito, setEsCredito] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -913,7 +913,7 @@ export function CajaMayorClient({
         <div className="space-y-1">
           <label className="text-sm font-medium">Forma de pago</label>
           <div className="flex rounded-lg border p-1 bg-muted/50">
-            {(["efectivo", "cheque", "transferencia"] as const).map((fp) => (
+            {(["efectivo", "cheque", "transferencia", "tarjeta"] as const).map((fp) => (
               <button
                 key={fp}
                 onClick={() => setFormaPago(fp)}
@@ -923,7 +923,7 @@ export function CajaMayorClient({
                     : "text-[var(--body)] hover:text-foreground"
                 }`}
               >
-                {fp === "efectivo" ? "💵 Efectivo" : fp === "cheque" ? "📝 Cheque" : "🏦 Transferencia"}
+                {fp === "efectivo" ? "💵 Efectivo" : fp === "cheque" ? "📝 Cheque" : fp === "tarjeta" ? "💳 Tarjeta" : "🏦 Transferencia"}
               </button>
             ))}
           </div>
@@ -1127,7 +1127,7 @@ export function CajaMayorClient({
                           {item.data.observaciones || "—"}
                         </td>
                         <td className="py-1.5 pr-2 text-xs w-[70px]">
-                          {item.data.forma_pago === "efectivo" ? "💵 Efectivo" : item.data.forma_pago === "cheque" ? "🔖 Cheque" : item.data.forma_pago === "mercadopago" ? "💳 Mercado Pago" : "🏦 Transf."}
+                          {item.data.forma_pago === "efectivo" ? "💵 Efectivo" : item.data.forma_pago === "cheque" ? "🔖 Cheque" : item.data.forma_pago === "mercadopago" ? "💳 Mercado Pago" : item.data.forma_pago === "tarjeta" ? "💳 Tarjeta" : "🏦 Transf."}
                         </td>
                         <td className="py-1.5 pr-2 w-[50px]">
                           {item.data.es_credito ? (
@@ -1353,7 +1353,7 @@ export function CajaMayorClient({
             {/* Forma de pago */}
             <div className="space-y-1"><label className="text-xs font-medium">Forma de pago</label>
               <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as FormaPago)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
-                <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option>
+                <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="mercadopago">Mercado Pago</option>
               </select>
             </div>
             {/* Venta a crédito (solo cobro) */}

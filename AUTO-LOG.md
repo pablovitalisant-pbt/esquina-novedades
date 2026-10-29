@@ -155,3 +155,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - PDF nota: logo 30x14 mm (proporcion 400x186 ≈2.15) y razonSocial/direccion/ciudad bajados a y=31/36/41; fallback de texto si el fetch falla. No hay otros generadores con hueco de logo.
 - Tests ajustados (asumian logo null): marca, slice-01-guard, appshell-smoke, nav-mvp, notas-venta-exportar-pdf (path del fetch + addImage), compartir-whatsapp, slice5cd. Nuevo test de proporcion ~2.15.
 - Verificacion: tsc 0; lint 0/0; jest 229/229 suites, 1915/1915 tests; build OK.
+## 2026-10-29 - pos1: TARJETA como forma de pago (POS v1, 1 de 4)
+- Contrato POS v1 agregado a PRD.md (seccion "POS v1"): /pos para admin y vendedor, teclado+mouse/tactil, panel COBRAR, cliente de meson, slices pos1-pos4. Flag `pos-v1: false` (sin uso aun).
+- pos1: `forma_pago` acepta `tarjeta` en la ruta pagar; dialogo PagarNotaDialog muestra "Tarjeta". Revision de impacto lateral: specs/tipos compartidos y Caja Mayor (registro, tabla y edicion) incluyen tarjeta con label "Tarjeta".
+- Sin migracion: `caja_movimientos.forma_pago` es TEXT sin CHECK (verificado por grep en migrations/; el unico CHECK cercano es sobre estado de pedidos (044)). No se creo ni edito ninguna migracion.
+- Tests: nuevo `__tests__/pos1-forma-pago-tarjeta.test.ts` (5; 4 rojos antes). Suite 230/230, 1920/1920; tsc 0; lint 0/0; build OK.
+- Archivos: app/api/notas-venta/[id]/pagar/route.ts, components/PagarNotaDialog.tsx, app/(app)/caja-mayor/client_page.tsx, docs/specs/caja-mayor.spec.ts, config/feature-flags.json, PRD.md, AUTO-LOG.md.

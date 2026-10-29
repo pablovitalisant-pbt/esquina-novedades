@@ -11,7 +11,7 @@ import { mensajeError } from '@/lib/errores';
 const PagarNotaSchema = z.object({
   cuenta_id: z.coerce.number().int().positive(),
   monto: z.coerce.number().int("El monto debe ser entero").positive("El monto debe ser mayor a 0"),
-  forma_pago: z.enum(["efectivo", "cheque", "transferencia"]),
+  forma_pago: z.enum(["efectivo", "cheque", "transferencia", "tarjeta"]),
   observaciones: z.string().nullable().optional(),
 });
 

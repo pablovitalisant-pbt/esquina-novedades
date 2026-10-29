@@ -28,7 +28,7 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
   const [pagoForm, setPagoForm] = useState({
     cuenta_id: 0,
     monto: 0,
-    forma_pago: 'efectivo' as 'efectivo' | 'cheque' | 'transferencia',
+    forma_pago: 'efectivo' as 'efectivo' | 'cheque' | 'transferencia' | 'tarjeta',
     observaciones: '',
   });
   const [pagoLoading, setPagoLoading] = useState(false);
@@ -131,11 +131,12 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
             <select
               className="border rounded-card px-3 py-2 text-sm bg-[var(--card)]"
               value={pagoForm.forma_pago}
-              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as 'efectivo' | 'cheque' | 'transferencia' }))}
+              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as 'efectivo' | 'cheque' | 'transferencia' | 'tarjeta' }))}
             >
               <option value="efectivo">Efectivo</option>
               <option value="cheque">Cheque</option>
               <option value="transferencia">Transferencia</option>
+              <option value="tarjeta">Tarjeta</option>
             </select>
           </div>
           <div className="flex flex-col gap-1">

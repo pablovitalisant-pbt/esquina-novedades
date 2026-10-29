@@ -235,6 +235,35 @@ Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 - Aplicación en Mercado Pago + credenciales de prueba + clave secreta webhook
 - Confirmar si la boleta electrónica de MP cubre ventas online
 
+## POS v1
+
+Punto de venta (contrato aprobado 2026-10-29). Flag `pos-v1`.
+
+- **Ruta `/pos`**: página de inicio post-login para admin y vendedor
+  (bodeguero sigue a `/bodega`).
+- **Teclado y mouse/táctil, 100% manejable**: teclear cualquier carácter
+  enfoca la búsqueda; flechas + Enter agregan; lector de barras = código
+  exacto agrega; `+`/`-` ajustan la cantidad de la línea seleccionada; F2
+  alterna MENOR/MAYOR; Supr quita la línea; F4 cliente; F9 o Ctrl+Enter
+  COBRAR; Esc cierra el diálogo o vuelve a la búsqueda. Teclado numérico en
+  pantalla solo opcional.
+- **Panel COBRAR**: monto enfocado con el total precargado, Enter confirma,
+  vuelto en vivo. Formas de pago: 1 EFECTIVO, 2 TARJETA, 3 TRANSFERENCIA,
+  4 CHEQUE. Cuenta de caja predeterminada por usuario (localStorage por id de
+  usuario) con selector siempre visible. Pago parcial permitido (el saldo
+  queda en Deudores). Al confirmar: Imprimir PDF, WhatsApp, Nueva venta.
+- **Sin cliente** -> "Cliente de mesón" genérico.
+- **Slices**: pos1 TARJETA como forma de pago; pos2 `/pos` búsqueda + grilla
+  + nota + atajos; pos3 panel COBRAR; pos4 redirección de inicio + PWA + móvil.
+
+### pos1 — TARJETA como forma de pago
+
+Registro del cobro; el cobro físico ocurre en la maquinita de Mercado Pago.
+`forma_pago` acepta `tarjeta` en `/api/notas-venta/[id]/pagar`, en el diálogo
+de pago y en todos los lugares que enumeran formas de pago (Caja Mayor,
+schemas y tipos compartidos). No requiere migración: la columna
+`caja_movimientos.forma_pago` es `TEXT` sin `CHECK`.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

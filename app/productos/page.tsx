@@ -26,6 +26,7 @@ async function getProductos() {
       MAX(umed) as umed,
       MAX(prcventa) as precio,
       MAX(precio_mayor) as precio_mayor,
+      MAX(minimo_mayor) as minimo_mayor,
       SUM(saldo) as saldo,
       BOOL_OR(es_nuevo) as es_nuevo
     FROM productos
@@ -44,6 +45,7 @@ async function getProductos() {
     umed: string;
     precio: string;
     precio_mayor: string | null;
+    minimo_mayor: string | null;
     saldo: string;
     es_nuevo: boolean;
   }>).map((r) => ({
@@ -51,6 +53,7 @@ async function getProductos() {
     saldo: parseInt(r.saldo),
     precio: parseFloat(r.precio),
     precio_mayor: r.precio_mayor == null ? null : parseFloat(r.precio_mayor),
+    minimo_mayor: r.minimo_mayor == null ? null : parseInt(r.minimo_mayor),
     cantcaja: parseInt(r.cantcaja),
     es_nuevo: Boolean(r.es_nuevo),
   }));

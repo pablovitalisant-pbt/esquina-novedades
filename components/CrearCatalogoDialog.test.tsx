@@ -2,7 +2,7 @@
  * Tests PBT-IA — Slice 1: Mejoras UI CrearCatalogoDialog
  * Estado inicial: ROJO (cambios aún no implementados)
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CrearCatalogoDialog } from './CrearCatalogoDialog';
 
 jest.mock('sonner', () => ({
@@ -54,6 +54,37 @@ describe('CrearCatalogoDialog — Slice 1 labels y defaults', () => {
     render(<CrearCatalogoDialog {...DEFAULT_PROPS} />);
     expect(screen.getByText(/mostrar inventario disponible/i)).toBeInTheDocument();
     expect(screen.queryByText(/mostrar stock disponible/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('CrearCatalogoDialog — Slice 4a: sin % de ganancia', () => {
+  it('no muestra input de margen ni textos de porcentaje', () => {
+    render(<CrearCatalogoDialog {...DEFAULT_PROPS} />);
+    expect(screen.queryByText(/margen/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/costo ×/i)).not.toBeInTheDocument();
+    // El único spinbutton posible sería el "top n" (oculto por defecto)
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
+  });
+
+  it('el POST de creación no envía margen_precio', async () => {
+    let postBody: any = null;
+    (global as any).fetch = jest.fn((url: string, init?: any) => {
+      if (init?.method === 'POST') {
+        postBody = JSON.parse(init.body);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+
+    render(<CrearCatalogoDialog {...DEFAULT_PROPS} />);
+    fireEvent.change(screen.getByPlaceholderText('Ej: Ofertas Mayo 2026'), {
+      target: { value: 'Ofertas Mayo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /crear/i }));
+
+    await waitFor(() => expect(postBody).not.toBeNull());
+    expect(postBody).not.toHaveProperty('margen_precio');
+    expect(postBody.titulo).toBe('Ofertas Mayo');
   });
 });
 

@@ -146,6 +146,8 @@ describe('POST /api/catalogos', () => {
     const body = await res.json();
     expect(body.slug).toBeDefined();
     expect(body.user_id).toBe(Number(testNonAdminId));
+    // Slice 4a: margen_precio del body se ignora (la columna queda en 0)
+    expect(Number(body.margen_precio)).toBe(0);
     testCatalogoIdOwner = body.id;
   });
 
@@ -238,6 +240,25 @@ describe('PUT /api/catalogos/[id]', () => {
       { params: Promise.resolve({ id: String(testCatalogoIdOwner) }) }
     );
     expect(res.status).toBe(200);
+  });
+
+  it('margen_precio en el body del PUT no se persiste', async () => {
+    mockSession = { user: { id: testAdminId, rol: 'admin', empresas: [1] } };
+    const res = await PUT(
+      makeReq(`/api/catalogos/${testCatalogoIdOwner}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ margen_precio: 77, palabras_excluir: 'NADA' }),
+      }),
+      { params: Promise.resolve({ id: String(testCatalogoIdOwner) }) }
+    );
+    expect(res.status).toBe(200);
+
+    const [row] = await sql`
+      SELECT margen_precio, palabras_excluir FROM catalogos WHERE id = ${testCatalogoIdOwner}
+    `;
+    expect(Number(row.margen_precio)).toBe(0);
+    expect(row.palabras_excluir).toBe('NADA'); // el body sigue funcionando en sus otros campos
   });
 
   it('rechaza precio_override con precio <= 0', async () => {

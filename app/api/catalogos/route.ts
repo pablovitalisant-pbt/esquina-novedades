@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { empresaId, titulo, descripcion, mostrar_precio, margen_precio,
+  const { empresaId, titulo, descripcion, mostrar_precio,
     solo_stock, mostrar_stock, solo_nuevo, solo_nuevo_top_n,
     palabras_incluir, palabras_excluir, categoria } = body;
 
@@ -73,12 +73,12 @@ export async function POST(req: Request) {
   const result = await sql`
     INSERT INTO catalogos (
       empresa_id, user_id, titulo, slug, descripcion, activo,
-      mostrar_precio, margen_precio, solo_stock, mostrar_stock,
+      mostrar_precio, solo_stock, mostrar_stock,
       solo_nuevo, solo_nuevo_top_n, palabras_incluir, palabras_excluir, categoria
     ) VALUES (
       ${Number(empresaId) || 1}, ${userId}, ${titulo.trim()}, ${slug},
       ${descripcion ?? null}, true,
-      ${mostrar_precio ?? true}, ${margen_precio ?? 0},
+      ${mostrar_precio ?? true},
       ${solo_stock ?? true}, ${mostrar_stock ?? false},
       ${solo_nuevo ?? false}, ${solo_nuevo_top_n ?? 1},
       ${palabras_incluir ?? ''}, ${palabras_excluir ?? ''},

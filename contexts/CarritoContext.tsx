@@ -1,21 +1,17 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
-import flags from '@/config/feature-flags.json';
 
 export type ContactoCarrito = { nombre: string; telefono: string; email?: string };
-
-export type Modalidad = 'unidad' | 'caja';
 
 export type ItemCarrito = {
   producto_id: number;
   codigo: string;
   detalle: string | null;
-  cantidad: number; // cantidad de la modalidad (unidades o cajas)
-  modalidad: Modalidad;
-  precio: number | null; // precio de una unidad o de una caja según modalidad
-  precio_referencia: number | null; // legacy: precio por unidad (drawer hasta 7d)
-  cantcaja: number; // unidades por caja
+  cantidad: number; // unidades
+  precio: number | null; // precio base (detalle)
+  precio_mayor: number | null;
+  minimo_mayor: number | null;
 };
 
 type CarritoPersistido = {
@@ -31,14 +27,52 @@ type CarritoContextValue = {
   totalItems: number;
   setContacto: (c: ContactoCarrito) => void;
   agregarItem: (item: ItemCarrito) => void;
-  quitarItem: (producto_id: number, modalidad?: Modalidad) => void;
-  actualizarCantidad: (producto_id: number, cantidad: number, modalidad?: Modalidad) => void;
+  quitarItem: (producto_id: number) => void;
+  actualizarCantidad: (producto_id: number, cantidad: number) => void;
   limpiar: () => void;
 };
 
 const STORAGE_KEY = 'esquina:pedido';
 
 const CarritoContext = createContext<CarritoContextValue | null>(null);
+
+function numeroONull(valor: unknown): number | null {
+  if (valor === null || valor === undefined) return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Sanea carritos persistidos de versiones anteriores: descarta líneas de caja/
+ * mayor, une líneas del mismo producto y completa precio_mayor/minimo_mayor.
+ */
+function normalizarItems(raw: unknown[]): ItemCarrito[] {
+  const salida: ItemCarrito[] = [];
+  for (const bruto of raw) {
+    if (!bruto || typeof bruto !== 'object') continue;
+    const i = bruto as Record<string, unknown>;
+    if (i.modalidad === 'caja' || i.modalidad === 'mayor') continue;
+    const producto_id = Number(i.producto_id);
+    if (!Number.isFinite(producto_id)) continue;
+    const cantidad = Number(i.cantidad);
+    const precio = numeroONull(i.precio);
+    const existente = salida.find((s) => s.producto_id === producto_id);
+    if (existente) {
+      existente.cantidad += Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 1;
+      continue;
+    }
+    salida.push({
+      producto_id,
+      codigo: String(i.codigo ?? ''),
+      detalle: typeof i.detalle === 'string' ? i.detalle : null,
+      cantidad: Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 1,
+      precio,
+      precio_mayor: numeroONull(i.precio_mayor),
+      minimo_mayor: numeroONull(i.minimo_mayor),
+    });
+  }
+  return salida;
+}
 
 function leerPersistido(): CarritoPersistido | null {
   if (typeof window === 'undefined') return null;
@@ -47,7 +81,7 @@ function leerPersistido(): CarritoPersistido | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.items)) return null;
-    return parsed;
+    return { contacto: parsed.contacto ?? null, items: normalizarItems(parsed.items) };
   } catch {
     return null;
   }
@@ -72,11 +106,7 @@ export function CarritoProvider({
     const persistido = leerPersistido();
     if (persistido) {
       setContactoState(persistido.contacto);
-      // Hotfix: carritos guardados con líneas por mayor se sanean al hidratar.
-      const itemsValidos = flags['tienda-mayor-online'] === true
-        ? persistido.items
-        : persistido.items.filter((i) => i.modalidad !== 'caja');
-      setItems(itemsValidos);
+      setItems(persistido.items);
     }
     setHydrated(true);
   }, []);
@@ -95,14 +125,21 @@ export function CarritoProvider({
 
   const agregarItem = useCallback((item: ItemCarrito) => {
     setItems((prev) => {
-      // Dedupe por producto + modalidad: unidad y caja del mismo producto son líneas distintas.
-      const existente = prev.find(
-        (i) => i.producto_id === item.producto_id && i.modalidad === item.modalidad
-      );
+      // Una línea por producto: agregar el mismo producto suma cantidad y
+      // refresca los datos de precio (pueden faltar en carritos viejos).
+      const existente = prev.find((i) => i.producto_id === item.producto_id);
       if (existente) {
         return prev.map((i) =>
-          i.producto_id === item.producto_id && i.modalidad === item.modalidad
-            ? { ...i, cantidad: i.cantidad + item.cantidad }
+          i.producto_id === item.producto_id
+            ? {
+                ...i,
+                codigo: item.codigo,
+                detalle: item.detalle,
+                precio: item.precio,
+                precio_mayor: item.precio_mayor,
+                minimo_mayor: item.minimo_mayor,
+                cantidad: i.cantidad + item.cantidad,
+              }
             : i
         );
       }
@@ -110,25 +147,16 @@ export function CarritoProvider({
     });
   }, []);
 
-  const quitarItem = useCallback((producto_id: number, modalidad?: Modalidad) => {
-    setItems((prev) =>
-      prev.filter((i) =>
-        i.producto_id === producto_id ? modalidad != null && i.modalidad !== modalidad : true
-      )
-    );
+  const quitarItem = useCallback((producto_id: number) => {
+    setItems((prev) => prev.filter((i) => i.producto_id !== producto_id));
   }, []);
 
-  const actualizarCantidad = useCallback(
-    (producto_id: number, cantidad: number, modalidad?: Modalidad) => {
-      setItems((prev) => {
-        const coincide = (i: ItemCarrito) =>
-          i.producto_id === producto_id && (modalidad == null || i.modalidad === modalidad);
-        if (cantidad < 1) return prev.filter((i) => !coincide(i));
-        return prev.map((i) => (coincide(i) ? { ...i, cantidad } : i));
-      });
-    },
-    []
-  );
+  const actualizarCantidad = useCallback((producto_id: number, cantidad: number) => {
+    setItems((prev) => {
+      if (cantidad < 1) return prev.filter((i) => i.producto_id !== producto_id);
+      return prev.map((i) => (i.producto_id === producto_id ? { ...i, cantidad } : i));
+    });
+  }, []);
 
   const limpiar = useCallback(() => {
     setItems([]);

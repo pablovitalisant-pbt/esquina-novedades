@@ -14,13 +14,16 @@ import { ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCarrito } from '@/contexts/CarritoContext';
 import { CarritoCheckoutForm, DatosCheckout, OpcionEntrega } from '@/components/CarritoCheckoutForm';
 import { formatCLP } from '@/lib/utils';
+import { precioLineaTienda } from '@/lib/precio-tienda';
+import flags from '@/config/feature-flags.json';
 import { redirigirA } from '@/lib/redirigir';
 
 /**
  * Carrito: trigger flotante (solo visible con items) + Sheet lateral con el
- * resumen, edición de cantidades y checkout (contacto/entrega). El total
- * mostrado es estimado: el servidor lo recalcula en 7e. Al POST solo se envían
- * producto_id, modalidad y cantidad.
+ * resumen, edición de cantidades y checkout (contacto/entrega). El descuento
+ * especial por mayor se calcula con la misma función pura que el servidor; el
+ * total mostrado es estimado y se recalcula en 7e. Al POST solo se envían
+ * producto_id y cantidad.
  */
 export function CarritoDrawer() {
   const { contacto, items, origen, origen_slug, totalItems, actualizarCantidad, quitarItem, limpiar, setContacto } =
@@ -49,10 +52,27 @@ export function CarritoDrawer() {
     };
   }, [open]);
 
-  // Total estimado: Σ precio de la modalidad × cantidad + costo de entrega.
-  const subtotal = items.reduce((acc, i) => (i.precio == null ? acc : acc + i.precio * i.cantidad), 0);
+  // Total estimado a precio de lista, menos descuento especial, más entrega.
+  const habilitado = flags['tienda-mayor-online'] === true;
+  const lineas = items.map((item) => ({
+    item,
+    precio: item.precio == null
+      ? null
+      : precioLineaTienda({
+          base: item.precio,
+          precio_mayor: item.precio_mayor,
+          minimo_mayor: item.minimo_mayor,
+          cantidad: item.cantidad,
+          habilitado,
+        }),
+  }));
+  const subtotal = lineas.reduce(
+    (acc, l) => (l.precio == null ? acc : acc + l.precio.precio_lista * l.item.cantidad),
+    0,
+  );
+  const descuento = lineas.reduce((acc, l) => acc + (l.precio?.ahorro ?? 0), 0);
   const costoEntrega = checkout?.opcion?.costo ?? 0;
-  const total = subtotal + costoEntrega;
+  const total = subtotal - descuento + costoEntrega;
   const haySinPrecio = items.some((i) => i.precio == null);
 
   async function enviarPedido(datos: DatosCheckout) {
@@ -74,7 +94,6 @@ export function CarritoDrawer() {
           direccion_entrega: datos.opcion?.requiere_direccion ? datos.direccion_entrega : null,
           items: items.map((i) => ({
             producto_id: i.producto_id,
-            modalidad: i.modalidad,
             cantidad: i.cantidad,
           })),
         }),
@@ -127,19 +146,27 @@ export function CarritoDrawer() {
             {items.length === 0 && (
               <p className="text-sm text-[var(--body-subtle)] text-center py-10">Tu carrito está vacío.</p>
             )}
-            {items.map((item) => {
-              const subtotalItem = item.precio == null ? null : item.precio * item.cantidad;
+            {lineas.map(({ item, precio }) => {
+              const subtotalItem = precio == null ? null : precio.precio * item.cantidad;
               return (
                 <div
-                  key={`${item.producto_id}-${item.modalidad}`}
+                  key={item.producto_id}
                   className="flex items-start justify-between gap-3 border border-[var(--border-default)] rounded-xl p-3"
                 >
                   <div className="min-w-0">
                     <div className="font-mono text-xs text-[var(--body-subtle)]">{item.codigo}</div>
                     <div className="font-medium text-sm line-clamp-2">{item.detalle}</div>
-                    {item.precio != null && (
+                    {precio != null && (
                       <div className="text-xs text-[var(--body-subtle)]">
-                        {formatCLP(item.precio)} / {item.modalidad}
+                        {precio.modalidad === 'mayor' ? (
+                          <>
+                            <span className="line-through">{formatCLP(precio.precio_lista)}</span>{' '}
+                            <span className="font-semibold text-[var(--success)]">{formatCLP(precio.precio)}</span>{' '}
+                            <span className="font-semibold text-[var(--success)]">Descuento especial</span>
+                          </>
+                        ) : (
+                          <>{formatCLP(precio.precio)} / unidad</>
+                        )}
                       </div>
                     )}
                   </div>
@@ -148,7 +175,7 @@ export function CarritoDrawer() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad - 1, item.modalidad)}
+                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad - 1)}
                         aria-label="Disminuir"
                       >
                         <Minus className="w-4 h-4" />
@@ -157,7 +184,7 @@ export function CarritoDrawer() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad + 1, item.modalidad)}
+                        onClick={() => actualizarCantidad(item.producto_id, item.cantidad + 1)}
                         aria-label="Aumentar"
                       >
                         <Plus className="w-4 h-4" />
@@ -165,15 +192,14 @@ export function CarritoDrawer() {
                     </div>
                     <div className="text-[10px] text-[var(--body-subtle)] text-right leading-tight">
                       <div>
-                        {item.cantidad} {item.modalidad === 'caja' ? `caja${item.cantidad !== 1 ? 's' : ''}` : `unidad${item.cantidad !== 1 ? 'es' : ''}`}
+                        {item.cantidad} {item.cantidad === 1 ? 'unidad' : 'unidades'}
                       </div>
-                      {item.modalidad === 'caja' && <div>= {item.cantidad * item.cantcaja} unidades</div>}
                       {subtotalItem != null && <div className="font-bold text-[var(--heading)]">{formatCLP(subtotalItem)}</div>}
                     </div>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => quitarItem(item.producto_id, item.modalidad)}
+                      onClick={() => quitarItem(item.producto_id)}
                       aria-label="Quitar"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -196,6 +222,12 @@ export function CarritoDrawer() {
               <span className="text-[var(--body-subtle)]">Subtotal</span>
               <span data-testid="subtotal">{formatCLP(subtotal)}</span>
             </div>
+            {descuento > 0 && (
+              <div className="flex justify-between items-center text-sm text-[var(--success)]">
+                <span>Descuento especial</span>
+                <span data-testid="descuento">-{formatCLP(descuento)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--body-subtle)]">Costo de entrega</span>
               <span data-testid="costo-entrega">{formatCLP(costoEntrega)}</span>

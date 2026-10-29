@@ -22,8 +22,8 @@ const OPCIONES = {
   ],
 };
 
-const UNIDAD: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 2, modalidad: 'unidad', precio: 500, precio_referencia: 500, cantcaja: 6 };
-const CAJA: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 1, modalidad: 'caja', precio: 3000, precio_referencia: 500, cantcaja: 6 };
+const UNIDAD: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 2, precio: 500, precio_mayor: null, minimo_mayor: null };
+const OTRO: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 1, precio: 3000, precio_mayor: null, minimo_mayor: null };
 
 function Seed({ contacto, items }: { contacto?: { nombre: string; telefono: string; email?: string }; items?: ItemCarrito[] }) {
   const { setContacto, agregarItem } = useCarrito();
@@ -49,7 +49,7 @@ function mockFetch(postResponse: any = { ok: true, status: 201, json: async () =
 const postCalls = (fetchMock: jest.Mock) =>
   fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/pedidos')).length;
 
-async function abrirDrawer(items: ItemCarrito[] = [UNIDAD, CAJA]) {
+async function abrirDrawer(items: ItemCarrito[] = [UNIDAD, OTRO]) {
   render(
     <CarritoProvider origen="productos">
       <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={items} />
@@ -70,7 +70,7 @@ describe('Gate con email obligatorio', () => {
   it('sin email no confirma; con email agrega el item', async () => {
     render(
       <CarritoProvider origen="productos">
-        <BotonAgregarPedido item={{ producto_id: 1, codigo: 'A', detalle: 'A', precio: 500, cantcaja: 6 }} />
+        <BotonAgregarPedido item={{ producto_id: 1, codigo: 'A', detalle: 'A', precio: 500 }} />
       </CarritoProvider>
     );
 
@@ -112,7 +112,7 @@ describe('Checkout en el drawer', () => {
     await waitFor(() => expect(postCalls(fetchMock)).toBe(1));
   });
 
-  it('retiro no exige dirección y envía solo producto_id, modalidad y cantidad', async () => {
+  it('retiro no exige dirección y envía solo producto_id y cantidad', async () => {
     const fetchMock = mockFetch();
     await abrirDrawer();
 
@@ -125,8 +125,8 @@ describe('Checkout en el drawer', () => {
     expect(body.entrega_codigo).toBe('retiro');
     expect(body.direccion_entrega).toBeNull();
     expect(body.items).toEqual([
-      { producto_id: 1, modalidad: 'unidad', cantidad: 2 },
-      { producto_id: 2, modalidad: 'caja', cantidad: 1 },
+      { producto_id: 1, cantidad: 2 },
+      { producto_id: 2, cantidad: 1 },
     ]);
     expect(body.total).toBeUndefined();
     expect(body.entrega_costo).toBeUndefined();

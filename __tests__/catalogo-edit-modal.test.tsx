@@ -150,8 +150,8 @@ describe('T3 — Input de precio individual condicionado a mostrar_precio', () =
     await waitFor(() => {
       // Buscar un input de tipo number con aria-label que identifique el precio individual
       const priceInputs = screen.queryAllByRole('spinbutton');
-      // Debe haber al menos inputs de precio (uno por producto) más el input de margen
-      expect(priceInputs.length).toBeGreaterThanOrEqual(MOCK_PRODUCTOS.length);
+      // Debe haber inputs de precio (uno por producto); ya no hay input de margen
+      expect(priceInputs.length).toBe(MOCK_PRODUCTOS.length);
     });
   });
 
@@ -176,11 +176,9 @@ describe('T3 — Input de precio individual condicionado a mostrar_precio', () =
     });
 
     // Con mostrar_precio = false, NO deben existir inputs de precio individual
-    // El input de margen global SÍ debe permanecer (es configuración, no display)
-    // Verificar que hay exactamente 1 spinbutton = el campo de margen preexistente
+    // ni input de margen (Slice 4a: el % de ganancia ya no existe en catálogos)
     const priceInputs = screen.queryAllByRole('spinbutton');
-    // 1 = solo el input de margen global (que ya existía antes de este slice)
-    expect(priceInputs.length).toBe(1);
+    expect(priceInputs.length).toBe(0);
   });
 });
 

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
+// Slice 4a: el catálogo ya no lleva % de ganancia; el precio sale de prcventa.
 export const CatalogoCreateSchema = z.object({
   empresaId: z.number(),
   titulo: z.string().min(1),
   descripcion: z.string().optional(),
   mostrar_precio: z.boolean().default(true),
-  margen_precio: z.number().min(0).max(500).default(0),
   solo_stock: z.boolean().default(false),
   solo_nuevo: z.boolean().default(false),
   palabras_incluir: z.string().default(""),

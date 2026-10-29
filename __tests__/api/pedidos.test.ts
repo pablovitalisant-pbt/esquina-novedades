@@ -131,14 +131,15 @@ describe('POST /api/pedidos — validaciones', () => {
     expect(sqlTransaction).not.toHaveBeenCalled();
   });
 
-  test('caja sin precio_mayor → 400 sin escritura', async () => {
+  test('caja sin precio_mayor → 201 a precio detalle (modalidad ignorada)', async () => {
     productos = [{ ...PRODUCTO, precio_mayor: null }];
     const res = await POST(postReq({
       ...VALID_BODY,
       items: [{ producto_id: 118, modalidad: 'caja', cantidad: 1 }],
     }));
-    expect(res.status).toBe(400);
-    expect(sqlTransaction).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    const item = txQuery('INSERT INTO public.pedido_items');
+    expect(item.values).toEqual(expect.arrayContaining(['detalle', 1500]));
   });
 
   test('delivery sin direccion_entrega → 400 sin escritura', async () => {
@@ -179,17 +180,17 @@ describe('POST /api/pedidos — precios server-side', () => {
     expect(pedido.values).toContain(0); // entrega_costo real de retiro
   });
 
-  test('caja bloqueada en tienda online → 400 sin escribir', async () => {
+  test('caja se ignora (flag apagado) → 201 a precio detalle', async () => {
     const res = await POST(postReq({
       ...VALID_BODY,
       items: [{ producto_id: 118, modalidad: 'caja', cantidad: 2, precio: 1 }],
     }));
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe('El precio por mayor no está disponible en la tienda online');
-    expect(sqlTransaction).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    const item = txQuery('INSERT INTO public.pedido_items');
+    expect(item.values).toEqual(expect.arrayContaining(['detalle', 1500, 1500, 2]));
   });
 
-  test('origen catalogo usa la misma fórmula que la página (costo + margen)', async () => {
+  test('origen catalogo cobra prcventa (el margen_precio del catálogo se ignora)', async () => {
     catalogo = { id: 5, margen_precio: '30' };
     const res = await POST(postReq({
       ...VALID_BODY,
@@ -200,7 +201,7 @@ describe('POST /api/pedidos — precios server-side', () => {
     expect(res.status).toBe(201);
 
     const item = txQuery('INSERT INTO public.pedido_items');
-    expect(item.values).toEqual(expect.arrayContaining([130])); // ceil(100 * 1.3)
+    expect(item.values).toEqual(expect.arrayContaining([1500])); // prcventa, no ceil(100 * 1.3)
   });
 
   test('producto fuera del catálogo → 400 "producto no pertenece al catalogo"', async () => {
@@ -245,12 +246,12 @@ describe('POST /api/pedidos — precios server-side', () => {
     expect(res.status).toBe(201);
 
     const item = txQuery('INSERT INTO public.pedido_items');
-    expect(item.values).toEqual(expect.arrayContaining([130]));
+    expect(item.values).toEqual(expect.arrayContaining([1500]));
   });
 
-  test('producto del catálogo con costo NULL y sin override → 400', async () => {
+  test('producto del catálogo con prcventa NULL y sin override → 400', async () => {
     catalogo = { id: 5, margen_precio: '30', empresa_id: 1, solo_stock: false };
-    productos = [{ ...PRODUCTO, costo: null }];
+    productos = [{ ...PRODUCTO, prcventa: null, costo: 100 }];
     const res = await POST(postReq({
       ...VALID_BODY,
       origen: 'catalogo',
@@ -259,6 +260,33 @@ describe('POST /api/pedidos — precios server-side', () => {
 
     expect(res.status).toBe(400);
     expect(sqlTransaction).not.toHaveBeenCalled();
+  });
+
+  test('producto del catálogo con prcventa 0 y sin override → 400', async () => {
+    catalogo = { id: 5, margen_precio: '30', empresa_id: 1, solo_stock: false };
+    productos = [{ ...PRODUCTO, prcventa: 0 }];
+    const res = await POST(postReq({
+      ...VALID_BODY,
+      origen: 'catalogo',
+      origen_slug: 'juguetes',
+    }));
+
+    expect(res.status).toBe(400);
+    expect(sqlTransaction).not.toHaveBeenCalled();
+  });
+
+  test('costo NULL con prcventa válida → 201 al precio de venta', async () => {
+    catalogo = { id: 5, margen_precio: '30', empresa_id: 1, solo_stock: false };
+    productos = [{ ...PRODUCTO, costo: null }];
+    const res = await POST(postReq({
+      ...VALID_BODY,
+      origen: 'catalogo',
+      origen_slug: 'juguetes',
+    }));
+
+    expect(res.status).toBe(201);
+    const item = txQuery('INSERT INTO public.pedido_items');
+    expect(item.values).toEqual(expect.arrayContaining([1500]));
   });
 
   test('origen catalogo respeta el override del catálogo', async () => {
@@ -377,7 +405,7 @@ describe('GET /api/pedidos — staff', () => {
       }])
       .mockResolvedValueOnce([{
         pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
-        modalidad: 'detalle', precio: 1500, subtotal: 3000,
+        modalidad: 'detalle', precio: 1500, precio_lista: 1500, subtotal: 3000,
       }]);
 
     const res = await GET(new NextRequest('http://localhost/api/pedidos'));
@@ -393,7 +421,7 @@ describe('GET /api/pedidos — staff', () => {
     });
     expect(body.data[0].items).toEqual([{
       codigo: '1055', detalle: 'gallinita', cantidad: 2,
-      modalidad: 'detalle', precio: 1500, subtotal: 3000,
+      modalidad: 'detalle', precio: 1500, precio_lista: 1500, subtotal: 3000,
     }]);
   });
 

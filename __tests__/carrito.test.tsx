@@ -27,8 +27,8 @@ jest.mock('@/lib/redirigir', () => ({
 
 const KEY = 'esquina:pedido';
 
-const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, modalidad: 'caja', precio: 30, precio_referencia: 5, cantcaja: 6 };
-const ITEM_B: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 2, modalidad: 'caja', precio: 108, precio_referencia: 9, cantcaja: 12 };
+const ITEM_A: ItemCarrito = { producto_id: 1, codigo: 'A', detalle: 'Producto A', cantidad: 1, precio: 30, precio_mayor: null, minimo_mayor: null };
+const ITEM_B: ItemCarrito = { producto_id: 2, codigo: 'B', detalle: 'Producto B', cantidad: 2, precio: 108, precio_mayor: null, minimo_mayor: null };
 
 function TotalProbe() {
   const { totalItems, items } = useCarrito();
@@ -91,8 +91,7 @@ describe('R1 — Hydration (localStorage solo en effect)', () => {
       KEY,
       JSON.stringify({
         contacto: { nombre: 'Juana', telefono: '591700' },
-        // Hotfix: las líneas caja se descartan al hidratar; se guarda unidad.
-        items: [{ ...ITEM_A, modalidad: 'unidad' }],
+        items: [ITEM_A],
       })
     );
 
@@ -346,9 +345,9 @@ describe('R4 — Error del POST conserva los items', () => {
   });
 });
 
-// ─── Precio en el Drawer: por caja (formatUSD + formatArsEquivalente) ─
+// ─── Precio en el Drawer: por unidad ─
 describe('Precio por item en el Drawer', () => {
-  it('muestra precio por caja (USD + ARS) y equivalencia en unidades', async () => {
+  it('muestra precio por unidad', async () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
 
     render(
@@ -361,18 +360,15 @@ describe('Precio por item en el Drawer', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
 
-    // ITEM_A: precio_referencia 5 * cantcaja 6 = 30 → "$30.00 / caja"
-    await screen.findByText('$30 / caja');
+    await screen.findByText('$30 / unidad');
     expect(screen.queryByText(/AR\$|≈/)).not.toBeInTheDocument();
-    // cantidad 1 caja → "1 caja" · "= 6 unidades"
-    expect(screen.getByText('1 caja')).toBeInTheDocument();
-    expect(screen.getByText('= 6 unidades')).toBeInTheDocument();
+    expect(screen.getByText('1 unidad')).toBeInTheDocument();
   });
 });
 
 // ─── Total de la compra en el Drawer ────────────────────────────────
 describe('Total de la compra en el Drawer', () => {
-  it('suma precio_referencia × cantcaja × cantidad por item → formatUSD', async () => {
+  it('suma precio × cantidad por item', async () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
 
     render(
@@ -389,10 +385,10 @@ describe('Total de la compra en el Drawer', () => {
     await waitFor(() => expect(screen.getByTestId('subtotal').textContent).toBe('$246'));
   });
 
-  it('item sin precio_referencia se excluye del total y muestra el indicador', async () => {
+  it('item sin precio se excluye del total y muestra el indicador', async () => {
     (global as any).fetch = jest.fn(() => new Promise(() => {}));
     const SIN_PRECIO: ItemCarrito = {
-      producto_id: 3, codigo: 'C', detalle: 'Sin precio', cantidad: 1, modalidad: 'caja', precio: null, precio_referencia: null, cantcaja: 6,
+      producto_id: 3, codigo: 'C', detalle: 'Sin precio', cantidad: 1, precio: null, precio_mayor: null, minimo_mayor: null,
     };
 
     render(

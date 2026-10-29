@@ -142,7 +142,7 @@ describe('Modal de edición — guardar cambios', () => {
       const body = JSON.parse(putCall[1].body);
       // Producto A eliminado → su codigo aparece en palabras_excluir
       expect(body.palabras_excluir).toContain('P-1');
-      expect(body.margen_precio).toBe(0);
+      expect(body.margen_precio).toBeUndefined();
       expect(body.precio_overrides).toEqual([]);
       // Modal cerrado
       expect(screen.queryByText('Producto A')).not.toBeInTheDocument();

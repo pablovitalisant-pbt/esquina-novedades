@@ -25,7 +25,7 @@ describe('migración 046', () => {
   });
   it('está en MIGRATION_ORDER como última', () => {
     const { MIGRATION_ORDER } = require('../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('046_modalidad_detalle_mayor.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('047_pedido_items_precio_lista.sql');
   });
 });
 
@@ -299,18 +299,18 @@ describe('convertir pedidos', () => {
 
 // ───────────────────────── tienda online ─────────────────────────
 describe('tienda: precios y pedidos', () => {
-  it('precios normaliza unidad/unidad a detalle y bloquea caja/mayor', () => {
+  it('precios deriva la modalidad del servidor (Slice 4b)', () => {
     const s = read('lib/pedidos/precios.ts');
     expect(s).toContain("export type Modalidad = 'detalle' | 'mayor'");
     expect(s).toMatch(/'unidad'|'detalle'/);
     expect(s).toMatch(/'caja'|'mayor'/);
-    expect(s).toContain('El precio por mayor no está disponible en la tienda online');
+    expect(s).toContain('precioLineaTienda');
   });
-  it('POST pedidos acepta detalle y bloquea mayor; GET sin cantcaja', () => {
+  it('POST pedidos calcula la modalidad y guarda precio_lista; GET sin cantcaja', () => {
     const s = read('app/api/pedidos/route.ts');
     expect(s).not.toMatch(/cantcaja/);
-    expect(s).toMatch(/modalidad === 'detalle'|modalidad !== 'detalle'/);
-    expect(s).toContain('El precio por mayor no está disponible en la tienda online');
+    expect(s).toContain('precio_lista');
+    expect(s).not.toContain('El precio por mayor no está disponible en la tienda online');
   });
 });
 

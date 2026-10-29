@@ -1,9 +1,9 @@
 /**
  * @jest-environment node
  *
- * Fase B — Hotfix "bloquear precio mayor en tienda online".
- * Puntos 1 (bloqueo en POST) y 2 (smoke flujo unidad intacto).
- * Flag `tienda-mayor-online` mockeado explícitamente (lección BUG-004).
+ * Slice 4b — reemplaza el hotfix "bloquear precio mayor en tienda online".
+ * Con flag `tienda-mayor-online` en false la modalidad del cliente se ignora:
+ * pedidos con 'caja'/'mayor' responden 201 y se cobran a precio detalle.
  */
 import { NextRequest } from 'next/server';
 
@@ -31,7 +31,7 @@ const postReq = (body: any) => new NextRequest('http://localhost/api/pedidos', {
 
 const PRODUCTO = {
   id: 118, codigo: '1055', detalle: 'gallinita', prcventa: 1500,
-  precio_mayor: 12000, cantcaja: 6, activo: true, costo: 100, saldo: 50,
+  precio_mayor: 1200, minimo_mayor: 1, cantcaja: 6, activo: true, costo: 100, saldo: 50,
 };
 const RETIRO = { codigo: 'retiro', costo: 0, requiere_direccion: false, activa: true };
 
@@ -42,8 +42,6 @@ const BASE = {
   entrega_codigo: 'retiro',
   origen: 'productos',
 };
-
-const MENSAJE = 'El precio por mayor no está disponible en la tienda online';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -61,21 +59,21 @@ beforeEach(() => {
   ]);
 });
 
-describe('POST /api/pedidos — bloqueo de modalidad caja (flag tienda-mayor-online=false)', () => {
-  test('item caja → 400 con el mensaje del contrato, sin insertar pedido ni tocar stock', async () => {
+const itemInsert = () => (sqlTransaction.mock.calls[0][0] as any[])
+  .find((q) => q?.strings?.join('').includes('INSERT INTO public.pedido_items'));
+
+describe('POST /api/pedidos — modalidad del cliente ignorada (flag false)', () => {
+  test("item caja → 201 cobrado a precio detalle", async () => {
     const res = await POST(postReq({
       ...BASE,
       items: [{ producto_id: 118, modalidad: 'caja', cantidad: 1 }],
     }));
 
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: MENSAJE });
-    // Ninguna consulta: no se lee producto, no se inserta pedido, no hay UPDATE de saldo.
-    expect(sql).not.toHaveBeenCalled();
-    expect(sqlTransaction).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    expect(itemInsert().values).toEqual(expect.arrayContaining(['detalle', 1500, 1500]));
   });
 
-  test('mezcla unidad + caja → 400 y tampoco escribe', async () => {
+  test('mezcla unidad + caja → 201 y una sola línea detalle', async () => {
     const res = await POST(postReq({
       ...BASE,
       items: [
@@ -84,29 +82,10 @@ describe('POST /api/pedidos — bloqueo de modalidad caja (flag tienda-mayor-onl
       ],
     }));
 
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: MENSAJE });
-    expect(sql).not.toHaveBeenCalled();
-    expect(sqlTransaction).not.toHaveBeenCalled();
-  });
-});
-
-describe('POST /api/pedidos — smoke flujo unidad intacto', () => {
-  test('items unidad → 201 con precio prcventa y total server-side', async () => {
-    const res = await POST(postReq({
-      ...BASE,
-      items: [{ producto_id: 118, modalidad: 'unidad', cantidad: 2 }],
-    }));
-
     expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.data).toMatchObject({ id: 'ped-1', estado: 'pendiente' });
-    expect(sqlTransaction).toHaveBeenCalledTimes(1);
-
-    const queries = sqlTransaction.mock.calls[0][0] as any[];
-    const itemInsert = queries.find((q) => q?.strings?.join('').includes('INSERT INTO public.pedido_items'));
-    expect(itemInsert).toBeDefined();
-    // precio = prcventa (1500), subtotal = 3000
-    expect(itemInsert.values).toEqual(expect.arrayContaining([1500, 'detalle', 2]));
+    const inserts = (sqlTransaction.mock.calls[0][0] as any[])
+      .filter((q) => q?.strings?.join('').includes('INSERT INTO public.pedido_items'));
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].values).toEqual(expect.arrayContaining(['detalle', 1500, 2]));
   });
 });

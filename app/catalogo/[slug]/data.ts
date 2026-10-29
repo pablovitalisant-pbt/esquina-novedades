@@ -1,7 +1,7 @@
 import { sql } from "@/lib/db";
 import { filterProducts, type CatalogoProducto } from "@/app/api/catalogos/public/[slug]/filter-products";
 import { getLatestIngresoRealCodigos } from "@/utils/catalogo-ingreso";
-import { precioCatalogoBase } from "@/lib/precio-catalogo";
+import { precioEnCatalogo } from "@/lib/precio-catalogo";
 import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
 
 // Acepta string CSV o array (Neon puede deserializar text[] automáticamente)
@@ -30,7 +30,6 @@ export async function getCatalogData(slug: string) {
     const cat = cats[0];
 
     const soloNuevo = cat.solo_nuevo;
-    const margen = parseFloat(cat.margen_precio) || 0;
     const mostrarPrecio = cat.mostrar_precio;
 
     const tokens = parseCSVField(cat.palabras_incluir);
@@ -66,7 +65,9 @@ export async function getCatalogData(slug: string) {
             MAX(p.cantcaja) as cantcaja,
             MAX(p.umed) as umed,
             MAX(p.costo) as costo,
+            MAX(p.prcventa) as prcventa,
             MAX(p.precio_mayor) as precio_mayor,
+            MAX(p.minimo_mayor) as minimo_mayor,
             SUM(p.saldo) as saldo,
             BOOL_OR(p.es_nuevo) as es_nuevo
           FROM productos p
@@ -85,7 +86,9 @@ export async function getCatalogData(slug: string) {
             MAX(p.cantcaja) as cantcaja,
             MAX(p.umed) as umed,
             MAX(p.costo) as costo,
+            MAX(p.prcventa) as prcventa,
             MAX(p.precio_mayor) as precio_mayor,
+            MAX(p.minimo_mayor) as minimo_mayor,
             SUM(p.saldo) as saldo,
             BOOL_OR(p.es_nuevo) as es_nuevo
           FROM productos p
@@ -102,8 +105,10 @@ export async function getCatalogData(slug: string) {
       umed: string;
       saldo: number;
       costo: number;
+      prcventa: number | null;
       cantcaja: number;
       precio_mayor: number | null;
+      minimo_mayor: number | null;
       precio_catalogo: number | null;
     };
 
@@ -127,9 +132,6 @@ export async function getCatalogData(slug: string) {
     );
 
     productos = productos.map((p) => {
-      const precioBase = mostrarPrecio
-        ? precioCatalogoBase(parseFloat(String(p.costo)), margen)
-        : null;
       const precioOverride = mostrarPrecio
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)
         : null;
@@ -137,9 +139,11 @@ export async function getCatalogData(slug: string) {
         ...p,
         saldo: parseInt(String(p.saldo)),
         costo: parseFloat(String(p.costo)),
+        prcventa: p.prcventa == null ? null : parseFloat(String(p.prcventa)),
         cantcaja: parseInt(String(p.cantcaja)),
         precio_mayor: p.precio_mayor == null ? null : parseFloat(String(p.precio_mayor)),
-        precio_catalogo: precioOverride ?? precioBase,
+        minimo_mayor: p.minimo_mayor == null ? null : parseInt(String(p.minimo_mayor)),
+        precio_catalogo: mostrarPrecio ? precioEnCatalogo(p.prcventa, precioOverride) : null,
         precio_override: precioOverride,
       };
     });

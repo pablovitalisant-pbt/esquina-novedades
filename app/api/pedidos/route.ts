@@ -9,7 +9,7 @@ import { crearPreferenciaPedido } from '@/lib/pedidos/preferencia';
 import { rechazarPedido } from '@/lib/pedidos/rechazar';
 import { reservarStockLinea } from '@/lib/pedidos/reserva-stock';
 import { mpAccessToken, siteUrl } from '@/lib/mercadopago/config';
-import { precioCatalogoBase } from '@/lib/precio-catalogo';
+import { precioEnCatalogo } from '@/lib/precio-catalogo';
 import { seleccionarProductosCatalogo } from '@/app/api/catalogos/public/[slug]/seleccion';
 import flags from '@/config/feature-flags.json';
 import { usuarioSesion } from '@/lib/session';
@@ -29,7 +29,7 @@ type PedidoReplay = {
   mp_init_point: string | null;
 };
 
-type ItemEntrada = { producto_id: number; cantidad: number; modalidad: 'unidad' | 'detalle' | 'caja' | 'mayor' };
+type ItemEntrada = { producto_id: number; cantidad: number; modalidad?: 'unidad' | 'detalle' | 'caja' | 'mayor' | null };
 type ProductoFila = ProductoPrecio & { costo: number | string; saldo: number };
 type PedidoLista = Record<string, unknown> & { id: string; cliente_id: string };
 type ItemLista = {
@@ -39,6 +39,7 @@ type ItemLista = {
   cantidad: number;
   modalidad: string;
   precio: number;
+  precio_lista: number | null;
   subtotal: number;
 };
 type CuerpoPedido = {
@@ -129,20 +130,14 @@ export async function POST(request: NextRequest) {
       if (!Number.isInteger(it?.cantidad) || it.cantidad <= 0) {
         return NextResponse.json({ error: 'cada item.cantidad debe ser un entero > 0' }, { status: 400 });
       }
+      // La modalidad la decide el servidor; si viene, solo debe ser conocida.
       if (
-        it?.modalidad !== 'unidad' && it?.modalidad !== 'detalle' &&
-        it?.modalidad !== 'caja' && it?.modalidad !== 'mayor'
+        it?.modalidad !== undefined && it?.modalidad !== null &&
+        it.modalidad !== 'unidad' && it.modalidad !== 'detalle' &&
+        it.modalidad !== 'caja' && it.modalidad !== 'mayor'
       ) {
         return NextResponse.json({ error: "cada item.modalidad debe ser 'unidad' o 'detalle'" }, { status: 400 });
       }
-    }
-
-    // Hotfix: la tienda online no vende por mayor (flag apagado = bloqueo).
-    if (flags['tienda-mayor-online'] !== true && items.some((it) => it?.modalidad === 'caja' || it?.modalidad === 'mayor')) {
-      return NextResponse.json(
-        { error: 'El precio por mayor no está disponible en la tienda online' },
-        { status: 400 },
-      );
     }
 
     const origen = body?.origen as Origen;
@@ -191,7 +186,7 @@ export async function POST(request: NextRequest) {
     // ─── Lectura de productos, entrega y precio de catálogo ─────────
     const productoIds = items.map((it) => it.producto_id);
     const productos = (await sql`
-      SELECT id, codigo, detalle, prcventa, precio_mayor, activo, costo, saldo
+      SELECT id, codigo, detalle, prcventa, precio_mayor, minimo_mayor, activo, costo, saldo
       FROM public.productos
       WHERE id = ANY(${productoIds})
     `) as ProductoFila[];
@@ -203,7 +198,7 @@ export async function POST(request: NextRequest) {
     `;
     const entrega = opciones[0] as OpcionEntrega | undefined;
 
-    let preciosCatalogo: Record<number, number> | undefined;
+    let preciosCatalogo: Record<number, number | null> | undefined;
     if (origen === 'catalogo') {
       const cats = await sql`
         SELECT * FROM public.catalogos
@@ -233,11 +228,12 @@ export async function POST(request: NextRequest) {
           (o): [string, number] => [String(o.codigo).toUpperCase(), parseFloat(o.precio)],
         ),
       );
-      const margen = parseFloat(cats[0].margen_precio) || 0;
       preciosCatalogo = {};
       for (const p of productos) {
-        preciosCatalogo[p.id] = porCodigo.get(String(p.codigo).toUpperCase())
-          ?? precioCatalogoBase(parseFloat(String(p.costo)), margen);
+        preciosCatalogo[p.id] = precioEnCatalogo(
+          p.prcventa,
+          porCodigo.get(String(p.codigo).toUpperCase()),
+        );
       }
     }
 
@@ -321,9 +317,9 @@ export async function POST(request: NextRequest) {
     for (const linea of calculado.lineas) {
       queries.push(sql`
         INSERT INTO public.pedido_items
-          (pedido_id, producto_id, codigo, detalle, cantidad, modalidad, precio, unidades)
+          (pedido_id, producto_id, codigo, detalle, cantidad, modalidad, precio, precio_lista, unidades)
         VALUES (${pedidoId}, ${linea.producto_id}, ${linea.codigo}, ${linea.detalle},
-                ${linea.cantidad}, ${linea.modalidad}, ${linea.precio},
+                ${linea.cantidad}, ${linea.modalidad}, ${linea.precio}, ${linea.precio_lista},
                 ${pagoOnline ? linea.unidades : null})
       `);
     }
@@ -379,6 +375,7 @@ export async function POST(request: NextRequest) {
       estado: pedido.estado,
       created_at: pedido.created_at,
       total: pedido.total,
+      descuento: calculado.descuento,
       expira_en: pedido.expira_en,
     };
 
@@ -433,7 +430,7 @@ export async function GET(request: NextRequest) {
     const pedidoIds = pedidos.map((p) => p.id);
     const items = (await sql`
       SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
-             pi.precio, pi.subtotal
+             pi.precio, pi.precio_lista, pi.subtotal
       FROM public.pedido_items pi
       WHERE pi.pedido_id = ANY(${pedidoIds})
     `) as ItemLista[];
@@ -447,6 +444,7 @@ export async function GET(request: NextRequest) {
         cantidad: it.cantidad,
         modalidad: it.modalidad,
         precio: it.precio,
+        precio_lista: it.precio_lista,
         subtotal: it.subtotal,
       });
       itemsPorPedido.set(it.pedido_id, lista);

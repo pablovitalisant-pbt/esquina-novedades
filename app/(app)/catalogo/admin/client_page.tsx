@@ -19,7 +19,6 @@ type CatalogoRow = {
   descripcion: string | null;
   slug: string;
   activo: boolean;
-  margen_precio: string;
   user_id: string | null;
   palabras_excluir?: string | null;
   mostrar_precio?: boolean;
@@ -59,7 +58,6 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
   // --- Estado modal edición ---
   const [editingCatalog, setEditingCatalog] = useState<CatalogoRow | null>(null);
   const [editItems, setEditItems] = useState<CatalogoItem[]>([]);
-  const [editMargen, setEditMargen] = useState<number>(0);
   const [editOverrides, setEditOverrides] = useState<Record<string, number | null>>({});
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -134,7 +132,6 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
     }
     setEditingCatalog(cat);
     setEditItems([]);
-    setEditMargen(parseFloat(String(cat.margen_precio)) || 0);
     setEditOverrides({});
     setEditLoading(true);
     try {
@@ -210,7 +207,6 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           palabras_excluir: nuevasExclusiones,
-          margen_precio: editMargen,
           precio_overrides,
         }),
       });
@@ -218,7 +214,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
         toast.success('Catálogo actualizado');
         setEditingCatalog(null);
         setEditItems([]);
-        setEditMargen(0);
+        
         setEditOverrides({});
         editItemsOriginalRef.current = [];
         fetchCatalogos();
@@ -366,26 +362,11 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
       />
 
       {/* Modal edición de productos */}
-      <Dialog open={!!editingCatalog} onOpenChange={(open) => { if (!open) { setEditingCatalog(null); setEditItems([]); setEditMargen(0); setEditOverrides({}); } }}>
+      <Dialog open={!!editingCatalog} onOpenChange={(open) => { if (!open) { setEditingCatalog(null); setEditItems([]); setEditOverrides({}); } }}>
         <DialogContent className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] sm:mx-4 overflow-y-auto p-5 rounded-none sm:rounded-card">
           <DialogHeader>
             <DialogTitle>Editar catálogo: {editingCatalog?.titulo}</DialogTitle>
           </DialogHeader>
-
-          <div className="py-2">
-            <label className="text-sm font-medium text-[var(--body)] dark:text-[var(--body)]">
-              Porcentaje sobre costo (%)
-            </label>
-            <Input
-              type="number"
-              min={0}
-              max={999.99}
-              step={0.01}
-              value={editMargen}
-              onChange={e => setEditMargen(parseFloat(e.target.value) || 0)}
-              className="mt-1 w-40"
-            />
-          </div>
 
           <div className="py-2">
             {editLoading ? (
@@ -445,7 +426,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditingCatalog(null); setEditItems([]); setEditMargen(0); setEditOverrides({}); }} disabled={editSaving}>
+            <Button variant="outline" onClick={() => { setEditingCatalog(null); setEditItems([]); setEditOverrides({}); }} disabled={editSaving}>
               Cancelar
             </Button>
             <Button onClick={handleSaveEdit} disabled={editSaving || editLoading}>

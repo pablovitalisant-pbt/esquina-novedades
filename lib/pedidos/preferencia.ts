@@ -9,6 +9,8 @@ export interface LineaPreferencia {
   /** Cajas o unidades según la modalidad con que se compró. */
   cantidad: number;
   precio: number | string;
+  /** 'detalle' | 'mayor' calculada por el servidor (4b). */
+  modalidad?: string | null;
 }
 export interface PedidoPreferencia {
   id: string;
@@ -33,7 +35,7 @@ export function construirItemsPreferencia(
 ) {
   const items = lineas.map((linea) => ({
     id: String(linea.producto_id),
-    title: linea.detalle ?? linea.codigo,
+    title: `${linea.detalle ?? linea.codigo}${linea.modalidad === 'mayor' ? ' - precio especial por mayor' : ''}`,
     quantity: linea.cantidad,
     unit_price: precioEntero(linea.precio, linea.codigo),
     currency_id: 'CLP',
@@ -94,7 +96,7 @@ export async function crearPreferenciaPedido(
   if (!pedido) throw new Error('pedido inexistente para la preferencia');
 
   const lineas = await sql`
-    SELECT producto_id, codigo, detalle, cantidad, precio
+    SELECT producto_id, codigo, detalle, cantidad, precio, modalidad
     FROM public.pedido_items
     WHERE pedido_id = ${pedidoId}
   `;

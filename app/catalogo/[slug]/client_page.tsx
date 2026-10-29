@@ -27,6 +27,7 @@ type CatalogoPublico = {
     umed: string;
     precio_catalogo: number | null;
     precio_mayor?: number | null;
+    minimo_mayor?: number | null;
   }>;
 };
 
@@ -79,11 +80,8 @@ export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; sl
                 <div className="p-4 flex flex-col flex-1 gap-1">
                   <div className="font-mono text-xs text-[var(--body)] font-semibold">{p.codigo}</div>
                   <h3 className="font-bold text-base leading-tight line-clamp-2 flex-1">{p.detalle}</h3>
-                  {p.cantcaja > 1 && (
-                    <div className="text-xs text-[var(--body)]">Packing: {p.cantcaja} {p.umed}/Caja</div>
-                  )}
-                  {data.mostrar_stock && p.cantcaja > 0 && p.saldo != null && p.saldo > 0 && (
-                    <div className="text-xs text-[var(--body)]">Stock disponible: {Math.floor(p.saldo / p.cantcaja)} cajas</div>
+                  {data.mostrar_stock && p.saldo != null && p.saldo > 0 && (
+                    <div className="text-xs text-[var(--body)]">Stock disponible: {p.saldo} unidades</div>
                   )}
                   {data.mostrar_precio && p.precio_catalogo !== null && (
                     <div className="mt-2">
@@ -95,7 +93,7 @@ export function PublicCatalogoClient({ data, slug }: { data: CatalogoPublico; sl
                   )}
                   <div className="mt-3">
                     <BotonAgregarPedido
-                      item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle ?? null, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, cantcaja: p.cantcaja, stock: p.saldo, umed: p.umed }}
+                      item={{ producto_id: p.id, codigo: p.codigo, detalle: p.detalle ?? null, precio: p.precio_catalogo ?? null, precio_mayor: p.precio_mayor ?? null, minimo_mayor: p.minimo_mayor ?? null, stock: p.saldo, umed: p.umed }}
                     />
                   </div>
                 </div>

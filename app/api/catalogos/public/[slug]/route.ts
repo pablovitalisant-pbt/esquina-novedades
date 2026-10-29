@@ -1,4 +1,4 @@
-import { precioCatalogoBase } from '@/lib/precio-catalogo';
+import { precioEnCatalogo } from '@/lib/precio-catalogo';
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { liberarReservasVencidas } from "@/lib/pedidos/liberar-reservas";
@@ -28,7 +28,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     if (cats.length === 0) return NextResponse.json({ error: "Catálogo no encontrado" }, { status: 404 });
     const cat = cats[0];
 
-    const margen = parseFloat(cat.margen_precio) || 0;
     const mostrarPrecio = cat.mostrar_precio;
 
     let productos = await seleccionarProductosCatalogo(sql, cat);
@@ -44,9 +43,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 
     // Compute precio_catalogo with override precedence
     productos = productos.map((p) => {
-      const precioBase = mostrarPrecio
-        ? precioCatalogoBase(parseFloat(String(p.costo)), margen)
-        : null;
       const precioOverride = mostrarPrecio
         ? (overridesMap.get(p.codigo.toUpperCase()) ?? null)
         : null;
@@ -55,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
         saldo: parseInt(String(p.saldo)),
         costo: parseFloat(String(p.costo)),
         cantcaja: parseInt(String(p.cantcaja)),
-        precio_catalogo: precioOverride ?? precioBase,
+        precio_catalogo: mostrarPrecio ? precioEnCatalogo(p.prcventa, precioOverride) : null,
         precio_override: precioOverride,
       };
     });

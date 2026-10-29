@@ -4,8 +4,8 @@
  */
 jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
 
-import { calcularLinea, calcularPedido, ErrorPrecio } from '@/lib/pedidos/precios';
-import { precioCatalogoBase } from '@/lib/precio-catalogo';
+import { calcularPedido, ErrorPrecio } from '@/lib/pedidos/precios';
+import { precioEnCatalogo } from '@/lib/precio-catalogo';
 
 const RETIRO = { codigo: 'retiro', costo: 0, requiere_direccion: false, activa: true };
 const DELIVERY = { codigo: 'delivery_iquique', costo: 3000, requiere_direccion: true, activa: true };
@@ -36,29 +36,30 @@ describe('precio manipulado por el cliente', () => {
   });
 });
 
-describe("modalidad 'caja'", () => {
-  test('sin precio_mayor → ErrorPrecio', () => {
-    expect(() => calcularLinea(
-      { producto_id: 1, modalidad: 'caja', cantidad: 1 },
-      producto({ precio_mayor: null }),
-      { origen: 'productos' },
-    )).toThrow(ErrorPrecio);
+describe('modalidad enviada por el cliente (se ignora)', () => {
+  const calcular = (modalidad: string, cant: number, over: Record<string, unknown> = {}) => calcularPedido(
+    [{ producto_id: 1, modalidad, cantidad: cant }],
+    [producto(over)],
+    { origen: 'productos', entrega: RETIRO },
+  );
+
+  test("'caja' sin precio_mayor → detalle al precio base", () => {
+    const r = calcular('caja', 1, { precio_mayor: null });
+    expect(r.lineas[0]).toMatchObject({ precio: 1500, modalidad: 'detalle' });
   });
 
-  test('con cantcaja=0 → ErrorPrecio', () => {
-    expect(() => calcularLinea(
-      { producto_id: 1, modalidad: 'caja', cantidad: 1 },
-      producto({ cantcaja: 0 }),
-      { origen: 'productos' },
-    )).toThrow(ErrorPrecio);
+  test("'caja' con cantcaja=0 no afecta: no existe venta por caja", () => {
+    const r = calcular('caja', 1, { cantcaja: 0 });
+    expect(r.lineas[0]).toMatchObject({ precio: 1500, modalidad: 'detalle' });
   });
 
-  test('bloqueada en tienda online → ErrorPrecio con el mensaje del contrato', () => {
-    expect(() => calcularLinea(
-      { producto_id: 1, modalidad: 'caja', cantidad: 2 },
-      producto(),
-      { origen: 'productos' },
-    )).toThrow('El precio por mayor no está disponible en la tienda online');
+  test('flag tienda-mayor-online=false → cobra detalle aunque cumpla el mínimo', () => {
+    const r = calcular('caja', 99, { precio_mayor: 1200, minimo_mayor: 3 });
+    expect(r.lineas[0]).toMatchObject({ precio: 1500, modalidad: 'detalle', ahorro: 0 });
+  });
+
+  test('modalidad desconocida → ErrorPrecio', () => {
+    expect(() => calcular('docena', 1)).toThrow(ErrorPrecio);
   });
 });
 
@@ -108,8 +109,8 @@ describe('total', () => {
 });
 
 describe('precio de catálogo (origen catalogo)', () => {
-  test('usa la misma fórmula que la página del catálogo', () => {
-    expect(precioCatalogoBase(99.5, 30)).toBe(130);
+  test('sin override usa el precio de venta del producto, no costo + margen', () => {
+    expect(precioEnCatalogo(1500)).toBe(1500);
   });
 
   test('cobra el precio de catálogo (redondeado a CLP), nunca el del cliente', () => {
@@ -118,11 +119,11 @@ describe('precio de catálogo (origen catalogo)', () => {
       [producto()],
       {
         origen: 'catalogo',
-        preciosCatalogo: { 1: precioCatalogoBase(99.5, 30) },
+        preciosCatalogo: { 1: precioEnCatalogo(1500, 99.5) },
         entrega: RETIRO,
       },
     );
-    expect(r.lineas[0].precio).toBe(130);
-    expect(r.total).toBe(130);
+    expect(r.lineas[0].precio).toBe(100);
+    expect(r.total).toBe(100);
   });
 });

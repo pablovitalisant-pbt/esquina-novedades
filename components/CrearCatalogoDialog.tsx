@@ -27,7 +27,6 @@ export function CrearCatalogoDialog({
   const [newSoloNuevoTopN, setNewSoloNuevoTopN] = useState(1);
   const [newMostrarStock, setNewMostrarStock] = useState(false);
   const [newMostrarPrecio, setNewMostrarPrecio] = useState(true);
-  const [newMargen, setNewMargen] = useState(0);
   const [newPalabrasIncluir, setNewPalabrasIncluir] = useState('');
   const [newPalabrasExcluir, setNewPalabrasExcluir] = useState('');
   const [newCategoria, setNewCategoria] = useState('');
@@ -57,7 +56,6 @@ export function CrearCatalogoDialog({
     setNewSoloNuevoTopN(1);
     setNewMostrarStock(false);
     setNewMostrarPrecio(true);
-    setNewMargen(0);
     setNewPalabrasIncluir('');
     setNewPalabrasExcluir('');
     setNewCategoria('');
@@ -80,7 +78,6 @@ export function CrearCatalogoDialog({
           titulo: newTitle,
           descripcion: null,
           mostrar_precio: newMostrarPrecio,
-          margen_precio: newMargen,
           solo_stock: newSoloStock,
           mostrar_stock: newMostrarStock,
           solo_nuevo: newSoloNuevo,
@@ -169,21 +166,6 @@ export function CrearCatalogoDialog({
               <input type="checkbox" checked={newMostrarPrecio} onChange={e => setNewMostrarPrecio(e.target.checked)} className="w-4 h-4 rounded" />
               Mostrar precio en el catálogo
             </label>
-            {newMostrarPrecio && (
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Margen sobre costo (%)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="500"
-                  value={newMargen}
-                  onFocus={e => e.target.select()}
-                  onChange={e => setNewMargen(parseFloat(e.target.value) || 0)}
-                  placeholder="Ej: 30"
-                />
-                <p className="text-xs text-[var(--body)]">Precio = Costo × (1 + margen%)</p>
-              </div>
-            )}
           </div>
         </div>
         <DialogFooter>

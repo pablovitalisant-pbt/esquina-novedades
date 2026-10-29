@@ -13,7 +13,6 @@ describe("CatalogoCreateSchema", () => {
       titulo: "Catálogo Mayo",
       descripcion: undefined,
       mostrar_precio: true,
-      margen_precio: 0,
       solo_stock: false,
       solo_nuevo: false,
       palabras_incluir: "",
@@ -26,7 +25,6 @@ describe("CatalogoCreateSchema", () => {
       empresaId: 1,
       titulo: "Test",
       mostrar_precio: false,
-      margen_precio: 30,
       solo_stock: true,
       solo_nuevo: true,
       palabras_incluir: "vidrio,licuadora",
@@ -45,10 +43,10 @@ describe("CatalogoCreateSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  test("margen_precio > 500 falla", () => {
-    const input = { empresaId: 1, titulo: "Test", margen_precio: 501 };
-    const result = CatalogoCreateSchema.safeParse(input);
-    expect(result.success).toBe(false);
+  test("margen_precio ya no forma parte del contrato (se ignora)", () => {
+    const input = { empresaId: 1, titulo: "Test", margen_precio: 50 };
+    const result = CatalogoCreateSchema.parse(input);
+    expect("margen_precio" in result).toBe(false);
   });
 
   test("sin empresaId falla", () => {
@@ -99,13 +97,6 @@ describe("CatalogoPublicoSchema", () => {
 });
 
 describe("Reglas auxiliares", () => {
-  test("cálculo de precio", () => {
-    const costo = 100;
-    const margen_precio = 30;
-    const precio = costo * (1 + margen_precio / 100);
-    expect(precio).toBe(130);
-  });
-
   test("palabras clave split", () => {
     const palabras_excluir = "NAVIDAD,ANIL";
     const partes = palabras_excluir.split(",").map((s) => s.trim());

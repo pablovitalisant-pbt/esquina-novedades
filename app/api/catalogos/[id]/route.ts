@@ -37,16 +37,15 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const { palabras_excluir, margen_precio } = body;
+  const { palabras_excluir } = body;
   const precio_overrides: { codigo: string; precio: number | null }[] | undefined = body.precio_overrides;
 
-  // Actualizar campos del catálogo
-  if (palabras_excluir !== undefined || margen_precio !== undefined) {
+  // Actualizar campos del catálogo (margen_precio ya no se lee ni se escribe)
+  if (palabras_excluir !== undefined) {
     await sql`
       UPDATE catalogos
       SET
-        palabras_excluir = ${palabras_excluir !== undefined ? String(palabras_excluir) : cat.palabras_excluir},
-        margen_precio = ${margen_precio !== undefined ? Number(margen_precio) : cat.margen_precio},
+        palabras_excluir = ${String(palabras_excluir)},
         updated_at = NOW()
       WHERE id = ${catalogoId}
     `;

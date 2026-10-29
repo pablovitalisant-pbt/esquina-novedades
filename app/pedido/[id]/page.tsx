@@ -82,7 +82,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   if (!pedido) notFound();
 
   const items = await sql`
-    SELECT codigo, detalle, cantidad, modalidad, precio, subtotal
+    SELECT codigo, detalle, cantidad, modalidad, precio, precio_lista, subtotal
     FROM public.pedido_items
     WHERE pedido_id = ${id}
     ORDER BY created_at
@@ -98,6 +98,15 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const vencido = !pedido.expira_en || new Date(pedido.expira_en).getTime() <= Date.now();
   const puedePagar = pedido.estado === 'pendiente_pago' && !!pedido.mp_init_point && !vencido;
   const confetti = flags['pedido-confetti'] === true && ['pagado', 'convertido'].includes(pedido.estado);
+  const ahorroTotal = (items as Array<{
+    cantidad: number | string;
+    precio: number | string;
+    precio_lista?: number | string | null;
+  }>).reduce((acc, item) => {
+    const lista = item.precio_lista == null ? null : Number(item.precio_lista);
+    const precio = Number(item.precio);
+    return lista != null && lista > precio ? acc + (lista - precio) * Number(item.cantidad) : acc;
+  }, 0);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)] font-sans text-[var(--body)]">
@@ -140,15 +149,24 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
               cantidad: number | string;
               modalidad: string | null;
               precio: number | string;
+              precio_lista?: number | string | null;
               subtotal?: number | string | null;
             }>).map((item, i) => {
               const subtotal = item.subtotal ?? Number(item.precio) * Number(item.cantidad);
+              const lista = item.precio_lista == null ? null : Number(item.precio_lista);
+              const conDescuento = lista != null && lista > Number(item.precio);
               return (
                 <li key={i} className="flex items-start justify-between gap-4 py-3">
                   <div className="min-w-0">
                     <p className="font-medium text-[var(--heading)]">{item.detalle ?? item.codigo}</p>
                     <p className="text-sm text-[var(--body-subtle)]">
                       {cantidadTexto(Number(item.cantidad), item.modalidad ?? '')} · <span className="font-mono text-xs">{item.codigo}</span>
+                      {conDescuento && (
+                        <>
+                          {' '}· <span className="line-through">{formatCLP(lista)}</span>{' '}
+                          <span className="font-semibold text-[var(--success)]">Descuento especial</span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <span className="shrink-0 font-medium">{formatCLP(Number(subtotal))}</span>
@@ -162,6 +180,9 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
                 <span className="text-[var(--body-subtle)]">Entrega: {pedido.entrega_nombre ?? pedido.entrega_codigo}</span>
                 <span>{entregaCosto > 0 ? formatCLP(entregaCosto) : 'Sin costo'}</span>
               </div>
+            )}
+            {ahorroTotal > 0 && (
+              <div className="font-semibold text-[var(--success)]">Ahorraste {formatCLP(ahorroTotal)}</div>
             )}
             <div className="flex items-baseline justify-between gap-4 pt-1 font-bold text-[var(--heading)]">
               <span className="text-base">Total</span>

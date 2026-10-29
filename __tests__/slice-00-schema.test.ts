@@ -101,7 +101,7 @@ describe('Slice 0 — orden de migraciones', () => {
     expect(i('003')).toBeLessThan(i('001'));
     expect(i('001')).toBeLessThan(i('002'));
     expect(i('001')).toBeLessThan(i('009'));
-    expect(i('046')).toBe(MIGRATION_ORDER.length - 1);
+    expect(i('047')).toBe(MIGRATION_ORDER.length - 1);
   });
 
   it('las dependencias FK de cada migración quedan creadas antes (orden topológico)', () => {

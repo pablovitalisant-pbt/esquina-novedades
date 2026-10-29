@@ -1,48 +1,43 @@
 /**
- * Fase B — Hotfix "bloquear precio mayor en tienda online".
- * Punto 3: defensa en profundidad en calcularLinea.
+ * Slice 4b — reemplaza el hotfix "bloquear precio mayor en tienda online".
+ * Con el flag `tienda-mayor-online` en false, la modalidad que mande el cliente
+ * se ignora y todo se cobra a precio detalle (base).
  */
 jest.mock('@/config/feature-flags.json', () => ({
   'tienda-pago-online': false,
   'tienda-mayor-online': false,
 }));
 
-import { calcularLinea, ErrorPrecio } from '@/lib/pedidos/precios';
+import { calcularPedido } from '@/lib/pedidos/precios';
 
 const PRODUCTO = {
   id: 1,
   codigo: 'P-1',
   detalle: 'Producto 1',
   prcventa: 1500,
-  precio_mayor: 12000,
+  precio_mayor: 1200,
+  minimo_mayor: 3,
   cantcaja: 6,
   activo: true,
 };
 
-const MENSAJE = 'El precio por mayor no está disponible en la tienda online';
+const RETIRO = { codigo: 'retiro', costo: 0, requiere_direccion: false, activa: true };
 
-describe("calcularLinea — modalidad 'caja' bloqueada en tienda online", () => {
-  test('con producto válido igual lanza ErrorPrecio con el mensaje del contrato', () => {
-    expect(() => calcularLinea(
-      { producto_id: 1, modalidad: 'caja', cantidad: 1 },
-      PRODUCTO,
-      { origen: 'productos' },
-    )).toThrow(ErrorPrecio);
-    expect(() => calcularLinea(
-      { producto_id: 1, modalidad: 'caja', cantidad: 1 },
-      PRODUCTO,
-      { origen: 'productos' },
-    )).toThrow(MENSAJE);
-  });
-
-  test('modalidad unidad sigue calculando prcventa', () => {
-    const linea = calcularLinea(
-      { producto_id: 1, modalidad: 'unidad', cantidad: 2 },
-      PRODUCTO,
-      { origen: 'productos' },
-    );
-    expect(linea.precio).toBe(1500);
-    expect(linea.subtotal).toBe(3000);
-    expect(linea.unidades).toBe(2);
-  });
+describe('calcularPedido — flag tienda-mayor-online=false', () => {
+  test.each(['unidad', 'detalle', 'caja', 'mayor'])(
+    "modalidad '%s' se ignora y se cobra precio base",
+    (modalidad) => {
+      const r = calcularPedido(
+        [{ producto_id: 1, modalidad, cantidad: 10 }],
+        [PRODUCTO],
+        { origen: 'productos', entrega: RETIRO },
+      );
+      expect(r.lineas[0]).toMatchObject({
+        precio: 1500, precio_lista: 1500, modalidad: 'detalle', ahorro: 0,
+      });
+      expect(r.lineas[0].subtotal).toBe(15000);
+      expect(r.descuento).toBe(0);
+      expect(r.lineas[0].unidades).toBe(10);
+    },
+  );
 });

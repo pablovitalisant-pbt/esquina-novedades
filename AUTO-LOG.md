@@ -115,3 +115,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Tests: 3a 32 rojos antes; 3b suite nueva + 8 ajustadas. Suite 222/222, 1901/1901; tsc 0; lint 0/0; build OK.
 - Verificación DT: diff revisado (migración idempotente, rutas de items, pantalla de notas); 046 aplicada en test-integration y en producción justo antes del push (sin usuarios activos, OK de Pablo).
 - Gates disparados: ~230 líneas netas de producción (servidor y UI deben desplegarse juntos); aceptado.
+## 2026-10-29 - Slice 4: catálogos con precio detalle + descuento por mayor automático en tienda (4a/4b/4c)
+- Decisiones de Pablo: catálogos usan prcventa (se elimina el % sobre costo; los precios especiales por producto del catálogo se mantienen); tienda muestra solo precio detalle y aplica precio mayor como "Descuento especial" cuando la cantidad del producto llega a `minimo_mayor`; flag `tienda-mayor-online` encendido en el mismo deploy.
+- Contrato: 4a `precioEnCatalogo(prcventa, override)` única fuente (página pública y cobro); POST/PUT de catálogos sin margen_precio (columna queda sin uso). 4b `lib/precio-tienda.ts` puro; el servidor decide modalidad por cantidad total por producto; migración 047 `pedido_items.precio_lista`; preferencia MP con "precio especial por mayor". 4c sin SelectorModalidad; carrito una línea por producto con normalización de carritos viejos; descuento en carrito y página del pedido.
+- Tests: 4a 28 rojos antes; 4b 14 + 5 archivos rojos antes; 4c 10 rojos antes. Suite 225/225, 1925/1925 (con flag true re-verificada); tsc 0; lint 0/0; build OK.
+- Verificación DT: diff revisado por sub-slice; 047 aplicada en test-integration y en producción (Pool, transacción) antes del push.
+- Hallazgo: `catalogo-precio-override` T6 intermitente con la BD de test real (probable concurrencia con el test real de 4a que crea productos) → BACKLOG A15.
+- Lección: migraciones con varias sentencias se aplican con Pool (WebSocket); el driver HTTP de neon no acepta multi-statement.

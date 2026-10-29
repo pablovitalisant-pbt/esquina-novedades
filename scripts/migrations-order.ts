@@ -43,4 +43,5 @@ export const MIGRATION_ORDER: string[] = [
   '044_mercadopago.sql',
   '045_productos_minimo_mayor.sql',
   '046_modalidad_detalle_mayor.sql',
+  '047_pedido_items_precio_lista.sql',
 ];

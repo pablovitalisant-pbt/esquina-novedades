@@ -74,10 +74,10 @@ describe('Migración 044 — usuario sistema del webhook', () => {
 });
 
 describe('MIGRATION_ORDER', () => {
-  it('incluye 044 exactamente una vez y queda al final', () => {
+  it('incluye 044 exactamente una vez', () => {
     const { MIGRATION_ORDER } = require('../scripts/migrations-order');
     expect(MIGRATION_ORDER.filter((f: string) => f === '044_mercadopago.sql')).toHaveLength(1);
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('045_productos_minimo_mayor.sql');
+    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('046_modalidad_detalle_mayor.sql');
   });
 
   it('no edita la migración 043 ya aplicada', () => {

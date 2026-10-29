@@ -30,14 +30,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     descripcion,
     imagen_url,
     empresa_id,
-    cajas,
-    precio,
     stock_referencia,
   } = body ?? {};
-  let unidades = body?.unidades;
-  const modalidad = body?.modalidad ?? 'unidad';
-  if (modalidad !== 'unidad' && modalidad !== 'caja') {
+  const unidades = body?.unidades;
+  const modalidad = body?.modalidad ?? 'detalle';
+  const precio = body?.precio ?? null;
+
+  // Modalidad por línea: 'detalle' (prcventa) o 'mayor' (precio_mayor POR UNIDAD).
+  // No existe venta por caja: cajas siempre se guarda 0 y no se lee del body.
+  if (modalidad !== 'detalle' && modalidad !== 'mayor') {
     return NextResponse.json({ error: 'Modalidad inválida' }, { status: 400 });
+  }
+  if (!Number.isInteger(unidades) || unidades < 1) {
+    return NextResponse.json({ error: 'Cantidad inválida' }, { status: 400 });
+  }
+  if (precio !== null && (typeof precio !== 'number' || !Number.isFinite(precio) || precio < 0)) {
+    return NextResponse.json({ error: 'Precio inválido' }, { status: 400 });
   }
 
   // Idempotencia: si este item ya fue insertado (reintento de PowerSync tras
@@ -65,26 +73,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'No se puede modificar una nota anulada' }, { status: 422 });
   }
 
-  // Caja: el servidor deriva unidades = cajas * cantcaja (ignora el body)
-  if (modalidad === 'caja') {
-    if (!Number.isInteger(cajas) || cajas < 1) {
-      return NextResponse.json({ error: 'Cajas inválidas' }, { status: 400 });
-    }
-    const prod = await sql`
-      SELECT cantcaja, precio_mayor FROM public.productos
-      WHERE codigo = ${codigo} AND empresa_id = ${empresa_id}
-    `;
-    const cantcaja = Number(prod[0]?.cantcaja);
-    if (prod.length === 0 || !(Number(prod[0].precio_mayor) > 0) || !Number.isInteger(cantcaja) || cantcaja < 1) {
-      return NextResponse.json({ error: 'Producto sin precio por caja' }, { status: 400 });
-    }
-    unidades = cajas * cantcaja;
+  // Precio por defecto según la modalidad elegida por el vendedor; si viene
+  // precio en el body se respeta (ajuste manual, número >= 0).
+  const prod = await sql`
+    SELECT prcventa, precio_mayor FROM public.productos
+    WHERE codigo = ${codigo} AND empresa_id = ${empresa_id}
+  `;
+  if (prod.length === 0) {
+    return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 });
   }
-
-  // R4: Validar unidades
-  const cantidadTotal = Number(unidades);
-  if (!Number.isFinite(cantidadTotal) || cantidadTotal <= 0) {
-    return NextResponse.json({ error: 'Cantidad inválida' }, { status: 400 });
+  const precioMayor = Number(prod[0].precio_mayor);
+  if (modalidad === 'mayor' && !(precioMayor > 0)) {
+    return NextResponse.json({ error: 'Producto sin precio mayor' }, { status: 400 });
+  }
+  const precioFinal = precio ?? (modalidad === 'mayor' ? precioMayor : Number(prod[0].prcventa));
+  if (!Number.isFinite(precioFinal)) {
+    return NextResponse.json({ error: 'Producto sin precio de venta' }, { status: 400 });
   }
 
   // Slice 8c: liberar reservas vencidas antes de competir por el stock.
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   await liberarReservasVencidas();
 
   // R1/R6: Descontar stock atómicamente — UPDATE con WHERE saldo >= cantidad
+  const cantidadTotal = unidades;
   const updateRows = await sql`
     UPDATE public.productos SET saldo = saldo - ${cantidadTotal}
     WHERE codigo = ${codigo} AND empresa_id = ${empresa_id}
@@ -121,7 +126,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const rows = await sql`
     INSERT INTO public.prenota_items (id, prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, stock_referencia, modalidad)
-    VALUES (COALESCE(${itemId ?? null}, gen_random_uuid()), ${id}, ${codigo}, ${descripcion}, ${imagen_url}, ${empresa_id}, ${cajas}, ${unidades}, ${precio}, ${stock_referencia}, ${modalidad})
+    VALUES (COALESCE(${itemId ?? null}, gen_random_uuid()), ${id}, ${codigo}, ${descripcion}, ${imagen_url}, ${empresa_id}, 0, ${unidades}, ${precioFinal}, ${stock_referencia}, ${modalidad})
     RETURNING *
   `;
 

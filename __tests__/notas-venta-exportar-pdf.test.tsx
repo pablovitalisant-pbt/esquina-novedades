@@ -195,13 +195,13 @@ describe('exportarPDF — montos en CLP', () => {
     expect(body.length).toBe(1);
     // Alineamiento con head de 7 columnas: celda 0 (Imagen) vacía, se dibuja
     // aparte vía didDrawCell. Ver BUGS.md.
-    expect(body[0]).toHaveLength(8);
+    expect(body[0]).toHaveLength(7);
     expect(body[0][0]).toBe('');
     // Precio y Total en CLP entero, sin USD ni línea ARS.
-    expect(body[0][5]).toBe('$10');
-    expect(body[0][6]).toBe('$20');
-    // 5d: columna Modalidad al final.
-    expect(body[0][7]).toBe('Unidad');
+    expect(body[0][4]).toBe('$10');
+    expect(body[0][5]).toBe('$20');
+    // 3b: columna Modalidad al final (Detalle/Mayor).
+    expect(body[0][6]).toBe('Detalle');
   });
 
   // R2: Total, Pagado y Pendiente del resumen en CLP.
@@ -257,7 +257,7 @@ describe('exportarPDF — rediseño visual (slice)', () => {
   });
 
   // R3: tabla — header dark #1F2937, texto blanco, zebra striping, columna renombrada.
-  it('R3: header de tabla dark, texto blanco, zebra y columna "Cantidad de Cajas"', async () => {
+  it('R3: header de tabla dark, texto blanco, zebra y columnas Unidades/Modalidad', async () => {
     await renderNota(mockFetchConImagenes('ok'));
     fireEvent.click(screen.getByText('Exportar PDF'));
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -269,13 +269,13 @@ describe('exportarPDF — rediseño visual (slice)', () => {
     expect(lastAutoTableConfig.alternateRowStyles).toBeTruthy();
 
     const head = lastAutoTableConfig.head[0] as string[];
-    // Columna 3 renombrada: "Cajas" → "Cantidad de Cajas"
-    expect(head[3]).toBe('Cantidad de Cajas');
+    // 3b: sin columna de cajas; cantidades siempre en unidades.
+    expect(head).not.toContain('Cantidad de Cajas');
     // Columna Imagen (index 0) NO cambia de posición ni de nombre
     expect(head[0]).toBe('Imagen');
-    expect(head[3]).toBe('Cantidad de Cajas');
-    expect(head).toHaveLength(8);
-    expect(head[7]).toBe('Modalidad');
+    expect(head[3]).toBe('Unidades');
+    expect(head).toHaveLength(7);
+    expect(head[6]).toBe('Modalidad');
   });
 
   // R4: BUG-039 — la columna Imagen (index 0) se mantiene sincronizada:
@@ -338,15 +338,14 @@ describe('exportarPDF — rediseño visual (slice)', () => {
   });
 });
 
-describe('exportarPDF — fila de totales (foot: Cantidad de Cajas + Unidades)', () => {
+describe('exportarPDF — fila de totales (foot: Unidades)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastAutoTableConfig = null;
   });
 
-  // Fase B, intento de ruptura 1: el foot debe sumar cajas y unidades del body.
-  // El item mock tiene cajas:1, unidades:2 → esperamos TOTALES | 1 | 2.
-  it('F1: foot suma cajas y unidades con el color de acento', async () => {
+  // Fase B, intento de ruptura 1: el foot debe sumar unidades del body.
+  it('F1: foot suma unidades con el color de acento', async () => {
     await renderNota(mockFetchConImagenes('ok'));
     fireEvent.click(screen.getByText('Exportar PDF'));
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -357,20 +356,20 @@ describe('exportarPDF — fila de totales (foot: Cantidad de Cajas + Unidades)',
     expect(foot).toHaveLength(1);                       // una sola fila de totales
 
     const celdas = foot[0];
-    // 8 columnas en total: TOTALES(colSpan 3) + cajas + unidades + vacía(colSpan 2) + Modalidad
+    // 7 columnas: TOTALES(colSpan 3) + unidades(colSpan 2) + vacía + Modalidad
     const anchoTotal = celdas.reduce((acc: number, c: any) => acc + (c.colSpan || 1), 0);
-    expect(anchoTotal).toBe(8);
+    expect(anchoTotal).toBe(7);
 
     // Label alineado a la derecha en la primera celda fusionada
     expect(celdas[0].content).toBe('TOTALES NETOS');
     expect(celdas[0].colSpan).toBe(3);
     expect(celdas[0].styles?.halign).toBe('right');
-    // Sumas del item mock: cajas=1, unidades=2 → formato con label
-    expect(celdas[1].content).toBe('1 cajas');
-    expect(celdas[2].content).toBe('2 unidades');
-    // "unidades" absorbe la columna Precio (vacía en esa fila) → colSpan 2
-    expect(celdas[2].colSpan).toBe(2);
-    // Celda vacía final queda solo sobre la columna Total → colSpan 1
+    // Suma del item mock: unidades=2
+    expect(celdas[1].content).toBe('2 unidades');
+    expect(celdas[1].colSpan).toBe(2);
+    // Celdas vacías finales sobre Total y Modalidad
+    expect(celdas[2].content).toBe('');
+    expect(celdas[2].colSpan).toBe(1);
     expect(celdas[3].content).toBe('');
     expect(celdas[3].colSpan).toBe(1);
 

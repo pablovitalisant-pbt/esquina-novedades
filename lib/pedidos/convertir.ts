@@ -62,7 +62,7 @@ export async function convertirPedido(
   // sin tocar saldo. Si otro request lo convirtió antes, no inserta nada.
   if (reservado) {
     const itemsReservados = await sql`
-      SELECT codigo, cantidad, modalidad FROM public.pedido_items WHERE pedido_id = ${id}
+      SELECT codigo FROM public.pedido_items WHERE pedido_id = ${id}
     `;
     // Una sola sentencia atómica. La fila Despacho va en el mismo INSERT y
     // queda condicionada al UPDATE del pedido (idempotencia) y a entrega > 0.
@@ -86,15 +86,16 @@ export async function convertirPedido(
         INSERT INTO public.prenota_items
           (prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, modalidad)
         SELECT (SELECT id FROM nueva), pi.codigo, pi.detalle, p.imagen_url, ${empresaId},
-               CASE WHEN pi.modalidad = 'caja' THEN pi.cantidad ELSE 0 END,
+               0,
                COALESCE(pi.unidades, pi.cantidad),
-               COALESCE(NULLIF(pi.precio, 0), pi.precio_referencia), pi.modalidad
+               COALESCE(NULLIF(pi.precio, 0), pi.precio_referencia),
+               CASE WHEN pi.modalidad IN ('mayor','caja') THEN 'mayor' ELSE 'detalle' END
         FROM public.pedido_items pi
         JOIN public.productos p ON p.id = pi.producto_id AND p.empresa_id = ${empresaId}
         WHERE pi.pedido_id = ${id} AND EXISTS (SELECT 1 FROM upd)
         UNION ALL
         SELECT (SELECT id FROM nueva), ${CODIGO_DESPACHO}, 'Despacho', NULL::text, NULL::int,
-               0, 1, ${entregaCosto}::numeric, 'unidad'
+               0, 1, ${entregaCosto}::numeric, 'detalle'
         FROM public.pedidos pe
         WHERE pe.id = ${id} AND pe.entrega_costo > 0 AND EXISTS (SELECT 1 FROM upd)
         RETURNING codigo
@@ -110,9 +111,9 @@ export async function convertirPedido(
       body: {
         data: {
           prenota_id: Number(prenotaReservada),
-          convertidos: (itemsReservados as Array<{ codigo: string; modalidad: string | null; cantidad: number | string }>).map((it) => ({
+          convertidos: (itemsReservados as Array<{ codigo: string }>).map((it) => ({
             codigo: it.codigo,
-            cajas: it.modalidad === 'caja' ? Number(it.cantidad) : 0,
+            cajas: 0,
           })),
           fallidos: [],
         },
@@ -128,7 +129,7 @@ export async function convertirPedido(
 
   // 3. Ítems del pedido → descuento de stock + prenota_items por ítem
   const items = await sql`
-    SELECT codigo, detalle, cantidad, precio_referencia
+    SELECT codigo, detalle, cantidad, precio_referencia, precio, modalidad
     FROM public.pedido_items
     WHERE pedido_id = ${id}
   `;
@@ -138,18 +139,18 @@ export async function convertirPedido(
 
   for (const item of items) {
     const codigo = item.codigo;
-    const cajas = Number(item.cantidad);
+    // Venta mayorista = precio_mayor POR UNIDAD: nunca se multiplica por cantcaja.
+    const unidades = Number(item.cantidad);
+    const modalidad = item.modalidad === 'mayor' || item.modalidad === 'caja' ? 'mayor' : 'detalle';
+    const precio = Number(item.precio) > 0 ? Number(item.precio) : (item.precio_referencia ?? null);
 
-    // cantcaja fresco de productos al momento de convertir (no se duplica en pedido_items)
     const prod = await sql`
-      SELECT cantcaja, imagen_url FROM public.productos WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
+      SELECT imagen_url FROM public.productos WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
     `;
     if (prod.length === 0) {
-      fallidos.push({ codigo, motivo: 'Producto no encontrado', disponible: 0, solicitado: cajas });
+      fallidos.push({ codigo, motivo: 'Producto no encontrado', disponible: 0, solicitado: unidades });
       continue;
     }
-    const cantcaja = Number(prod[0].cantcaja) || 1;
-    const unidades = cajas * cantcaja;
 
     const updateRows = await sql`
       UPDATE public.productos SET saldo = saldo - ${unidades}
@@ -175,11 +176,11 @@ export async function convertirPedido(
     `;
 
     await sql`
-      INSERT INTO public.prenota_items (prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio)
-      VALUES (${prenotaId}, ${codigo}, ${item.detalle ?? null}, ${prod[0].imagen_url ?? null}, ${empresaId}, ${cajas}, ${unidades}, ${item.precio_referencia ?? null})
+      INSERT INTO public.prenota_items (prenota_id, codigo, descripcion, imagen_url, empresa_id, cajas, unidades, precio, modalidad)
+      VALUES (${prenotaId}, ${codigo}, ${item.detalle ?? null}, ${prod[0].imagen_url ?? null}, ${empresaId}, 0, ${unidades}, ${precio}, ${modalidad})
     `;
 
-    convertidos.push({ codigo, cajas });
+    convertidos.push({ codigo, cajas: 0 });
   }
 
   // 3b. Entrega como línea de la nota (sin producto ni stock): así el total de
@@ -188,7 +189,7 @@ export async function convertirPedido(
     await sql`
       INSERT INTO public.prenota_items
         (prenota_id, codigo, descripcion, empresa_id, cajas, unidades, precio, modalidad)
-      VALUES (${prenotaId}, ${CODIGO_DESPACHO}, 'Despacho', NULL, 0, 1, ${entregaCosto}, 'unidad')
+      VALUES (${prenotaId}, ${CODIGO_DESPACHO}, 'Despacho', NULL, 0, 1, ${entregaCosto}, 'detalle')
     `;
   }
 

@@ -12,7 +12,7 @@ interface PedidoItem {
   codigo: string;
   detalle: string | null;
   cantidad: number;
-  modalidad: 'unidad' | 'caja';
+  modalidad: string;
   precio: number;
   subtotal: number | null;
   cantcaja: number | null;
@@ -63,8 +63,8 @@ function badgeClass(estado: string): string {
 }
 
 function etiquetaCantidad(it: PedidoItem): string {
-  if (it.modalidad === 'caja') return `${it.cantidad} caja${it.cantidad !== 1 ? 's' : ''}`;
-  return `${it.cantidad} unidad${it.cantidad !== 1 ? 'es' : ''}`;
+  const base = `${it.cantidad} unidad${it.cantidad !== 1 ? 'es' : ''}`;
+  return it.modalidad === 'mayor' ? `${base} (precio mayor)` : base;
 }
 
 function formatFecha(value: string): string {

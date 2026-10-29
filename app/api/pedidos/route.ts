@@ -29,7 +29,7 @@ type PedidoReplay = {
   mp_init_point: string | null;
 };
 
-type ItemEntrada = { producto_id: number; cantidad: number; modalidad: 'unidad' | 'caja' };
+type ItemEntrada = { producto_id: number; cantidad: number; modalidad: 'unidad' | 'detalle' | 'caja' | 'mayor' };
 type ProductoFila = ProductoPrecio & { costo: number | string; saldo: number };
 type PedidoLista = Record<string, unknown> & { id: string; cliente_id: string };
 type ItemLista = {
@@ -40,7 +40,6 @@ type ItemLista = {
   modalidad: string;
   precio: number;
   subtotal: number;
-  cantcaja: number | null;
 };
 type CuerpoPedido = {
   nombre_contacto?: unknown;
@@ -130,13 +129,16 @@ export async function POST(request: NextRequest) {
       if (!Number.isInteger(it?.cantidad) || it.cantidad <= 0) {
         return NextResponse.json({ error: 'cada item.cantidad debe ser un entero > 0' }, { status: 400 });
       }
-      if (it?.modalidad !== 'unidad' && it?.modalidad !== 'caja') {
-        return NextResponse.json({ error: "cada item.modalidad debe ser 'unidad' o 'caja'" }, { status: 400 });
+      if (
+        it?.modalidad !== 'unidad' && it?.modalidad !== 'detalle' &&
+        it?.modalidad !== 'caja' && it?.modalidad !== 'mayor'
+      ) {
+        return NextResponse.json({ error: "cada item.modalidad debe ser 'unidad' o 'detalle'" }, { status: 400 });
       }
     }
 
     // Hotfix: la tienda online no vende por mayor (flag apagado = bloqueo).
-    if (flags['tienda-mayor-online'] !== true && items.some((it) => it?.modalidad === 'caja')) {
+    if (flags['tienda-mayor-online'] !== true && items.some((it) => it?.modalidad === 'caja' || it?.modalidad === 'mayor')) {
       return NextResponse.json(
         { error: 'El precio por mayor no está disponible en la tienda online' },
         { status: 400 },
@@ -189,7 +191,7 @@ export async function POST(request: NextRequest) {
     // ─── Lectura de productos, entrega y precio de catálogo ─────────
     const productoIds = items.map((it) => it.producto_id);
     const productos = (await sql`
-      SELECT id, codigo, detalle, prcventa, precio_mayor, cantcaja, activo, costo, saldo
+      SELECT id, codigo, detalle, prcventa, precio_mayor, activo, costo, saldo
       FROM public.productos
       WHERE id = ANY(${productoIds})
     `) as ProductoFila[];
@@ -431,9 +433,8 @@ export async function GET(request: NextRequest) {
     const pedidoIds = pedidos.map((p) => p.id);
     const items = (await sql`
       SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
-             pi.precio, pi.subtotal, p.cantcaja
+             pi.precio, pi.subtotal
       FROM public.pedido_items pi
-      LEFT JOIN public.productos p ON p.id = pi.producto_id
       WHERE pi.pedido_id = ANY(${pedidoIds})
     `) as ItemLista[];
 
@@ -447,7 +448,6 @@ export async function GET(request: NextRequest) {
         modalidad: it.modalidad,
         precio: it.precio,
         subtotal: it.subtotal,
-        cantcaja: it.cantcaja ?? null,
       });
       itemsPorPedido.set(it.pedido_id, lista);
     }

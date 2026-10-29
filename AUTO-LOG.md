@@ -109,3 +109,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Tests: 2a 49 rojos antes; 2b 17 rojos antes. Suite 220/220, 1847/1847; tsc 0; lint 0/0; build OK.
 - Verificación DT: diff revisado; producción sin productos con mayor >= detalle ni precios con decimales (SELECT de solo lectura). 045 aplicada en test-integration y en producción antes del push (idempotente, verificada). `npm run migrate` falla en test-integration en 019 (no idempotente; preexistente, no de este slice).
 - Gates disparados: excede 200 líneas (~300 prod) porque servidor y UI deben desplegarse juntos; aceptado.
+## 2026-10-29 - Slice 3: modalidad detalle/mayor elegida por el vendedor (3a servidor + 3b UI)
+- Decisión de Pablo/Paola: en notas el vendedor elige por línea detalle (prcventa) o mayor (precio_mayor por unidad), cualquier cantidad. No existe venta por caja; cantcaja solo bodega.
+- Contrato: migración 046 (modalidad 'detalle'|'mayor' en prenota_items y pedido_items, valores migrados, subtotal = unidades*precio); POST/PATCH items con modalidad mutable y precio por defecto según modalidad; tipo de nota y etiqueta de cliente con valores nuevos; propagación de precios por modalidad; convertir copia modalidad y corrige bug legacy (cantidad*cantcaja); tienda sigue bloqueando mayor (flag). UI de notas, modal, PDF/Excel/WhatsApp, pedidos y landing sin cajas.
+- Tests: 3a 32 rojos antes; 3b suite nueva + 8 ajustadas. Suite 222/222, 1901/1901; tsc 0; lint 0/0; build OK.
+- Verificación DT: diff revisado (migración idempotente, rutas de items, pantalla de notas); 046 aplicada en test-integration y en producción justo antes del push (sin usuarios activos, OK de Pablo).
+- Gates disparados: ~230 líneas netas de producción (servidor y UI deben desplegarse juntos); aceptado.

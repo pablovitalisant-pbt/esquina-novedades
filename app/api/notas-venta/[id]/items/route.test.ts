@@ -30,11 +30,12 @@ beforeAll(async () => {
 function mockFlujo(nuevoId: string | null, conIdempotencia = false) {
   // Orden de las queries del POST:
   // -1) SELECT de idempotencia (solo si el body trae id)
-  // 0) nota activa  1) liberación perezosa (8c)  2) UPDATE stock
-  // 3) UPDATE ubicaciones  4) INSERT  5) UPDATE prenotas updated_at
+  // 0) nota activa  1) producto (precio)  2) liberación perezosa (8c)
+  // 3) UPDATE stock  4) UPDATE ubicaciones  5) INSERT  6) UPDATE prenotas
   if (conIdempotencia) sqlMock.mockResolvedValueOnce([] as any);
   sqlMock
     .mockResolvedValueOnce([{ estado: 'activa' }] as any)
+    .mockResolvedValueOnce([{ prcventa: 10, precio_mayor: 8 }] as any)
     .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }] as any)
     .mockResolvedValueOnce([{ saldo: 5 }] as any)
     .mockResolvedValueOnce([] as any)
@@ -66,21 +67,21 @@ describe('app/api/notas-venta/[id]/items POST — id UUID opcional (Slice 10a)',
     mockFlujo(null);
     const res = await post(baseBody);
     expect(res.status).toBe(200); // la ruta no setea status 201 (comportamiento existente)
-    const insertCall = sqlMock.mock.calls[4][0];
+    const insertCall = sqlMock.mock.calls[5][0];
     const q = String(insertCall);
     expect(q).toContain('INSERT INTO public.prenota_items (id, prenota_id');
     expect(q).toContain('COALESCE(');
     expect(q).toContain('gen_random_uuid()');
     // param 0 = id (null), param 1 = prenota_id (40)
-    expect(sqlMock.mock.calls[4][1]).toBeNull();
-    expect(sqlMock.mock.calls[4][2]).toBe(40);
+    expect(sqlMock.mock.calls[5][1]).toBeNull();
+    expect(sqlMock.mock.calls[5][2]).toBe(40);
   });
 
   it('con id (UUID) en el body: INSERT usa ese id vía COALESCE', async () => {
     mockFlujo('uuid-local-abc', true);
     const res = await post({ ...baseBody, id: 'uuid-local-abc' });
     expect(res.status).toBe(200);
-    const insertCall = sqlMock.mock.calls[5];
+    const insertCall = sqlMock.mock.calls[6];
     // param 0 = id (uuid-local-abc), param 1 = prenota_id (40)
     expect(insertCall[1]).toBe('uuid-local-abc');
     expect(insertCall[2]).toBe(40);

@@ -98,6 +98,6 @@ describe('Migracion 040', () => {
   });
   it('se agrega al final de MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('045_productos_minimo_mayor.sql');
+    expect(MIGRATION_ORDER).toContain('045_productos_minimo_mayor.sql');
   });
 });

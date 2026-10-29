@@ -117,7 +117,7 @@ describe('GET /api/notas-venta/[id]', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
       .mockResolvedValueOnce([{ id: 10, titulo: 'PRE-NOTA JUAN', kcodclie: 100, nombre_cliente: 'JUAN PEREZ' }])
-      .mockResolvedValueOnce([{ id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00' }])
+      .mockResolvedValueOnce([{ id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00', modalidad: 'detalle' }])
       .mockResolvedValueOnce([{ total: 0 }])
       .mockResolvedValueOnce([{ total: 0 }]);
 
@@ -132,7 +132,7 @@ describe('GET /api/notas-venta/[id]', () => {
       kcodclie: 100,
       nombre_cliente: 'JUAN PEREZ',
       items: [
-        { id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00' },
+        { id: 1, codigo: 'ABC123', detalle: 'Producto Test', cajas: 2, unidades: 12, precio: 150, subtotal: '1800.00', modalidad: 'detalle' },
       ],
       total: 1800,
       tipo: 'menor',
@@ -150,8 +150,8 @@ describe('GET /api/notas-venta/[id]', () => {
     sql
       .mockResolvedValueOnce([{ id: 10, titulo: 'NOTA MAYOR', nombre_cliente: 'JUAN', cliente_id: null }])
       .mockResolvedValueOnce([
-        { id: 'i1', codigo: 'A', modalidad: 'caja', cajas: 2, unidades: 12, precio: 1000, subtotal: '2000.00' },
-        { id: 'i2', codigo: 'DESPACHO', modalidad: 'unidad', cajas: 0, unidades: 1, precio: 1500, subtotal: '1500.00' },
+        { id: 'i1', codigo: 'A', modalidad: 'mayor', cajas: 2, unidades: 12, precio: 1000, subtotal: '2000.00' },
+        { id: 'i2', codigo: 'DESPACHO', modalidad: 'detalle', cajas: 0, unidades: 1, precio: 1500, subtotal: '1500.00' },
       ])
       .mockResolvedValueOnce([{ total: 0 }])
       .mockResolvedValueOnce([{ total: 0 }]);
@@ -232,6 +232,7 @@ describe('POST /api/notas-venta/[id]/items', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
     sql
       .mockResolvedValueOnce([{ estado: 'activa' }])         // checkNotaActiva
+      .mockResolvedValueOnce([{ prcventa: 10, precio_mayor: 8 }]) // producto (precio)
       .mockResolvedValueOnce([{ liberados: 0, unidades: 0 }]) // liberación perezosa (8c)
       .mockResolvedValueOnce([{ saldo: 100 }])                // UPDATE stock
       .mockResolvedValueOnce([])                               // UPDATE ub_bodega

@@ -65,7 +65,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
               {EMPRESA.nombre}
             </h1>
             <p className="text-xl leading-relaxed text-[var(--body)] mb-10">
-              Venta por mayor (cajas) y al detalle en {EMPRESA.ciudad}.
+              Venta por mayor y al detalle en {EMPRESA.ciudad}.
               Variedad, calidad y los mejores precios para tu negocio.
             </p>
             <a
@@ -163,7 +163,7 @@ export function LandingPage({ productos, empresaSlug }: { productos: LandingProd
               Quiénes Somos
             </h2>
             <p className="text-lg leading-relaxed text-[var(--body)]">
-              {EMPRESA.nombre} es una tienda en {EMPRESA.ciudad} que vende por mayor (cajas) y al detalle.
+              {EMPRESA.nombre} es una tienda en {EMPRESA.ciudad} que vende por mayor y al detalle.
               Atendemos de {EMPRESA.horario} en {EMPRESA.direccion}.
             </p>
           </div>

@@ -175,14 +175,14 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         WHERE codigo = $${pIdx}
           ${guard}`, prenotaParams));
     }
-    // H1: prcventa solo a items 'unidad'; precio_mayor solo a items 'caja'
+    // prcventa solo a items 'detalle'; precio_mayor solo a items 'mayor'
     if (clientPrcVenta !== undefined) {
       queries.push(sql.query(`UPDATE prenota_items SET precio = $1
-        WHERE codigo = $2 AND modalidad = 'unidad' ${guard}`, [clientPrcVenta, codigo]));
+        WHERE codigo = $2 AND modalidad = 'detalle' ${guard}`, [clientPrcVenta, codigo]));
     }
     if (changes.precio_mayor != null) {
       queries.push(sql.query(`UPDATE prenota_items SET precio = $1
-        WHERE codigo = $2 AND modalidad = 'caja' ${guard}`, [changes.precio_mayor, codigo]));
+        WHERE codigo = $2 AND modalidad = 'mayor' ${guard}`, [changes.precio_mayor, codigo]));
     }
 
     const [productResult] = await sql.transaction(queries);

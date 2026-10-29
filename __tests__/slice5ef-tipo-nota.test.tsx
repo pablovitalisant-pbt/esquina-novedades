@@ -25,8 +25,8 @@ it('la lista muestra el tipo devuelto por la API', async () => {
 
 it('el detalle muestra el badge derivado de los items', async () => {
   const items = [
-    { id: 'c1', codigo: 'C-001', modalidad: 'caja', cajas: 3, unidades: 36, precio: 10000, subtotal: '30000.00' },
-    { id: 'u1', codigo: 'U-001', modalidad: 'unidad', cajas: 1, unidades: 12, precio: 2500, subtotal: '30000.00' },
+    { id: 'c1', codigo: 'C-001', modalidad: 'mayor', unidades: 36, precio: 10000, subtotal: '30000.00' },
+    { id: 'u1', codigo: 'U-001', modalidad: 'detalle', unidades: 12, precio: 2500, subtotal: '30000.00' },
   ];
   global.fetch = jest.fn((url: string) => url === '/api/notas-venta/1'
     ? Promise.resolve({ ok: true, json: async () => ({ id: '1', titulo: 'Nota', items, total: 60000, total_pagado: 0 }) })

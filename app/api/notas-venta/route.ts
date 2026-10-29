@@ -28,8 +28,8 @@ export async function GET() {
       COALESCE((SELECT SUM(pi.subtotal) FROM public.prenota_items pi WHERE pi.prenota_id = p.id), 0) as total,
       (SELECT CASE
                 WHEN COUNT(*) = 0 THEN NULL
-                WHEN BOOL_AND(pi.modalidad = 'caja') THEN 'mayor'
-                WHEN BOOL_AND(pi.modalidad = 'unidad') THEN 'menor'
+                WHEN BOOL_AND(pi.modalidad = 'mayor') THEN 'mayor'
+                WHEN BOOL_AND(pi.modalidad = 'detalle') THEN 'menor'
                 ELSE 'mixta'
               END
        FROM public.prenota_items pi

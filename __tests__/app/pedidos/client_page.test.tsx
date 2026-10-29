@@ -29,8 +29,8 @@ const PEDIDO = {
   direccion_entrega: 'Av. Prat 123',
   total: 5000,
   items: [
-    { codigo: '1055', detalle: 'gallinita', cantidad: 2, modalidad: 'caja', precio: 4, subtotal: 8, cantcaja: 30 },
-    { codigo: '2000', detalle: 'pelota', cantidad: 1, modalidad: 'unidad', precio: 1992, subtotal: 1992, cantcaja: 6 },
+    { codigo: '1055', detalle: 'gallinita', cantidad: 2, modalidad: 'mayor', precio: 4, subtotal: 8, cantcaja: 30 },
+    { codigo: '2000', detalle: 'pelota', cantidad: 1, modalidad: 'detalle', precio: 1992, subtotal: 1992, cantcaja: 6 },
   ],
 };
 
@@ -84,7 +84,7 @@ describe('PedidosPage — detalle del pedido (7f)', () => {
     await screen.findByText('Pablo');
     fireEvent.click(screen.getByText('Pablo'));
 
-    expect(screen.getByText('2 cajas')).toBeInTheDocument();
+    expect(screen.getByText('2 unidades (precio mayor)')).toBeInTheDocument();
     expect(screen.getByText('1 unidad')).toBeInTheDocument();
     expect(screen.getByText('$8')).toBeInTheDocument();
     expect(screen.getByText('$1.992')).toBeInTheDocument();

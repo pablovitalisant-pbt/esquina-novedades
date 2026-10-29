@@ -42,7 +42,7 @@ describe('convertirPedido', () => {
       .mockResolvedValueOnce([{ prenota_id: 5 }]);
     const r = await convertirPedido('x', 9, 'Mercado Pago');
     expect(r.status).toBe(201);
-    expect(r.body.data).toEqual({ prenota_id: 5, convertidos: [{ codigo: 'A', cajas: 2 }], fallidos: [] });
+    expect(r.body.data).toEqual({ prenota_id: 5, convertidos: [{ codigo: 'A', cajas: 0 }], fallidos: [] });
     const cte = sql.mock.calls[3];
     const q = cte[0].join('?');
     expect(q).toContain('FOR UPDATE');

@@ -377,7 +377,7 @@ describe('GET /api/pedidos — staff', () => {
       }])
       .mockResolvedValueOnce([{
         pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
-        modalidad: 'unidad', precio: 1500, subtotal: 3000, cantcaja: 30,
+        modalidad: 'detalle', precio: 1500, subtotal: 3000,
       }]);
 
     const res = await GET(new NextRequest('http://localhost/api/pedidos'));
@@ -393,11 +393,11 @@ describe('GET /api/pedidos — staff', () => {
     });
     expect(body.data[0].items).toEqual([{
       codigo: '1055', detalle: 'gallinita', cantidad: 2,
-      modalidad: 'unidad', precio: 1500, subtotal: 3000, cantcaja: 30,
+      modalidad: 'detalle', precio: 1500, subtotal: 3000,
     }]);
   });
 
-  test('producto borrado tras el pedido → item se conserva con cantcaja null', async () => {
+  test('GET no une cantcaja: el item se conserva sin ese campo', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
       .mockResolvedValueOnce([])
@@ -410,14 +410,14 @@ describe('GET /api/pedidos — staff', () => {
       }])
       .mockResolvedValueOnce([{
         pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
-        modalidad: 'unidad', precio: 1500, subtotal: 3000, cantcaja: null,
+        modalidad: 'detalle', precio: 1500, subtotal: 3000,
       }]);
 
     const res = await GET(new NextRequest('http://localhost/api/pedidos'));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.data[0].items[0].cantcaja).toBeNull();
+    expect(body.data[0].items[0]).not.toHaveProperty('cantcaja');
   });
 
   test('expone campos de Mercado Pago (10e)', async () => {

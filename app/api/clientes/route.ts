@@ -40,8 +40,8 @@ export async function GET(request: Request) {
       FROM (
         SELECT id, nombre, telefono, direccion, notas, created_at::text,
           (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                       WHEN BOOL_AND(pi.modalidad='caja') THEN 'mayorista'
-                       WHEN BOOL_AND(pi.modalidad='unidad') THEN 'minorista'
+                       WHEN BOOL_AND(pi.modalidad='mayor') THEN 'mayorista'
+                       WHEN BOOL_AND(pi.modalidad='detalle') THEN 'minorista'
                        ELSE 'ambos' END
            FROM public.prenotas p
            JOIN public.prenota_items pi ON pi.prenota_id = p.id

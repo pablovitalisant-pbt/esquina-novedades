@@ -54,7 +54,7 @@ function setupSqlMock(pedidoEstado: string, stockReservado = false, entregaCosto
     if (q.includes('INSERT INTO public.prenotas')) return [{ id: 42 }];
     if (q.includes('FROM public.pedido_items')) return itemsMock;
     // BUG-065: la consulta de productos ahora trae imagen_url junto a cantcaja.
-    if (q.includes('SELECT cantcaja')) return [{ cantcaja: 6, imagen_url: `cloud://img-${args[1]}` }];
+    if (q.includes('SELECT imagen_url FROM public.productos')) return [{ imagen_url: `cloud://img-${args[1]}` }];
     if (q.includes('UPDATE public.productos')) {
       const codigo = args[2];
       return codigo === failCodigo ? [] : [{ saldo: 100 }];
@@ -113,8 +113,8 @@ describe('POST /api/pedidos/[id]/convertir', () => {
     expect(res.status).toBe(201);
     expect(body.data.prenota_id).toBe(42);
     expect(body.data.convertidos).toEqual([
-      { codigo: 'A', cajas: 2 },
-      { codigo: 'B', cajas: 1 },
+      { codigo: 'A', cajas: 0 },
+      { codigo: 'B', cajas: 0 },
     ]);
     expect(body.data.fallidos).toEqual([]);
 
@@ -133,10 +133,10 @@ describe('POST /api/pedidos/[id]/convertir', () => {
     const body = await res.json();
 
     expect(res.status).toBe(201);
-    // A falla stock (2 cajas × 6 = 12 unidades), B entra
-    expect(body.data.convertidos).toEqual([{ codigo: 'B', cajas: 1 }]);
+    // A falla stock (2 unidades), B entra
+    expect(body.data.convertidos).toEqual([{ codigo: 'B', cajas: 0 }]);
     expect(body.data.fallidos).toEqual([
-      { codigo: 'A', motivo: 'Stock insuficiente', disponible: 1, solicitado: 12 },
+      { codigo: 'A', motivo: 'Stock insuficiente', disponible: 1, solicitado: 2 },
     ]);
     expect(body.data.prenota_id).toBe(42);
   });
@@ -191,7 +191,7 @@ describe('POST /api/pedidos/[id]/convertir', () => {
     expect(upd).toMatch(/stock_reservado = true/);
   });
 
-  test('cajas solo para modalidad caja; unidad guarda cajas = 0', async () => {
+  test('cajas siempre 0; modalidad mapeada a detalle/mayor', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin', nombre: 'Admin' } });
     itemsMock = [
       { codigo: 'A', detalle: 'A', cantidad: 2, modalidad: 'caja', precio: 0, unidades: 12 },
@@ -204,9 +204,9 @@ describe('POST /api/pedidos/[id]/convertir', () => {
 
     const cte = sql.mock.calls.map((c) => c[0].join('')).find((q) =>
       q.includes('INSERT INTO public.prenotas') && q.includes('public.pedido_items')) as string;
-    expect(cte).toMatch(/CASE WHEN pi\.modalidad = 'caja' THEN pi\.cantidad ELSE 0 END/);
+    expect(cte).toMatch(/CASE WHEN pi\.modalidad IN \('mayor','caja'\) THEN 'mayor' ELSE 'detalle' END/);
     expect(body.data.convertidos).toEqual([
-      { codigo: 'A', cajas: 2 },
+      { codigo: 'A', cajas: 0 },
       { codigo: 'B', cajas: 0 },
     ]);
   });
@@ -267,7 +267,7 @@ describe('A12 — línea Despacho al convertir', () => {
     // (acepta valor literal o parametrizado).
     expect(cte.valores).toContain(1500);
     expect(cte.texto + cte.valores.join(',')).toMatch(/Despacho/);
-    expect(cte.texto + cte.valores.join(',')).toMatch(/unidad/);
+    expect(cte.texto + cte.valores.join(',')).toMatch(/detalle/);
     expect(cte.texto.includes('NULL') || cte.valores.includes(null)).toBe(true);
   });
 
@@ -295,7 +295,7 @@ describe('A12 — línea Despacho al convertir', () => {
     const despacho = inserts.filter((c) => cuentaDespacho(c) === 1);
     expect(despacho).toHaveLength(1);
     expect(despacho[0].valores).toContain(1500);
-    expect(despacho[0].texto + despacho[0].valores.join(',')).toMatch(/unidad/);
+    expect(despacho[0].texto + despacho[0].valores.join(',')).toMatch(/detalle/);
     expect(despacho[0].texto.includes('NULL') || despacho[0].valores.includes(null)).toBe(true);
   });
 

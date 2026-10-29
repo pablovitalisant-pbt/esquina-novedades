@@ -107,6 +107,6 @@ describe('POST /api/pedidos — smoke flujo unidad intacto', () => {
     const itemInsert = queries.find((q) => q?.strings?.join('').includes('INSERT INTO public.pedido_items'));
     expect(itemInsert).toBeDefined();
     // precio = prcventa (1500), subtotal = 3000
-    expect(itemInsert.values).toEqual(expect.arrayContaining([1500, 'unidad', 2]));
+    expect(itemInsert.values).toEqual(expect.arrayContaining([1500, 'detalle', 2]));
   });
 });

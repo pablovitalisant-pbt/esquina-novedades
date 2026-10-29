@@ -41,7 +41,6 @@ type PrenotaItem = {
   descripcion: string | null;
   imagen_url: string | null;
   modalidad: string | null;
-  cajas: number;
   unidades: number;
   precio: number;
   subtotal: number;
@@ -68,8 +67,8 @@ type ProductoResult = {
   imagen_url: string | null;
   empresa_id: number;
   prcventa: number;
+  precio_mayor: number | null;
   saldo: number;
-  cantcaja: number;
 };
 
 type CellHookData = {
@@ -79,13 +78,15 @@ type CellHookData = {
   cell: { x: number; y: number };
 };
 
-// Modalidad/tipo: filas legacy sin `modalidad` se tratan como 'unidad' (default 041).
-const esCaja = (item: Pick<PrenotaItem, 'modalidad'>) => item.modalidad === 'caja';
+// Modalidad/tipo: 'mayor' o 'detalle' (default). Filas legacy ya migradas (046).
+const esMayor = (item: Pick<PrenotaItem, 'modalidad'>) => item.modalidad === 'mayor';
+const etiquetaModalidad = (item: Pick<PrenotaItem, 'modalidad'>) =>
+  esMayor(item) ? 'Mayor' : 'Detalle';
 
 function derivarTipo(items: PrenotaItem[]): string | null {
   if (items.length === 0) return null;
-  if (items.every(esCaja)) return 'mayor';
-  if (items.every(i => !esCaja(i))) return 'menor';
+  if (items.every(esMayor)) return 'mayor';
+  if (items.every(i => !esMayor(i))) return 'menor';
   return 'mixta';
 }
 
@@ -105,12 +106,22 @@ function PrenotaItemsTable({
   onAutoFocusConsumed?: () => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCajas, setEditCajas] = useState<number>(0);
   const [editUnidades, setEditUnidades] = useState<number>(0);
   const [editPrecio, setEditPrecio] = useState<number>(0);
+  const [editModalidad, setEditModalidad] = useState<'detalle' | 'mayor'>('detalle');
+  // Precio editado a mano: el cambio de modalidad ya no debe pisarlo.
+  const [precioEditado, setPrecioEditado] = useState(false);
   const [saving, setSaving] = useState(false);
   const consumedAutoFocusRef = useRef<string | null>(null);
-  const cajasInputRef = useRef<HTMLInputElement>(null);
+  const unidadesInputRef = useRef<HTMLInputElement>(null);
+
+  const abrirEdicion = (item: PrenotaItem) => {
+    setEditingId(item.id);
+    setEditUnidades(Number(item.unidades));
+    setEditPrecio(Number(item.precio));
+    setEditModalidad(esMayor(item) ? 'mayor' : 'detalle');
+    setPrecioEditado(false);
+  };
 
   // Auto-open editing when autoFocusItemId matches a loaded item
   useEffect(() => {
@@ -118,20 +129,17 @@ function PrenotaItemsTable({
       const target = items.find(item => item.id === autoFocusItemId);
       if (target) {
         consumedAutoFocusRef.current = autoFocusItemId;
-        setEditingId(autoFocusItemId);
-        setEditCajas(Number(target.cajas));
-        setEditUnidades(Number(target.unidades));
-        setEditPrecio(Number(target.precio));
+        abrirEdicion(target);
         onAutoFocusConsumed?.();
       }
     }
   }, [items, autoFocusItemId, onAutoFocusConsumed]);
 
-  // Focus and select the Cajas input when editing opens via auto-focus
+  // Focus and select the Unidades input when editing opens via auto-focus
   useEffect(() => {
-    if (editingId != null && cajasInputRef.current) {
-      cajasInputRef.current.focus();
-      cajasInputRef.current.select();
+    if (editingId != null && unidadesInputRef.current) {
+      unidadesInputRef.current.focus();
+      unidadesInputRef.current.select();
     }
   }, [editingId]);
 
@@ -141,7 +149,7 @@ function PrenotaItemsTable({
       const res = await fetch(`/api/notas-venta/${prenotaId}/items/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(esCaja(item) ? { cajas: editCajas, precio: editPrecio } : { cajas: editCajas, unidades: editUnidades, precio: editPrecio }),
+        body: JSON.stringify({ unidades: editUnidades, precio: editPrecio }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -158,6 +166,35 @@ function PrenotaItemsTable({
     }
   };
 
+  // La modalidad es mutable por línea. Se aplica al instante: sin precio
+  // explícito el servidor usa el de la nueva modalidad (y valida precio mayor).
+  const handleModalidad = async (item: PrenotaItem, nueva: 'detalle' | 'mayor') => {
+    if (nueva === editModalidad) return;
+    setSaving(true);
+    try {
+      const body = precioEditado ? { modalidad: nueva, precio: editPrecio } : { modalidad: nueva };
+      const res = await fetch(`/api/notas-venta/${prenotaId}/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || 'Error al cambiar modalidad');
+        return;
+      }
+      const actualizado = await res.json();
+      setEditModalidad(nueva);
+      setEditPrecio(Number(actualizado?.precio ?? editPrecio));
+      setPrecioEditado(false);
+      onActualizar();
+    } catch {
+      toast.error('Error al cambiar modalidad');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="border rounded-card overflow-hidden bg-[var(--card)] shadow-sm">
       <div className="overflow-x-auto">
@@ -168,7 +205,6 @@ function PrenotaItemsTable({
               <th className="text-left px-4 py-3 font-medium">Imagen</th>
               <th className="text-left px-4 py-3 font-medium">Descripción</th>
               <th className="text-left px-4 py-3 font-medium">Modalidad</th>
-              <th className="text-right px-4 py-3 font-medium">Cajas</th>
               <th className="text-right px-4 py-3 font-medium">Unidades</th>
               <th className="text-right px-4 py-3 font-medium">Precio</th>
               <th className="text-right px-4 py-3 font-medium">Total</th>
@@ -192,11 +228,10 @@ function PrenotaItemsTable({
                 <td className="px-4 py-3">
                   <div className="font-medium">{item.descripcion}</div>
                 </td>
-                <td className="px-4 py-3">{esCaja(item) ? 'Caja' : 'Unidad'}</td>
-                <td className="px-4 py-3 text-right">{item.cajas}</td>
+                <td className="px-4 py-3">{etiquetaModalidad(item)}</td>
                 <td className="px-4 py-3 text-right">{item.unidades}</td>
                 <td className="px-4 py-3 text-right">
-                  {formatCLP(Number(item.precio))}{esCaja(item) ? ' /caja' : ' /u'}
+                  {formatCLP(Number(item.precio))} /u
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-[var(--heading)]">
                   {formatCLP(Number(item.subtotal))}
@@ -205,49 +240,37 @@ function PrenotaItemsTable({
                   {editingId === item.id ? (
                     <div className="flex flex-col gap-2 items-end min-w-[140px]">
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Cajas</label>
+                        <label className="text-xs text-[var(--body-subtle)]">Unidades</label>
                         <input
-                          ref={cajasInputRef}
+                          ref={unidadesInputRef}
                           type="number"
                           min={1}
-                          value={editCajas}
+                          value={editUnidades}
                           onFocus={e => e.target.select()}
-                          onChange={e => {
-                            const nuevasCajas = Number(e.target.value);
-                            setEditCajas(nuevasCajas);
-                            // H4: con cajas=0 no hay razón válida; se conservan las unidades.
-                            const previas = item.cajas;
-                            setEditUnidades(
-                              previas > 0 ? Math.round(nuevasCajas * (item.unidades / item.cajas)) : Number(item.unidades)
-                            );
-                          }}
+                          onChange={e => setEditUnidades(Number(e.target.value))}
                           className="border rounded px-2 py-1 text-sm w-full"
                         />
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Unidades</label>
-                        {esCaja(item) ? (
-                          <div className="text-sm text-[var(--body-subtle)] py-1">{editUnidades} unidades</div>
-                        ) : (
-                          <input
-                            type="number"
-                            min={1}
-                            value={editUnidades}
-                            onFocus={e => e.target.select()}
-                            onChange={e => setEditUnidades(Number(e.target.value))}
-                            className="border rounded px-2 py-1 text-sm w-full"
-                          />
-                        )}
+                        <label className="text-xs text-[var(--body-subtle)]">Modalidad</label>
+                        <select
+                          value={editModalidad}
+                          onChange={e => handleModalidad(item, e.target.value as 'detalle' | 'mayor')}
+                          className="border rounded px-2 py-1 text-sm w-full"
+                        >
+                          <option value="detalle">Detalle</option>
+                          <option value="mayor">Mayor</option>
+                        </select>
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">{esCaja(item) ? 'Precio por caja' : 'Precio'}</label>
+                        <label className="text-xs text-[var(--body-subtle)]">Precio</label>
                         <input
                           type="number"
                           min={0}
                           step={0.01}
                           value={editPrecio}
                           onFocus={e => e.target.select()}
-                          onChange={e => setEditPrecio(Number(e.target.value))}
+                          onChange={e => { setEditPrecio(Number(e.target.value)); setPrecioEditado(true); }}
                           className="border rounded px-2 py-1 text-sm w-full"
                         />
                       </div>
@@ -255,7 +278,7 @@ function PrenotaItemsTable({
                         size="sm"
                         className="text-xs w-full" variant="brand"
                         onClick={() => handleGuardar(item)}
-                        disabled={saving || (esCaja(item) && editCajas < 1)}
+                        disabled={saving || editUnidades < 1}
                       >
                         {saving ? 'Guardando...' : 'Guardar'}
                       </Button>
@@ -285,10 +308,7 @@ function PrenotaItemsTable({
                       className="text-xs"
                       onClick={() => {
                         consumedAutoFocusRef.current = null;
-                        setEditingId(item.id);
-                        setEditCajas(Number(item.cajas));
-                        setEditUnidades(Number(item.unidades));
-                        setEditPrecio(Number(item.precio));
+                        abrirEdicion(item);
                       }}
                     >
                       <Pencil className="w-3 h-3 mr-1" /> Editar
@@ -467,10 +487,8 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
           descripcion: prod.detalle,
           imagen_url: prod.imagen_url,
           empresa_id: prod.empresa_id,
-          cajas: 1,
-          unidades: prod.cantcaja ?? 1,
-          precio: prod.prcventa,
-          modalidad: 'unidad',
+          unidades: 1,
+          modalidad: 'detalle',
           stock_referencia: prod.saldo,
         }),
       });
@@ -521,8 +539,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     const toRows = (items: PrenotaItem[]) => items.map(i => ({
       'Código': i.codigo,
       'Descripción': i.descripcion,
-      'Modalidad': esCaja(i) ? 'Caja' : 'Unidad',
-      'Cajas': Number(i.cajas),
+      'Modalidad': etiquetaModalidad(i),
       'Unidades': Number(i.unidades),
       'Precio': Number(i.precio),
       'Total': Number(i.subtotal),
@@ -635,31 +652,28 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     );
 
     // Tabla con columna Imagen (primera) — sin columna Empresa (deuda PRD §9.3.1).
-    // Header dark, texto blanco, zebra striping. "Cajas" → "Cantidad de Cajas".
+    // Header dark, texto blanco, zebra striping. Cantidades en unidades.
     const startY = infoY + boxH + 10;
     const rows = prenota.items.map((i) => {
       return [
         '', // columna Imagen — se dibuja aparte vía didDrawCell (index 0)
         i.codigo,
         i.descripcion || '',
-        Number(i.cajas),
         Number(i.unidades),
         formatCLP(Number(i.precio)),
         formatCLP(Number(i.subtotal)),
-        esCaja(i) ? 'Caja' : 'Unidad',
+        etiquetaModalidad(i),
       ];
     });
 
-    const totalCajas = prenota.items.reduce((sum: number, i) => sum + Number(i.cajas), 0);
     const totalUnidadesSum = prenota.items.reduce((sum: number, i) => sum + Number(i.unidades), 0);
 
     autoTable(doc, {
       startY,
-      head: [['Imagen', 'Código', 'Descripción', 'Cantidad de Cajas', 'Unidades', 'Precio', 'Total', 'Modalidad']],
+      head: [['Imagen', 'Código', 'Descripción', 'Unidades', 'Precio', 'Total', 'Modalidad']],
       body: rows,
       foot: [[
         { content: 'TOTALES NETOS', colSpan: 3, styles: { halign: 'right' } },
-        { content: `${totalCajas} cajas`, styles: { halign: 'right' } },
         { content: `${totalUnidadesSum} unidades`, colSpan: 2, styles: { halign: 'right' } },
         { content: '', colSpan: 1 },
         { content: '', colSpan: 1 },
@@ -676,13 +690,12 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
       alternateRowStyles: { fillColor: [243, 244, 246] },       // zebra (neutral-tertiary light)
       columnStyles: {
         0: { cellWidth: 18 },            // Imagen — ancho fijo (BUG-039)
-        1: { cellWidth: 22, halign: 'left' },
-        2: { cellWidth: 30, halign: 'left' },
-        3: { cellWidth: 21, halign: 'right' }, // Cantidad de Cajas
-        4: { cellWidth: 20, halign: 'right' }, // Unidades
-        5: { cellWidth: 24, halign: 'right' },
-        6: { cellWidth: 28, halign: 'right' },
-        7: { cellWidth: 19, halign: 'right' }, // Modalidad
+        1: { cellWidth: 24, halign: 'left' },
+        2: { cellWidth: 40, halign: 'left' },
+        3: { cellWidth: 20, halign: 'right' }, // Unidades
+        4: { cellWidth: 26, halign: 'right' }, // Precio
+        5: { cellWidth: 28, halign: 'right' }, // Total
+        6: { cellWidth: 20, halign: 'right' }, // Modalidad
       },
       didDrawCell: (data: CellHookData) => {
         // Columna 0 = Imagen: dibujar si hay base64 cacheado
@@ -962,11 +975,13 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
                   <div className="font-medium text-sm truncate">{prod.detalle}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold">{formatCLP(Number(prod.prcventa))}</div>
-                  <div className="text-xs text-[var(--body-subtle)]">stock: {prod.saldo}</div>
-                  <div className="text-[10px] text-[var(--body-subtle)] leading-none">
-                    {Math.floor(prod.saldo / prod.cantcaja)} cj{prod.saldo % prod.cantcaja > 0 ? ` + ${prod.saldo % prod.cantcaja}` : ''}
+                  <div className="text-sm font-semibold">
+                    {formatCLP(Number(prod.prcventa))} <span className="text-xs font-normal text-[var(--body-subtle)]">detalle</span>
                   </div>
+                  {prod.precio_mayor != null && (
+                    <div className="text-xs text-[var(--body-subtle)]">Mayor: {formatCLP(Number(prod.precio_mayor))}</div>
+                  )}
+                  <div className="text-xs text-[var(--body-subtle)]">stock: {prod.saldo}</div>
                 </div>
                 <Plus className="w-4 h-4 text-[var(--success)] shrink-0" />
               </button>

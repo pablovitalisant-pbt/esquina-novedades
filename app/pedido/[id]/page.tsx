@@ -45,8 +45,8 @@ function fechaCorta(valor: string | null): string {
 
 function cantidadTexto(cantidad: number, modalidad: string): string {
   const plural = cantidad !== 1;
-  if (modalidad === 'caja') return `${cantidad} ${plural ? 'cajas' : 'caja'}`;
-  return `${cantidad} ${plural ? 'unidades' : 'unidad'}`;
+  const base = `${cantidad} ${plural ? 'unidades' : 'unidad'}`;
+  return modalidad === 'mayor' ? `${base} (precio mayor)` : base;
 }
 
 // Entrada escalonada (layout.md: un solo momento orquestado), desactivada con reduced motion.

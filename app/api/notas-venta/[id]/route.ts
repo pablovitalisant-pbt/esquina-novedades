@@ -59,14 +59,14 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     (sum, i) => sum + Number(i.subtotal ?? 0),
     0
   );
-  // Tipo derivado (5f): sin items -> null; solo cajas -> mayor; solo unidades -> menor.
+  // Tipo derivado (5f): sin items -> null; solo mayor -> mayor; solo detalle -> menor.
   // La línea Despacho no es un producto y no cuenta para el tipo.
   const itemsTipo = (items as ItemNota[]).filter((i) => i.codigo !== CODIGO_DESPACHO);
   const tipo = itemsTipo.length === 0
     ? null
-    : itemsTipo.every((i) => i.modalidad === 'caja')
+    : itemsTipo.every((i) => i.modalidad === 'mayor')
       ? 'mayor'
-      : itemsTipo.every((i) => i.modalidad !== 'caja')
+      : itemsTipo.every((i) => i.modalidad === 'detalle')
         ? 'menor'
         : 'mixta';
   const pagadoRows = await sql`

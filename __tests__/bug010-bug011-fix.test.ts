@@ -39,28 +39,15 @@ describe('BUG-010 — Caja Mayor: notasPendientes no pisa notaSeleccionada', () 
   });
 });
 
-describe('BUG-011 — Notas de Venta: editar cajas recalcula unidades', () => {
+describe('BUG-011 — Notas de Venta: cantidad se edita directamente en unidades', () => {
 
   const notasContent = fs.readFileSync(path.join(PROJECT_ROOT, NOTAS_UI), 'utf-8');
 
-  test('onChange de editCajas tambien actualiza editUnidades', () => {
-    // En el input de cajas del formulario de edición, el onChange debe
-    // recalcular editUnidades proporcionalmente.
-    // Buscamos el patrón: onChange que setea editCajas Y también setEditUnidades
-    const cajasOnChanges = notasContent.match(/setEditCajas\(/g) || [];
-    expect(cajasOnChanges.length).toBeGreaterThanOrEqual(1);
-
-    // Verificar que cerca de setEditCajas también hay setEditUnidades
-    // Buscamos el bloque del input de cajas en edición
-    const editSection = notasContent.split('label className="text-xs text-zinc-400">Cajas')[1]?.split('</label>')[0] || notasContent;
-    const afterCajasLabel = notasContent.split('Cajas')[notasContent.split('Cajas').length - 1] || '';
-
-    // Después del fix, el onChange de cajas en el formulario de edición
-    // debe contener setEditUnidades además de setEditCajas
-    const hasBothSetters = notasContent.includes('setEditUnidades') && notasContent.includes('setEditCajas');
-    expect(hasBothSetters).toBe(true);
-
-    // Verificar que existe la fórmula de ratio: item.unidades / item.cajas
-    expect(notasContent).toMatch(/item\.unidades\s*\/\s*item\.cajas/);
+  // Slice 3b: se eliminó la venta por caja. Ya no hay ratio cajas→unidades:
+  // el vendedor edita unidades directamente (y elige detalle/mayor por línea).
+  test('el formulario edita unidades directamente, sin cajas', () => {
+    expect(notasContent).toContain('setEditUnidades');
+    expect(notasContent).not.toContain('setEditCajas');
+    expect(notasContent).not.toMatch(/item\.unidades\s*\/\s*item\.cajas/);
   });
 });

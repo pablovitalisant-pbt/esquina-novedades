@@ -7,7 +7,7 @@
 
 import flags from '@/config/feature-flags.json';
 
-export type Modalidad = 'unidad' | 'caja';
+export type Modalidad = 'detalle' | 'mayor';
 export type Origen = 'productos' | 'catalogo';
 
 export class ErrorPrecio extends Error {
@@ -45,7 +45,7 @@ export interface LineaCalculada {
   cantidad: number;
   precio: number;
   subtotal: number;
-  /** Unidades de stock que consume la línea (caja = cantidad * cantcaja). */
+  /** Unidades de stock que consume la línea (siempre cantidad: no hay venta por caja). */
   unidades: number;
 }
 
@@ -92,43 +92,40 @@ export function calcularLinea(
     throw new ErrorPrecio('cada item.cantidad debe ser un entero > 0');
   }
 
+  // La tienda sigue mandando 'unidad'; el servidor normaliza a 'detalle'.
+  // 'caja' se acepta como alias legacy de 'mayor' (venta mayorista por unidad).
   const modalidad = item?.modalidad;
-  if (modalidad !== 'unidad' && modalidad !== 'caja') {
-    throw new ErrorPrecio("modalidad debe ser 'unidad' o 'caja'");
+  if (modalidad !== 'unidad' && modalidad !== 'detalle' && modalidad !== 'caja' && modalidad !== 'mayor') {
+    throw new ErrorPrecio("modalidad debe ser 'unidad', 'detalle', 'caja' o 'mayor'");
   }
+  const mayor = modalidad === 'caja' || modalidad === 'mayor';
 
   // Hotfix: defensa en profundidad — la tienda online no vende por mayor.
-  if (flags['tienda-mayor-online'] !== true && modalidad === 'caja') {
+  if (flags['tienda-mayor-online'] !== true && mayor) {
     throw new ErrorPrecio('El precio por mayor no está disponible en la tienda online');
   }
 
   let precio: number;
-  let unidades: number;
-  if (modalidad === 'caja') {
+  if (mayor) {
     const precioMayor = Number(producto.precio_mayor);
     if (producto.precio_mayor === null || !Number.isInteger(precioMayor) || precioMayor <= 0) {
       throw new ErrorPrecio(`producto ${producto.codigo} sin precio mayorista`);
     }
-    const cantcaja = Number(producto.cantcaja);
-    if (!Number.isInteger(cantcaja) || cantcaja < 1) {
-      throw new ErrorPrecio(`producto ${producto.codigo} sin cantidad por caja`);
-    }
     precio = precioMayor;
-    unidades = cantidad * cantcaja;
   } else {
     precio = precioUnidad(producto, opciones.origen, opciones.precioCatalogo);
-    unidades = cantidad;
   }
 
   return {
     producto_id: producto.id,
     codigo: producto.codigo,
     detalle: producto.detalle ?? null,
-    modalidad,
+    modalidad: mayor ? 'mayor' : 'detalle',
     cantidad,
     precio,
     subtotal: cantidad * precio,
-    unidades,
+    // Venta mayorista = precio_mayor POR UNIDAD; no existe venta por caja.
+    unidades: cantidad,
   };
 }
 

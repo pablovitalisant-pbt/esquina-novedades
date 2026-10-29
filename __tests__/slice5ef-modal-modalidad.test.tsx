@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * Fase B — 5e: selector Unidad/Caja en el modal de agregar a nota.
+ * Fase B — 5e/3b: selector Detalle/Mayor en el modal de agregar a nota.
  */
 
 import React from 'react';
@@ -23,37 +23,34 @@ async function renderModal(producto: any) {
   fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } });
 }
 
-describe('5e — selector Unidad/Caja', () => {
-  it('Caja habilitado con precio_mayor y cantcaja > 0', async () => {
+describe('5e — selector Detalle/Mayor', () => {
+  it('Mayor habilitado con precio_mayor', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    expect(screen.getByRole('button', { name: /^caja$/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /^mayor$/i })).not.toBeDisabled();
   });
 
-  it('Caja deshabilitado sin precio_mayor o con cantcaja 0', async () => {
+  it('Mayor deshabilitado sin precio_mayor', async () => {
     await renderModal({ ...base, precio_mayor: null });
-    expect(screen.getByRole('button', { name: /^caja$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^mayor$/i })).toBeDisabled();
   });
 
-  it('Caja deshabilitado con cantcaja 0', async () => {
-    await renderModal({ ...base, precio_mayor: 10000, cantcaja: 0 });
-    expect(screen.getByRole('button', { name: /^caja$/i })).toBeDisabled();
-  });
-
-  it('Caja usa precio_mayor, muestra unidades y manda modalidad', async () => {
+  it('Mayor usa precio_mayor y manda modalidad sin cajas', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    fireEvent.click(screen.getByRole('button', { name: /^caja$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^mayor$/i }));
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('10000');
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '12' } });
     expect(screen.getByText('12 unidades')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /agregar/i }));
     await waitFor(() => {
       const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/items'));
-      expect(JSON.parse(call[1].body)).toMatchObject({ modalidad: 'caja', precio: 10000, cajas: 1, unidades: 12 });
+      expect(JSON.parse(call[1].body)).toMatchObject({ modalidad: 'mayor', precio: 10000, unidades: 12 });
+      expect(JSON.parse(call[1].body)).not.toHaveProperty('cajas');
     });
   });
 
-  it('por defecto Unidad usa prcventa', async () => {
+  it('por defecto Detalle usa prcventa', async () => {
     await renderModal({ ...base, precio_mayor: 10000 });
-    expect(screen.getByRole('button', { name: /^unidad$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^detalle$/i })).toBeInTheDocument();
     expect((screen.getAllByRole('spinbutton')[1] as HTMLInputElement).value).toBe('2500');
   });
 });

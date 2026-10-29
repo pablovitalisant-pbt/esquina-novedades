@@ -8,8 +8,8 @@ const root = path.resolve(__dirname, '..');
 
 it('la lista agrega el CASE con BOOL_AND como tipo', () => {
   const src = fs.readFileSync(path.join(root, 'app/api/notas-venta/route.ts'), 'utf-8');
-  expect(src).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'caja'\)/);
-  expect(src).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'unidad'\)/);
+  expect(src).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'mayor'\)/);
+  expect(src).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'detalle'\)/);
   expect(src).toMatch(/as tipo/i);
 });
 
@@ -34,9 +34,9 @@ async function getTipo(rows: any[]) {
   return (await res.json()).tipo;
 }
 
-it('sin items -> null; solo cajas -> mayor; solo unidades -> menor; mixta -> mixta', async () => {
+it('sin items -> null; solo mayor -> mayor; solo detalle -> menor; mixta -> mixta', async () => {
   expect(await getTipo([])).toBeNull();
-  expect(await getTipo([{ modalidad: 'caja' }, { modalidad: 'caja' }])).toBe('mayor');
-  expect(await getTipo([{ modalidad: 'unidad' }, { modalidad: 'unidad' }])).toBe('menor');
-  expect(await getTipo([{ modalidad: 'caja' }, { modalidad: 'unidad' }])).toBe('mixta');
+  expect(await getTipo([{ modalidad: 'mayor' }, { modalidad: 'mayor' }])).toBe('mayor');
+  expect(await getTipo([{ modalidad: 'detalle' }, { modalidad: 'detalle' }])).toBe('menor');
+  expect(await getTipo([{ modalidad: 'mayor' }, { modalidad: 'detalle' }])).toBe('mixta');
 });

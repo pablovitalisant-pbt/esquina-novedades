@@ -27,8 +27,8 @@ jest.mock('jspdf-autotable', () => jest.fn());
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 
 const items = [
-  { id: 'uuid-1', codigo: 'X-001', descripcion: 'Item X', cajas: 1, unidades: 2, precio: 10 },
-  { id: 'uuid-2', codigo: 'Y-002', descripcion: 'Item Y', cajas: 1, unidades: 1, precio: 15 },
+  { id: 'uuid-1', codigo: 'X-001', descripcion: 'Item X', modalidad: 'detalle', unidades: 2, precio: 10 },
+  { id: 'uuid-2', codigo: 'Y-002', descripcion: 'Item Y', modalidad: 'detalle', unidades: 1, precio: 15 },
 ];
 const fetchMock = jest.fn(async (url: string, reqOpts?: RequestInit) => {
   const method = reqOpts?.method;
@@ -46,7 +46,7 @@ describe('handleGuardar — online', () => {
     global.fetch = fetchMock as any;
   });
 
-  it('guardar hace fetch(PATCH) con cajas/unidades/precio y cierra la edición', async () => {
+  it('guardar hace fetch(PATCH) con unidades/precio (sin cajas) y cierra la edición', async () => {
     render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} />);
     await waitFor(() => expect(screen.getByText('X-001')).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole('button', { name: /editar/i })[0]);
@@ -58,7 +58,7 @@ describe('handleGuardar — online', () => {
       const patches = fetchMock.mock.calls.filter(c => c[1]?.method === 'PATCH');
       expect(patches).toHaveLength(1);
       expect(patches[0][0]).toBe('/api/notas-venta/1/items/uuid-1');
-      expect(JSON.parse(patches[0][1]!.body as string)).toEqual({ cajas: 1, unidades: 2, precio: 12 });
+      expect(JSON.parse(patches[0][1]!.body as string)).toEqual({ unidades: 2, precio: 12 });
     });
     await waitFor(() => expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument());
   });

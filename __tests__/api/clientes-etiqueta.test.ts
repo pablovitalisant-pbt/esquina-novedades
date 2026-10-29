@@ -24,8 +24,8 @@ describe('GET /api/clientes — etiqueta derivada', () => {
   test('calcula la etiqueta desde prenota_items de notas activas', async () => {
     await GET(new NextRequest('http://localhost/api/clientes'));
     const { texto, values } = captura();
-    expect(texto).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'caja'\)/);
-    expect(texto).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'unidad'\)/);
+    expect(texto).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'mayor'\)/);
+    expect(texto).toMatch(/BOOL_AND\(pi\.modalidad\s*=\s*'detalle'\)/);
     expect(texto).toMatch(/COUNT\(\*\)\s*=\s*0/);
     expect(texto).toMatch(/estado\s*=\s*'activa'/);
     expect(texto).toMatch(/AS etiqueta/);

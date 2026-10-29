@@ -50,13 +50,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
   const itemId = (await params).itemId;
 
   const body = await request.json();
-  let cantidadNueva = body?.unidades !== undefined ? Number(body.unidades) : undefined;
-  const cajas = body?.cajas ?? null;
-  const precio = body?.precio ?? null;
+  const cantidadNueva = body?.unidades !== undefined ? Number(body.unidades) : undefined;
+  const modalidadBody = body?.modalidad;
+  let precioFinal: number | null = body?.precio ?? null;
 
   // R4: Validar cantidad nueva ANTES de leer DB
   if (cantidadNueva !== undefined && (!Number.isFinite(cantidadNueva) || cantidadNueva <= 0)) {
     return NextResponse.json({ error: 'Cantidad inválida' }, { status: 400 });
+  }
+  if (modalidadBody !== undefined && modalidadBody !== 'detalle' && modalidadBody !== 'mayor') {
+    return NextResponse.json({ error: 'Modalidad inválida' }, { status: 400 });
+  }
+  if (precioFinal !== null && (typeof precioFinal !== 'number' || !Number.isFinite(precioFinal) || precioFinal < 0)) {
+    return NextResponse.json({ error: 'Precio inválido' }, { status: 400 });
   }
 
   // R7: Validar estado de la nota
@@ -64,34 +70,36 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
   if (notaError) return notaError;
 
   // Leer item actual para calcular delta y para conservar los campos que un
-  // PATCH parcial no trae (BUG-053): cajas y precio entran en el fallback del UPDATE.
+  // PATCH parcial no trae (BUG-053).
   const itemRows = await sql`
-    SELECT unidades, cajas, precio, codigo, empresa_id, modalidad FROM public.prenota_items WHERE id = ${itemId}
+    SELECT unidades, precio, codigo, empresa_id, modalidad FROM public.prenota_items WHERE id = ${itemId}
   `;
   if (itemRows.length === 0) {
     return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
   }
   const item = itemRows[0];
   const cantidadAnterior = Number(item.unidades);
+  const modalidadActual = item.modalidad === 'mayor' ? 'mayor' : 'detalle';
 
-  // Modalidad inmutable; en caja las unidades las deriva el servidor con la
-  // razon unidades/cajas congelada al vender (ignora body.unidades).
-  const modalidad = item.modalidad ?? 'unidad';
-  if (body?.modalidad !== undefined && body.modalidad !== modalidad) {
-    return NextResponse.json({ error: 'La modalidad no se puede cambiar' }, { status: 400 });
-  }
-  if (modalidad === 'caja') {
-    cantidadNueva = undefined;
-    if (cajas !== null) {
-      if (!Number.isInteger(cajas) || cajas < 1) {
-        return NextResponse.json({ error: 'Cajas inválidas' }, { status: 400 });
+  // La modalidad es editable por línea. Si cambia y el vendedor no manda
+  // precio, se toma el precio de la nueva modalidad ('mayor' exige precio_mayor).
+  const cambiaModalidad = modalidadBody !== undefined && modalidadBody !== modalidadActual;
+  if (cambiaModalidad) {
+    const prod = await sql`
+      SELECT prcventa, precio_mayor FROM public.productos
+      WHERE codigo = ${item.codigo} AND empresa_id = ${item.empresa_id}
+    `;
+    if (modalidadBody === 'mayor') {
+      const precioMayor = Number(prod[0]?.precio_mayor);
+      if (!(precioMayor > 0)) {
+        return NextResponse.json({ error: 'Producto sin precio mayor' }, { status: 400 });
       }
-      if (!(Number(item.cajas) > 0)) {
-        return NextResponse.json({ error: 'Item sin cajas registradas' }, { status: 422 });
-      }
-      cantidadNueva = Math.round(cajas * (cantidadAnterior / Number(item.cajas)));
+      if (precioFinal === null) precioFinal = precioMayor;
+    } else if (precioFinal === null) {
+      precioFinal = Number(prod[0]?.prcventa);
     }
   }
+  const modalidadFinal = modalidadBody ?? modalidadActual;
 
   const delta = calcularDelta(cantidadAnterior, cantidadNueva);
 
@@ -137,14 +145,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext<{ id:
     `;
   }
 
-  // Actualizar el item (misma query template que el codigo original). Un PATCH
-  // puede ser parcial (BUG-053): los campos que no vienen en el body conservan
-  // el valor existente (item.cajas / item.unidades / item.precio), no se anulan.
+  // Actualizar el item. Un PATCH puede ser parcial (BUG-053): los campos que no
+  // vienen en el body conservan el valor existente.
   const rows = await sql`
     UPDATE public.prenota_items SET
-      cajas = ${cajas !== null ? cajas : item.cajas},
+      modalidad = ${modalidadFinal},
       unidades = ${cantidadNueva !== undefined ? cantidadNueva : item.unidades},
-      precio = ${precio !== null ? precio : item.precio}
+      precio = ${precioFinal !== null ? precioFinal : item.precio}
     WHERE id = ${itemId}
     RETURNING *
   `;

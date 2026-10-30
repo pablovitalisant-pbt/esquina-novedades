@@ -177,7 +177,7 @@ export function ClientesPage() {
       ) : (
         <div className="border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-[var(--muted)]50 bg-[var(--muted)]900">
+            <thead className="bg-[var(--muted)]">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Nombre</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Teléfono</th>
@@ -186,7 +186,7 @@ export function ClientesPage() {
             </thead>
             <tbody>
               {clientes.map(c => (
-                <tr key={c.id} className="border-t border-[var(--border)] border-[var(--border)]800">
+                <tr key={c.id} className="border-t border-[var(--border)]">
                   <td className="px-4 py-3">
                     <div className="font-medium flex items-center gap-2">
                       {c.nombre}

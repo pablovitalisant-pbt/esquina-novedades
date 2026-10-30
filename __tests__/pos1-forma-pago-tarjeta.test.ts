@@ -67,7 +67,9 @@ describe('pos1 — la UI ofrece Tarjeta', () => {
       'utf-8'
     );
     expect(src).toMatch(/<option value="tarjeta">Tarjeta<\/option>/);
-    expect(src).toMatch(/'tarjeta'/);
+    expect(src).toMatch(/FormaPago/);
+    const tipos = fs.readFileSync(path.join(PROJECT_ROOT, 'types/index.ts'), 'utf-8');
+    expect(tipos).toMatch(/export type FormaPago[^\n]*'tarjeta'/);
   });
 
   it('caja-mayor etiqueta tarjeta en el registro y en la tabla', () => {

@@ -5,6 +5,9 @@ export type RouteContext<T extends Record<string, string> = { id: string }> = {
   params: Promise<T>;
 };
 
+// Formas de pago registrables en caja (lim2: antes duplicado en 3 archivos).
+export type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+
 // Tipos compartidos — antes duplicados en client_page.tsx (PRD §9.24)
 export interface Cuenta {
   id: number;

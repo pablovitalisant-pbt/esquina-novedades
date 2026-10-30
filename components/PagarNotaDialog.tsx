@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { Cuenta } from '@/types';
+import type { Cuenta, FormaPago } from '@/types';
 
 interface Props {
   notaId: string | number;
@@ -28,7 +28,7 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
   const [pagoForm, setPagoForm] = useState({
     cuenta_id: 0,
     monto: 0,
-    forma_pago: 'efectivo' as 'efectivo' | 'cheque' | 'transferencia' | 'tarjeta',
+    forma_pago: 'efectivo' as FormaPago,
     observaciones: '',
   });
   const [pagoLoading, setPagoLoading] = useState(false);
@@ -131,7 +131,7 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
             <select
               className="border rounded-card px-3 py-2 text-sm bg-[var(--card)]"
               value={pagoForm.forma_pago}
-              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as 'efectivo' | 'cheque' | 'transferencia' | 'tarjeta' }))}
+              onChange={e => setPagoForm(prev => ({ ...prev, forma_pago: e.target.value as FormaPago }))}
             >
               <option value="efectivo">Efectivo</option>
               <option value="cheque">Cheque</option>

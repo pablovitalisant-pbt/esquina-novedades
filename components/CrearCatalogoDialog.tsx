@@ -116,7 +116,7 @@ export function CrearCatalogoDialog({
             <select
               value={newCategoria}
               onChange={e => setNewCategoria(e.target.value)}
-              className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+              className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]"
             >
               <option value="">Sin filtro de categoría</option>
               {categoriasDisponibles.map(cat => (
@@ -141,7 +141,7 @@ export function CrearCatalogoDialog({
                 <input
                   type="number"
                   aria-label="top n"
-                  className="w-14 h-6 rounded border border-[var(--border)] border-[var(--border)]700 text-center text-sm px-1 mx-0.5"
+                  className="w-14 h-6 rounded border border-[var(--border)] text-center text-sm px-1 mx-0.5"
                   min={1}
                   max={99}
                   value={newSoloNuevoTopN}

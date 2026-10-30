@@ -174,7 +174,7 @@ export function RegistroNotasPage({ session }: { session: SessionProp }) {
           type="date"
           value={filtroFecha}
           onChange={e => setFiltroFecha(e.target.value)}
-          className="text-sm border border-[var(--border)] border-[var(--border)]700 rounded-lg px-3 py-2 bg-[var(--card)] text-[var(--body)] dark:text-[var(--body)]"
+          className="text-sm border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--card)] text-[var(--body)] dark:text-[var(--body)]"
         />
         {(filtroFolio || filtroFecha) && (
           <Button variant="outline" className="text-xs" onClick={() => { setFiltroFolio(''); setFiltroFecha(''); }}>
@@ -198,7 +198,7 @@ export function RegistroNotasPage({ session }: { session: SessionProp }) {
         <div className="border rounded-card overflow-hidden bg-[var(--card)] shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[var(--muted)]50 bg-[var(--muted)]950/50 text-[var(--body)]">
+              <thead className="bg-[var(--muted)] text-[var(--body)]">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">N° Nota</th>
                   <th className="text-left px-4 py-3 font-medium">Fecha</th>
@@ -261,7 +261,7 @@ export function RegistroNotasPage({ session }: { session: SessionProp }) {
                 onChange={e => setObsEliminacion(e.target.value)}
                 placeholder="Motivo de eliminación..."
                 rows={3}
-                className="mt-1 w-full rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900 resize-none"
+                className="mt-1 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)] resize-none"
               />
             </div>
           </div>

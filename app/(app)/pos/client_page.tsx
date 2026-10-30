@@ -11,21 +11,11 @@ import { PosCobrarDialog } from '@/components/PosCobrarDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { EMPRESA } from '@/lib/empresa';
 import { formatCLP } from '@/lib/utils';
-import type { SessionProp } from '@/types';
+import { puedeVenderMayor } from '@/lib/precio-mayor';
+import type { Producto, SessionProp } from '@/types';
 
 // Clave de la nota en curso: al recargar, el POS retoma la misma nota.
 const LS_KEY = 'pos-nota-id';
-
-type Producto = {
-  codigo: string;
-  detalle: string | null;
-  imagen_url: string | null;
-  empresa_id: number;
-  prcventa: number;
-  precio_mayor: number | null;
-  saldo: number;
-  categoria: string | null;
-};
 
 type ItemNota = {
   id: string;
@@ -318,7 +308,7 @@ export function PosPage({ session }: { session: SessionProp }) {
   // Sin dato del producto se deja intentar: el servidor rechaza el cambio.
   const tienePrecioMayor = (codigo: string) => {
     const p = productosPorCodigo.get(codigo);
-    return p ? Number(p.precio_mayor) > 0 : true;
+    return p ? puedeVenderMayor(p) : true;
   };
 
   const visibles = cat ? productos.filter(p => p.categoria === cat) : productos;

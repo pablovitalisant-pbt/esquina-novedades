@@ -6,9 +6,7 @@ import { CreditCard, Delete, Loader2, MessageCircle, Plus, Printer } from 'lucid
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCLP } from '@/lib/utils';
-import type { Cuenta } from '@/types';
-
-type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+import type { Cuenta, FormaPago } from '@/types';
 
 const FORMAS: { id: FormaPago; tecla: string; label: string }[] = [
   { id: 'efectivo', tecla: '1', label: 'EFECTIVO' },
@@ -18,8 +16,6 @@ const FORMAS: { id: FormaPago; tecla: string; label: string }[] = [
 ];
 
 type Resultado = { aplicado: number; vuelto: number; restante: number; forma: FormaPago };
-
-const precio = (s: string) => Number(s || 0);
 
 /** pos3 — panel COBRAR del POS. */
 export function PosCobrarDialog({
@@ -85,7 +81,7 @@ export function PosCobrarDialog({
   }, [open, usuarioId]);
 
   const saldo = Math.round(saldoPendiente);
-  const montoNum = precio(monto);
+  const montoNum = Number(monto || 0);
   const aplicado = Math.min(montoNum, saldo);
   const vuelto = forma === 'efectivo' && montoNum > saldo ? montoNum - saldo : 0;
   const restante = Math.max(0, saldo - aplicado);

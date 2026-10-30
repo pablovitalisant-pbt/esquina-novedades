@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import flags from '@/config/feature-flags.json';
+import { puedeVenderMayor } from '@/lib/precio-mayor';
 
 interface Props {
   open: boolean;
@@ -20,7 +21,7 @@ interface Props {
 
 export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
   const MODALIDAD_UI = (flags as Record<string, boolean>)['notas-venta-modalidad'] === true;
-  const puedeMayor = producto.precio_mayor != null;
+  const puedeMayor = puedeVenderMayor(producto);
   const [prenotas, setPrenotas] = useState<Array<{ id: string | number; titulo: string }>>([]);
   const [prenotaId, setPrenotaId] = useState<string>('nueva');
   const [unidades, setUnidades] = useState(1);

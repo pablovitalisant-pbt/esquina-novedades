@@ -27,7 +27,7 @@ function severidadLabel(ratio: number): { label: string; variant: "success" | "w
 }
 
 function badgeVariant(v: "success" | "warning" | "danger"): string {
-  if (v === "success") return "bg-[var(--success)]100 text-[var(--success)] border-[var(--success)]/30 dark:bg-[var(--success)] dark:text-[var(--success)] dark:border-[var(--success)]/30";
+  if (v === "success") return "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 dark:bg-[var(--success)] dark:text-[var(--success)] dark:border-[var(--success)]/30";
   if (v === "warning") return "bg-[var(--warning)]/10100 text-[var(--warning)] border-[var(--warning)]/30 dark:bg-[var(--warning)]/10 dark:text-[var(--warning)] dark:border-[var(--warning)]/30";
   return "bg-[var(--destructive)]/10100 text-[var(--destructive)] border-[var(--destructive)]/30 dark:bg-[var(--destructive)]/10 dark:text-[var(--destructive)] dark:border-[var(--destructive)]/30";
 }
@@ -141,7 +141,7 @@ export function AlertasStockClient() {
       <div className="border rounded-3xl overflow-hidden bg-[var(--card)] shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[var(--muted)]50 bg-[var(--muted)]950/50 text-[var(--body)] border-b border-border">
+            <thead className="bg-[var(--muted)] text-[var(--body)] border-b border-border">
               <tr>
                 <th className="text-left px-6 py-3 font-medium w-12">Imagen</th>
                 <th className="text-left px-6 py-3 font-medium">Código</th>

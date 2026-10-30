@@ -509,7 +509,7 @@ export function CajaConfigClient({}: { currentUserNombre: string }) {
                 value={saldoFormCuentaId}
                 onChange={(e) => setSaldoFormCuentaId(e.target.value)}
                 disabled={!!editingSaldo}
-                className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900 disabled:opacity-50"
+                className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)] disabled:opacity-50"
               >
                 <option value="">Seleccionar cuenta</option>
                 {cuentas.filter((c) => c.activa).map((c) => {

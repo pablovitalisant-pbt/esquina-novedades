@@ -48,7 +48,7 @@ export function ImageWithFallback({
 
   if (error) {
     return (
-      <div className={`flex flex-col items-center justify-center bg-[var(--muted)] bg-[var(--muted)]900 border border-[var(--border)] border-[var(--border)]800 rounded-md overflow-hidden ${className}`} style={{ width: fill ? '100%' : width, height: fill ? '100%' : height }}>
+      <div className={`flex flex-col items-center justify-center bg-[var(--muted)] border border-[var(--border)] rounded-md overflow-hidden ${className}`} style={{ width: fill ? '100%' : width, height: fill ? '100%' : height }}>
          <span className="text-sm font-mono text-[var(--body)] dark:text-[var(--body)] tracking-wider break-all px-2 text-center">{codigo}</span>
       </div>
     );

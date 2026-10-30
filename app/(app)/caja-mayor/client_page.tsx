@@ -11,7 +11,7 @@ import { formatCLP } from "@/lib/utils";
 import { EMPRESA, hexToArgb } from "@/lib/empresa";
 import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
 
-import type { Cuenta } from '@/types';
+import type { Cuenta, FormaPago } from '@/types';
 
 // Paleta de marca para el Excel (exceljs usa ARGB).
 const COLOR_EXCEL = {
@@ -22,8 +22,6 @@ const COLOR_EXCEL = {
   champagne: hexToArgb(EMPRESA.colores.champagne),
   borde: hexToArgb(EMPRESA.colores.borde),
 } as const;
-
-type FormaPago = MovimientoConCuenta["forma_pago"];
 
 interface ClienteOption {
   cliente_id: string; // UUID desde 13a
@@ -65,7 +63,7 @@ export function CajaMayorClient({
   const [empresa, setEmpresa] = useState<string>("");
   const [monto, setMonto] = useState("");
   const [cuentaId, setCuentaId] = useState("");
-  const [formaPago, setFormaPago] = useState<"efectivo" | "cheque" | "transferencia" | "tarjeta">("transferencia");
+  const [formaPago, setFormaPago] = useState<FormaPago>("transferencia");
   const [observaciones, setObservaciones] = useState("");
   const [esCredito, setEsCredito] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -799,7 +797,7 @@ export function CajaMayorClient({
                           <div className="text-xs text-[var(--body)] mt-0.5 ml-7">
                             {r.nota.fecha} · {r.nota.nombre_cliente} · Total: {formatCLP(r.nota.total)}
                             {" · "}
-                            <span className={r.nota.saldo_pendiente <= 0.005 ? "text-[var(--success)]600" : "text-[var(--destructive)] font-medium"}>
+                            <span className={r.nota.saldo_pendiente <= 0.005 ? "text-[var(--success)]" : "text-[var(--destructive)] font-medium"}>
                               Pend: {formatCLP(r.nota.saldo_pendiente)}
                             </span>
                           </div>
@@ -847,7 +845,7 @@ export function CajaMayorClient({
                       const knum = val.slice(idx + 1);
                       setNotaSeleccionada(notasPendientes.find((n) => n.origen === emp && n.id === Number(knum)) || null);
                     }}
-                    className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+                    className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]"
                   >
                     <option value="">— Seleccionar nota —</option>
                     {notasPendientes.map((n) => (
@@ -860,7 +858,7 @@ export function CajaMayorClient({
 
                 {/* Preview de imputación */}
                 {notaSeleccionada && montoNum !== null && (
-                  <div className="bg-[var(--success)]50 dark:bg-[var(--success)] border border-[var(--success)]/30 dark:border-[var(--success)]/30 rounded-lg px-3 py-2 text-sm text-[var(--success)] dark:text-[var(--success)] mt-2">
+                  <div className="bg-[var(--success)]/10 dark:bg-[var(--success)] border border-[var(--success)]/30 dark:border-[var(--success)]/30 rounded-lg px-3 py-2 text-sm text-[var(--success)] dark:text-[var(--success)] mt-2">
                     {montoNum <= notaSeleccionada.saldo_pendiente ? (
                       <>Se imputarán <strong>{formatCLP(montoNum)}</strong> a la nota #{notaSeleccionada.id}.</>
                     ) : (
@@ -895,7 +893,7 @@ export function CajaMayorClient({
           <select
             value={cuentaId}
             onChange={(e) => setCuentaId(e.target.value)}
-            className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900"
+            className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]"
           >
             {cuentas.length === 0 ? (
               <option value="">No hay cuentas</option>
@@ -974,7 +972,7 @@ export function CajaMayorClient({
           {saldos.map((s) => (
             <div key={`${s.cuenta_id}`} className="border rounded-lg p-3 text-center">
               <div className="text-xs text-[var(--body)] truncate">{s.cuenta_nombre}</div>
-              <div className={`text-sm font-bold mt-1 ${s.saldo_neto >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+              <div className={`text-sm font-bold mt-1 ${s.saldo_neto >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
                 {formatCLP(s.saldo_neto)}
               </div>
             </div>
@@ -990,12 +988,12 @@ export function CajaMayorClient({
           {/* Exportar + filtros */}
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-2">
-              <select value={filtros.tipo} onChange={(e) => setFiltros((f) => ({ ...f, tipo: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
+              <select value={filtros.tipo} onChange={(e) => setFiltros((f) => ({ ...f, tipo: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]">
                 <option value="">Todos tipos</option><option value="cobro">Cobro</option><option value="gasto">Gasto</option><option value="reembolso">Reembolso</option>
               </select>
               <Input type="date" value={filtros.desde} onChange={(e) => setFiltros((f) => ({ ...f, desde: e.target.value }))} className="h-8 w-[140px] text-xs" />
               <Input type="date" value={filtros.hasta} onChange={(e) => setFiltros((f) => ({ ...f, hasta: e.target.value }))} className="h-8 w-[140px] text-xs" />
-              <select value={filtros.cuenta_id} onChange={(e) => setFiltros((f) => ({ ...f, cuenta_id: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]900">
+              <select value={filtros.cuenta_id} onChange={(e) => setFiltros((f) => ({ ...f, cuenta_id: e.target.value }))} className="h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--muted)]">
                 <option value="">Todas cuentas</option>
                 {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
@@ -1098,7 +1096,7 @@ export function CajaMayorClient({
                                     <div className="font-medium truncate">{c.cuenta_nombre}</div>
                                     <div>Depósito total: {formatCLP(c.total_cobros)}</div>
                                     <div>Gasto total: {formatCLP(c.total_gastos)}</div>
-                                    <div className={c.saldo_final >= 0 ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}>
+                                    <div className={c.saldo_final >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}>
                                       Saldo: {formatCLP(c.saldo_final)}
                                     </div>
                                   </div>
@@ -1119,7 +1117,7 @@ export function CajaMayorClient({
                         <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : undefined}>
                           {item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : "—"}
                         </td>
-                        <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[110px] ${item.data.tipo === "cobro" ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                        <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[110px] ${item.data.tipo === "cobro" ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
                           {item.data.tipo !== "cobro" ? "-" : ""}{formatCLP(item.data.monto)}
                         </td>
                         <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.cuenta_nombre}>{item.data.cuenta_nombre}</td>
@@ -1225,7 +1223,7 @@ export function CajaMayorClient({
                             onClick={() => setNotaExpandida(expanded ? null : key)}
                             className={`w-full text-left border-b transition-colors ${
                               saldado
-                                ? "bg-[var(--success)]50 dark:bg-[var(--success)]/30 hover:bg-[var(--success)] dark:hover:bg-[var(--success)]/50"
+                                ? "bg-[var(--success)]/10 dark:bg-[var(--success)]/30 hover:bg-[var(--success)] dark:hover:bg-[var(--success)]/50"
                                 : "bg-[var(--destructive)]/1050 dark:bg-[var(--destructive)]/10/30 hover:bg-[var(--destructive)]/10 dark:hover:bg-[var(--destructive)]/10/50"
                             }`}
                           >
@@ -1237,7 +1235,7 @@ export function CajaMayorClient({
                               </Badge>
                               <span className="text-right min-w-[70px]">{formatCLP(n.total)}</span>
                               <span className="text-right min-w-[70px]">{formatCLP(n.total_pagado)}</span>
-                              <span className={`text-right min-w-[70px] font-semibold ${saldado ? "text-[var(--success)]700 dark:text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
+                              <span className={`text-right min-w-[70px] font-semibold ${saldado ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
                                 {formatCLP(n.saldo_pendiente)}
                               </span>
                             </div>
@@ -1271,7 +1269,7 @@ export function CajaMayorClient({
                     <td className="py-2 pr-2" colSpan={3}>TOTALES</td>
                     <td className="py-2 pr-2 text-right">{formatCLP(resumen.totales.total_vendido)}</td>
                     <td className="py-2 pr-2 text-right">{formatCLP(resumen.totales.total_pagado)}</td>
-                    <td className={`py-2 text-right ${resumen.totales.total_pendiente > 0 ? "text-[var(--destructive)] dark:text-[var(--destructive)]" : "text-[var(--success)]700 dark:text-[var(--success)]"}`}>
+                    <td className={`py-2 text-right ${resumen.totales.total_pendiente > 0 ? "text-[var(--destructive)] dark:text-[var(--destructive)]" : "text-[var(--success)]"}`}>
                       {formatCLP(resumen.totales.total_pendiente)}
                     </td>
                   </tr>
@@ -1337,7 +1335,7 @@ export function CajaMayorClient({
             {/* Empresa */}
             <div className="space-y-1">
               <label className="text-xs font-medium">Empresa</label>
-              <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as typeof EMPRESA.slug | "")} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+              <select value={editEmpresa} onChange={(e) => setEditEmpresa(e.target.value as typeof EMPRESA.slug | "")} className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm">
                 <option value="">—</option><option value={EMPRESA.slug}>La Esquina</option>
               </select>
             </div>
@@ -1346,13 +1344,13 @@ export function CajaMayorClient({
             {/* Cuenta */}
             <div className="space-y-1">
               <label className="text-xs font-medium">Cuenta bancaria</label>
-              <select value={editCuentaId} onChange={(e) => setEditCuentaId(e.target.value)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+              <select value={editCuentaId} onChange={(e) => setEditCuentaId(e.target.value)} className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm">
                 {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             {/* Forma de pago */}
             <div className="space-y-1"><label className="text-xs font-medium">Forma de pago</label>
-              <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as FormaPago)} className="w-full h-9 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-3 text-sm">
+              <select value={editFormaPago} onChange={(e) => setEditFormaPago(e.target.value as FormaPago)} className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent px-3 text-sm">
                 <option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="mercadopago">Mercado Pago</option>
               </select>
             </div>

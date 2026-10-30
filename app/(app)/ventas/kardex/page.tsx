@@ -12,7 +12,7 @@ export default async function KardexPage() {
         <h1 className="text-xl font-bold text-[var(--body)] dark:text-[var(--body)] mb-3">
           Kardex Cliente
         </h1>
-        <p className="text-[var(--body)]500 dark:text-[var(--body)]">
+        <p className="text-[var(--body)] dark:text-[var(--body)]">
           Este módulo no está disponible en esta versión. Será reactivado cuando
           haya historial de ventas real.
         </p>

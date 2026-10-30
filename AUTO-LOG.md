@@ -208,3 +208,21 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Flag `pos-v1` sigue en `false` (lo enciende el DT tras QA). Sin commits.
 - Tests: 15 nuevos (`__tests__/pos4-inicio-por-rol.test.ts` 11 + `__tests__/pos4-ui.test.tsx` 4). Suite 238/238, 1976/1976; tsc 0; lint 0/0; build OK (compilado 10.2s, 48 páginas estáticas, `/pos` 8.38 kB / 169 kB, middleware 64.3 kB, exit 0, sin warnings).
 - Archivos: lib/ruta-inicio.ts, app/(auth)/login/page.tsx, app/page.tsx, app/manifest.ts, middleware.ts, components/PosCobrarDialog.tsx, app/(app)/pos/client_page.tsx, __tests__/pos4-*, AUTO-LOG.md.
+## 2026-10-30 - lim2: limpieza ponytail audit 2026-10-30 + tokens Tailwind rotos
+- Decision DT aplicada en `docs/audits/ponytail-audit-2026-10-30.md` ("## Resultado (Director Tecnico)"): se aplican 3, 4, 6, 7; NO 1, 2, 5 (backlog A16–A18 en `docs/BACKLOG.md`).
+- #3: `app/(app)/pos/client_page.tsx` usa `Producto` de `types/index.ts`; se borra el tipo local de 8 campos.
+- #4: `puedeVenderMayor(p)` en `lib/precio-mayor.ts` (precio_mayor no nulo y entero > 0; reusa `esPrecioMayorValido`). Usada en el POS y en `AgregarANotaVentaModal`: con `precio_mayor = 0` el modal ya NO habilita "Por mayor". Regresión cubierta en `__tests__/lib/precio-mayor.test.ts` (caso 0).
+- #6: `FormaPago` en `types/index.ts`, usado por `PosCobrarDialog`, `PagarNotaDialog` y `caja-mayor/client_page.tsx`.
+- #7: eliminado `precio()` de un solo uso en `PosCobrarDialog` (inline `Number(monto || 0)`).
+- Extra DT — clases Tailwind rotas (`]NNN`, `/10/20`) corregidas a tokens válidos:
+  - `app/(app)/admin/caja-config/client_page.tsx:512`
+  - `app/(app)/alertas-stock/client_page.tsx:30,144`
+  - `app/(app)/bodega/registro-notas/client_page.tsx:177,201,264`
+  - `app/(app)/caja-mayor/client_page.tsx:800,848,861,896,975,991,996,1099,1120,1226,1238,1272,1338,1347,1353`
+  - `app/(app)/catalogo/admin/client_page.tsx:270,327,390,400,419,425`
+  - `app/(app)/clientes/client_page.tsx:180,189`
+  - `app/(app)/precios/client_page.tsx:279`
+  - `app/(app)/ventas/kardex/page.tsx:15`
+  - `components/CrearCatalogoDialog.tsx:119,144`
+  - `components/ImageWithFallback.tsx:51`
+- Sin commits. Verificación: tsc, lint, jest completo y build (ver corrida del DT).

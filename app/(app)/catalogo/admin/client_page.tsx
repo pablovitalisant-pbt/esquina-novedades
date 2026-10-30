@@ -267,7 +267,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
           className="pl-9"
         />
         {mostrarSugerencias && busqueda.trim().length >= 2 && sugerencias.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-[var(--card)] border border-[var(--border)] border-[var(--border)]700 rounded-lg shadow-lg overflow-hidden">
+          <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
             {sugerencias.map(cat => (
               <button
                 key={cat.id}
@@ -324,7 +324,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
                 </div>
 
                 {/* Slug copiable */}
-                <div className="bg-[var(--muted)]100 bg-[var(--muted)]800 rounded-lg p-2 text-xs font-mono text-[var(--body)] dark:text-[var(--body-subtle)] flex items-center justify-between mb-2">
+                <div className="bg-[var(--muted)] rounded-lg p-2 text-xs font-mono text-[var(--body)] dark:text-[var(--body-subtle)] flex items-center justify-between mb-2">
                   <span className="truncate mr-2">.../catalogo/{cat.slug}</span>
                   <button onClick={() => {
                     window.navigator.clipboard.writeText(getPublicUrl(cat.slug));
@@ -387,7 +387,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
                 {editItems.map((item) => (
                   <li
                     key={item.codigo}
-                    className="flex items-center gap-3 bg-[var(--muted)] bg-[var(--muted)]800 rounded-lg p-3"
+                    className="flex items-center gap-3 bg-[var(--muted)] rounded-lg p-3"
                   >
                     {item.imagen_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- preview de item en modal de edición; el tamaño real se sirve desde Cloudinary
@@ -397,7 +397,7 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
                         className="w-10 h-10 object-cover rounded-md flex-shrink-0 border"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-md flex-shrink-0 border bg-[var(--muted)] bg-[var(--muted)]700" />
+                      <div className="w-10 h-10 rounded-md flex-shrink-0 border bg-[var(--muted)]" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium leading-tight line-clamp-2">
@@ -416,13 +416,13 @@ export function CatalogoAdminClient({ session }: { session: SessionProp }) {
                         placeholder={item.precio_catalogo != null ? `$${item.precio_catalogo}` : 'Precio'}
                         value={editOverrides[item.codigo] ?? ''}
                         onChange={e => handleOverrideChange(item.codigo, e.target.value)}
-                        className="w-20 h-8 rounded-md border border-[var(--border)] border-[var(--border)]700 bg-transparent px-2 text-xs text-right focus:outline-none focus:ring-2 focus:ring-[var(--ring)] flex-shrink-0"
+                        className="w-20 h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs text-right focus:outline-none focus:ring-2 focus:ring-[var(--ring)] flex-shrink-0"
                       />
                     )}
                     <button
                       aria-label="Eliminar producto"
                       onClick={() => handleRemoveItem(item.codigo)}
-                      className="p-1.5 rounded-md text-[var(--destructive)] hover:bg-[var(--destructive)]/10 dark:hover:bg-[var(--destructive)]/10/20 flex-shrink-0 transition-colors"
+                      className="p-1.5 rounded-md text-[var(--destructive)] hover:bg-[var(--destructive)]/10 dark:hover:bg-[var(--destructive)]/20 flex-shrink-0 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

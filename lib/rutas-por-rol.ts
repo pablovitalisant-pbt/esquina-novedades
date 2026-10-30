@@ -3,12 +3,12 @@ export const RUTAS_POR_ROL: Record<string, string[]> = {
   admin: [
     '/precios', '/ventas', '/bodega', '/catalogo', '/admin',
     '/clientes', '/notas-venta', '/caja-mayor', '/deudores', '/alertas-stock',
-    '/pedidos',
+    '/pedidos', '/pos',
   ],
   vendedor: [
     '/precios', '/ventas', '/catalogo', '/bodega',
     '/clientes', '/notas-venta', '/deudores',
-    '/alertas-stock', '/pedidos',
+    '/alertas-stock', '/pedidos', '/pos',
   ],
   bodeguero: ['/bodega', '/alertas-stock'],
 };

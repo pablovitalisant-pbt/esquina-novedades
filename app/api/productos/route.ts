@@ -104,11 +104,9 @@ export async function GET(request: Request) {
   const soloNuevo = searchParams.get('soloNuevo') === 'true';
 
   try {
+    // Sin término de búsqueda devuelve el listado completo (máx. 200, orden
+    // por código): lo usa el POS para pintar la grilla inicial.
     const searchPattern = `%${search}%`;
-    if (!search) {
-      return NextResponse.json({ data: [] });
-    }
-
     const empresaIds = session.user.empresas || [];
     const rows = await sql`
       SELECT
@@ -130,6 +128,7 @@ export async function GET(request: Request) {
         MAX(p.pesocaja) as pesocaja,
         MAX(p.cubicaja) as cubicaja,
         MAX(p.stock_minimo) as stock_minimo,
+        MAX(p.categoria) as categoria,
         MAX(p.nroingreso) as nroingreso,
         MAX(p.empresa_id) as empresa_id,
         MAX(e.nombre) as nombre_empresa

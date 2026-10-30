@@ -161,3 +161,23 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Sin migracion: `caja_movimientos.forma_pago` es TEXT sin CHECK (verificado por grep en migrations/; el unico CHECK cercano es sobre estado de pedidos (044)). No se creo ni edito ninguna migracion.
 - Tests: nuevo `__tests__/pos1-forma-pago-tarjeta.test.ts` (5; 4 rojos antes). Suite 230/230, 1920/1920; tsc 0; lint 0/0; build OK.
 - Archivos: app/api/notas-venta/[id]/pagar/route.ts, components/PagarNotaDialog.tsx, app/(app)/caja-mayor/client_page.tsx, docs/specs/caja-mayor.spec.ts, config/feature-flags.json, PRD.md, AUTO-LOG.md.
+## 2026-10-29 - pos2: página /pos (búsqueda + grilla + nota + atajos) (POS v1, 2 de 4)
+- Contrato POS v1 §pos2. Ejecutado en dos fases verificadas: pos2a (página, búsqueda, grilla, nota con mouse) y pos2b (teclado + barra móvil/Sheet).
+- Revisión de impacto lateral (archivos existentes que debían cambiar):
+  - `app/api/productos/route.ts`: GET devuelve `MAX(p.categoria)` (chips) y ya no corta con `data: []` cuando `search` está vacío (grilla inicial). Sin queries de precio nuevas: se reutiliza la consulta existente.
+  - `lib/rutas-por-rol.ts`: `/pos` agregado a admin y vendedor (bodeguero no; el middleware lo manda a `/bodega`).
+  - `components/TopNav.tsx` y `components/BottomNav.tsx`: acceso visible solo con `pos-v1` y rol admin/vendedor.
+- Nuevos: `app/(app)/pos/page.tsx` (flag off → redirect a `/notas-venta`; rol distinto → `/dashboard`) y `app/(app)/pos/client_page.tsx`.
+- Reutiliza APIs existentes sin rutas nuevas: `POST /api/notas-venta` (solo al agregar el primer producto), `POST/PATCH/DELETE` de items, `GET /api/notas-venta/[id]` para refrescar, `GET /api/categorias`. Modalidad: el servidor fija `prcventa`/`precio_mayor` (igual que AgregarANotaVentaModal). MAYOR deshabilitado si el producto cargado no tiene `precio_mayor`; si el producto no está en la grilla el servidor rechaza.
+- Nota en curso recordada en localStorage (`pos-nota-id`, try/catch); "Nueva venta" la borra. COBRAR abre el `PagarNotaDialog` existente como puente a pos3. Guardar/Imprimir navega a `/notas-venta/[id]`.
+- Colores de marca por tokens existentes (`--primary`, `--card`, `--body`, `--destructive`) — sin clases fijas; botones de 48–64 px, texto lg/xl bold.
+- Riesgos Fase B cubiertos: race doble click/Enter (ref de bloqueo + botones disabled: una sola nota y un solo ítem), código exacto vs búsqueda parcial, MAYOR sin precio_mayor, flag off, bodeguero sin acceso, atajos que no disparan con foco en input, smoke buscar→agregar→+1→MAYOR→total.
+- Flag `pos-v1` queda en `false` en config/feature-flags.json; la página no se toca en el inicio (pos4).
+- Tests: 14 nuevos (`__tests__/pos2-pos-page.test.tsx` 8 + `__tests__/pos2-flag-y-permisos.test.ts` 6). Suite 232/232, 1934/1934; tsc 0; lint 0/0; build OK (`/pos` 5.54 kB / 166 kB).
+- Archivos: app/(app)/pos/page.tsx, app/(app)/pos/client_page.tsx, app/api/productos/route.ts, lib/rutas-por-rol.ts, components/TopNav.tsx, components/BottomNav.tsx, __tests__/pos2-*.test.*, AUTO-LOG.md.
+## 2026-10-29 - pos2 fix: 4 bugs de la QA visual del DT en /pos
+- (1) Lector de barras: `-` ya no se consume como atajo. Todo carácter imprimible se escribe en la búsqueda cuando hay texto (o foco en el buscador); `+`/`-` (y `code` NumpadAdd/NumpadSubtract) son cantidad solo con la búsqueda vacía. Otros inputs (monto del cobro) siguen sin atajos.
+- (2) Enter resuelve contra el texto ACTUAL: nuevo `resultadosDe` marca a qué búsqueda corresponden los resultados; si están viejos/en vuelo, se piden de nuevo antes de decidir. Orden exacto → resaltado de esos resultados → nada + toast "Sin resultados para X". Nunca agrega el primer ítem de la grilla sin filtro.
+- (3) Agregar un producto que ya está en la nota con modalidad detalle hace PATCH +1 a esa línea, sin duplicar.
+- (4) `+` ahora funciona con la búsqueda vacía aunque el foco siga en el buscador (tras el Enter del lector); se aceptan `key` (`+`,`-`,`Add`,`Subtract`) y `code` (`NumpadAdd`/`NumpadSubtract`); la línea por defecto sigue siendo la última agregada/modificada.
+- Tests nuevos (5) con keydown reales cubriendo los 4 bugs; los 3 restantes de pos2 siguen verdes. Suite 232/232, 1939/1939; tsc 0; lint 0/0; build OK (`/pos` 5.82 kB / 167 kB).

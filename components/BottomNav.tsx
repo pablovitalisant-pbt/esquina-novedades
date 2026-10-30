@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   ShoppingCart, Users, LayoutList, Tag, Box,
-  Settings, ClipboardList, Landmark, AlertTriangle, FileText,PackagePlus, Inbox, PieChart
+  Settings, ClipboardList, Landmark, AlertTriangle, FileText,PackagePlus, Inbox, PieChart, ScanBarcode
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -89,6 +89,7 @@ export function BottomNav() {
                   Ventas
                 </h3>
                 <div className="space-y-0">
+                  {(flags as Record<string, boolean>)['pos-v1'] && sheetLink('/pos', <ScanBarcode className="w-5 h-5" />, 'Punto de Venta', () => setVentasOpen(false))}
                   {sheetLink('/precios', <ShoppingCart className="w-5 h-5" />, 'Sala de Venta', () => setVentasOpen(false))}
                   {sheetLink('/notas-venta', <FileText className="w-5 h-5" />, 'Notas de Venta', () => setVentasOpen(false))}
                   {sheetLink('/clientes', <Users className="w-5 h-5" />, 'Clientes', () => setVentasOpen(false))}

@@ -26,7 +26,8 @@ import {
   FileText,
   PackagePlus,
   Inbox,
-  PieChart
+  PieChart,
+  ScanBarcode
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { AlertasBell } from './AlertasBell';
@@ -128,6 +129,13 @@ export function TopNav() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            )}
+
+            {/* Punto de Venta — admin y vendedor, tras flag pos-v1 */}
+            {(isAdmin || rol === 'vendedor') && (flags as Record<string, boolean>)['pos-v1'] && (
+              <Link href="/pos" className={dropdownTrigger(pathname.startsWith('/pos'))}>
+                <ScanBarcode className="w-4 h-4" /> POS
+              </Link>
             )}
 
             {/* Catálogo — admin y vendedor, link directo */}

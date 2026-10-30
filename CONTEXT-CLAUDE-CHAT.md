@@ -106,3 +106,7 @@ Pendientes:
 
 ## Estado al 2026-10-28
 Ver `docs/TRASPASO-2026-10-28.md` (vigente): app en uso real, P0 mayorista abierto, siguientes A13, A14, C1.
+
+## Handoff 2026-10-30
+Estado completo en el Project de claude.ai: claude/estado-proyecto-2026-10-30.md. HEAD f60f876. Siguiente: slice 'Portada automatica' (APROBADO: novedades por fecha_ingreso, 'Es nuevo' = Destacar, seccion por categoria, seccion por mayor, banner y destacados automaticos), luego Cloudinary + fotos.
+

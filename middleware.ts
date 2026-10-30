@@ -1,6 +1,8 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 import { RUTAS_POR_ROL } from '@/lib/rutas-por-rol';
+import { rutaInicio } from '@/lib/ruta-inicio';
+import flags from '@/config/feature-flags.json';
 import type { JWT } from 'next-auth/jwt';
 
 export default withAuth(
@@ -17,8 +19,10 @@ export default withAuth(
     const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta));
 
     if (!tieneAcceso) {
-      const primeraRuta = rutasPermitidas[0];
-      return NextResponse.redirect(new URL(primeraRuta, req.url));
+      // Inicio por rol (pos4): con pos-v1 manda /pos, si no la primera ruta.
+      const inicio = rutaInicio(rol, flags as Record<string, boolean>);
+      const destino = rutasPermitidas.includes(inicio) ? inicio : rutasPermitidas[0];
+      return NextResponse.redirect(new URL(destino, req.url));
     }
 
     return NextResponse.next();

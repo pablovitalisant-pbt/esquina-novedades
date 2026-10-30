@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { sql } from '@/lib/db';
 import { TiendaPortada } from '@/components/TiendaPortada';
+import flags from '@/config/feature-flags.json';
+import { rutaInicio } from '@/lib/ruta-inicio';
 import {
   getProductosTienda,
   type CategoriaTienda,
@@ -41,7 +43,7 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   if (session) {
-    redirect('/precios');
+    redirect(rutaInicio(session.user.rol, flags as Record<string, boolean>));
   }
 
   const [{ productos, empresaSlug }, categorias, opcionesEntrega] = await Promise.all([

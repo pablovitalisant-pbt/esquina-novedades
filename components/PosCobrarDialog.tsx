@@ -176,7 +176,10 @@ export function PosCobrarDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl" data-testid="pos-cobrar">
+      <DialogContent
+        className="max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        data-testid="pos-cobrar"
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-extrabold">
             {resultado ? 'Cobro registrado' : 'COBRAR'}
@@ -202,16 +205,25 @@ export function PosCobrarDialog({
                 </p>
               )}
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <Button variant="outline" className="h-14 text-base font-bold" onClick={() => salir('pdf')}>
-                <Printer className="w-5 h-5 mr-1" /> Imprimir PDF
+            {/* PDF/WhatsApp en 2 columnas; Nueva venta a ancho completo debajo. */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="h-14 min-w-0 px-2 text-sm font-bold whitespace-nowrap"
+                onClick={() => salir('pdf')}
+              >
+                <Printer className="w-5 h-5 mr-1 shrink-0" /> Imprimir PDF
               </Button>
-              <Button variant="outline" className="h-14 text-base font-bold" onClick={() => salir('whatsapp')}>
-                <MessageCircle className="w-5 h-5 mr-1" /> WhatsApp
+              <Button
+                variant="outline"
+                className="h-14 min-w-0 px-2 text-sm font-bold whitespace-nowrap"
+                onClick={() => salir('whatsapp')}
+              >
+                <MessageCircle className="w-5 h-5 mr-1 shrink-0" /> WhatsApp
               </Button>
               <Button
                 variant="brand"
-                className="h-14 text-base font-black"
+                className="col-span-2 h-14 text-base font-black"
                 autoFocus
                 onClick={() => { onNuevaVenta(); onOpenChange(false); }}
               >
@@ -274,11 +286,11 @@ export function PosCobrarDialog({
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-              <Button variant="secondary" className="h-11 text-xs font-bold" onClick={() => setMonto(String(saldo))}>
+              <Button variant="secondary" className="h-12 text-xs font-bold" onClick={() => setMonto(String(saldo))}>
                 Exacto
               </Button>
               {[5000, 10000, 20000].map(v => (
-                <Button key={v} variant="secondary" className="h-11 text-xs font-bold" onClick={() => setMonto(String(v))}>
+                <Button key={v} variant="secondary" className="h-12 text-xs font-bold" onClick={() => setMonto(String(v))}>
                   ${v.toLocaleString('es-CL')}
                 </Button>
               ))}
@@ -322,19 +334,22 @@ export function PosCobrarDialog({
 
             {error && <p className="text-sm font-bold text-[var(--destructive)]" role="alert">{error}</p>}
 
-            <Button
-              variant="brand"
-              className="h-16 text-2xl font-black"
-              disabled={loading || cuentas.length === 0}
-              onClick={confirmar}
-              data-testid="pos-confirmar"
-            >
-              {loading ? <Loader2 className="w-6 h-6 mr-2 animate-spin" /> : <CreditCard className="w-6 h-6 mr-2" />}
-              CONFIRMAR
-            </Button>
-            <p className="text-xs text-center text-[var(--body-subtle)]">
-              Enter confirma · 1-4 forma de pago · Esc cierra
-            </p>
+            {/* Footer sticky: CONFIRMAR siempre visible aunque el body scrollee. */}
+            <div className="sticky bottom-0 flex flex-col gap-2 bg-popover pt-2">
+              <Button
+                variant="brand"
+                className="h-16 text-2xl font-black"
+                disabled={loading || cuentas.length === 0}
+                onClick={confirmar}
+                data-testid="pos-confirmar"
+              >
+                {loading ? <Loader2 className="w-6 h-6 mr-2 animate-spin" /> : <CreditCard className="w-6 h-6 mr-2" />}
+                CONFIRMAR
+              </Button>
+              <p className="text-xs text-center text-[var(--body-subtle)]">
+                Enter confirma · 1-4 forma de pago · Esc cierra
+              </p>
+            </div>
           </div>
         )}
       </DialogContent>

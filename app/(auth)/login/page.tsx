@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { getSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { EMPRESA } from '@/lib/empresa';
+import flags from '@/config/feature-flags.json';
+import { rutaCallbackSegura, rutaInicio } from '@/lib/ruta-inicio';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,7 +37,15 @@ export default function LoginPage() {
     if (res?.error) {
       toast.error('Credenciales inválidas o usuario inactivo');
     } else {
-      router.push('/precios');
+      // callbackUrl interno (p.ej. middleware) manda; si no, inicio por rol.
+      const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
+      const destino = rutaCallbackSegura(callbackUrl);
+      if (destino) {
+        router.push(destino);
+      } else {
+        const sesion = await getSession();
+        router.push(rutaInicio(sesion?.user?.rol, flags as Record<string, boolean>));
+      }
       router.refresh();
     }
   };

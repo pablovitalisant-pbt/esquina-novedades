@@ -527,7 +527,7 @@ export function PosPage({ session }: { session: SessionProp }) {
           >
             Cambiar cliente
           </Button>
-          <Button variant="ghost" size="sm" onClick={nuevaVenta} disabled={busy || !notaId}>
+          <Button variant="ghost" className="h-12 px-4" onClick={nuevaVenta} disabled={busy || !notaId}>
             Nueva venta
           </Button>
         </div>
@@ -576,7 +576,8 @@ export function PosPage({ session }: { session: SessionProp }) {
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start">
       {/* ─── Izquierda: búsqueda + categorías + grilla ─── */}
-      <div className="flex flex-col gap-3 min-w-0">
+      {/* pb: la barra fija "items / total / COBRAR" no tapa el último producto */}
+      <div className="flex flex-col gap-3 min-w-0 pb-40 lg:pb-0">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-[var(--body-subtle)]" />
           <input
@@ -656,7 +657,6 @@ export function PosPage({ session }: { session: SessionProp }) {
       </aside>
 
       {/* ─── Móvil: barra fija + nota en Sheet ─── */}
-      <div className="lg:hidden h-24" />
       <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 p-3 bg-[var(--card)]/95 backdrop-blur border-t border-[var(--border)]">
         <button
           type="button"

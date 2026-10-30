@@ -11,9 +11,6 @@ import { PosPage } from '@/app/(app)/pos/client_page';
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
-jest.mock('@/components/PagarNotaDialog', () => ({
-  PagarNotaDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="pagar-dialog" /> : null),
-}));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => null }));
 
 const fetchMock = jest.fn();
@@ -32,7 +29,8 @@ const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json:
 function servidor(
   productos: Prod[],
   notaInicial?: { id: number; items: Linea[] },
-  filtrar?: (q: string, lista: Prod[]) => Prod[]
+  filtrar?: (q: string, lista: Prod[]) => Prod[],
+  mesonId?: string
 ) {
   const state = {
     notaId: notaInicial?.id ?? null,
@@ -41,10 +39,16 @@ function servidor(
     posts: [] as Record<string, unknown>[],
     patches: [] as Record<string, unknown>[],
     deletes: 0,
+    notaBody: null as Record<string, unknown> | null,
   };
   fetchMock.mockImplementation(async (url: string, init?: { method?: string; body?: string }) => {
     const method = init?.method ?? 'GET';
     const body = init?.body ? JSON.parse(init.body) : {};
+    if (url === '/api/clientes?rut=66.666.666-6') {
+      return mesonId
+        ? json({ data: [{ id: mesonId, nombre: 'Cliente de mesón' }] })
+        : json({ data: [] });
+    }
     if (url.startsWith('/api/productos?search=')) {
       const q = decodeURIComponent(url.split('search=')[1] ?? '');
       return json({ data: filtrar ? filtrar(q, productos) : productos });
@@ -52,6 +56,7 @@ function servidor(
     if (url === '/api/categorias') return json([{ nombre: 'Juguete' }]);
     if (url === '/api/notas-venta' && method === 'POST') {
       state.notasCreadas += 1;
+      state.notaBody = body;
       state.notaId = 55;
       return json({ id: 55 });
     }
@@ -199,7 +204,11 @@ describe('POS pos2 — race y teclado', () => {
     await waitFor(() => expect(screen.getByTestId('pos-linea-GL1')).toBeTruthy());
 
     fireEvent.keyDown(document.body, { key: 'F9' });
-    await waitFor(() => expect(screen.getByTestId('pagar-dialog')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('pos-cobrar')).toBeTruthy());
+
+    // Con el diálogo abierto los atajos del POS están bloqueados: se cierra primero.
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('pos-cobrar')).toBeNull());
 
     fireEvent.keyDown(document.body, { key: 'Delete' });
     await waitFor(() => expect(state.deletes).toBe(1));
@@ -222,6 +231,61 @@ describe('POS pos2 — race y teclado', () => {
     await waitFor(() =>
       expect(screen.getByTestId('pos-barra-movil')).toHaveTextContent('1 items'));
     expect(screen.getByTestId('pos-barra-movil')).toHaveTextContent('1.000');
+  });
+});
+
+describe('POS pos3 — cliente de la venta', () => {
+  it('primer producto sin cliente: la nota se crea con el Cliente de mesón', async () => {
+    const state = servidor([GL1], undefined, undefined, 'u-meson');
+    render(<PosPage session={session} />);
+    fireEvent.click(await screen.findByTestId('pos-producto-GL1'));
+
+    await waitFor(() => expect(state.notasCreadas).toBe(1));
+    expect(state.notaBody).toEqual({ cliente_id: 'u-meson' });
+    expect(screen.queryByTestId('pos-meson-faltante')).toBeNull();
+  });
+
+  it('si no existe el Cliente de mesón, la venta no se bloquea y avisa', async () => {
+    const state = servidor([GL1]);
+    render(<PosPage session={session} />);
+    fireEvent.click(await screen.findByTestId('pos-producto-GL1'));
+
+    await waitFor(() => expect(state.notasCreadas).toBe(1));
+    expect(state.notaBody).toEqual({});
+    expect(await screen.findByTestId('pos-meson-faltante')).toBeTruthy();
+    expect(screen.getByTestId('pos-linea-GL1')).toBeTruthy();
+  });
+
+  it('F4 abre el selector y elegir un reciente cambia el cliente mostrado', async () => {
+    servidor([GL1]);
+    localStorage.setItem('pos-clientes-recientes', JSON.stringify([{ id: 'c-ana', nombre: 'Ana Pérez' }]));
+    render(<PosPage session={session} />);
+    await screen.findByTestId('pos-producto-GL1');
+
+    fireEvent.keyDown(document.body, { key: 'F4' });
+    fireEvent.click(await screen.findByTestId('pos-cliente-opcion-c-ana'));
+
+    await waitFor(() => expect(screen.getByText('Ana Pérez')).toBeTruthy());
+  });
+
+  it('con nota creada, elegir cliente actualiza por PATCH', async () => {
+    const state = servidor([GL1], { id: 77, items: [{ id: 'it-1', codigo: 'GL1', descripcion: 'Producto A', modalidad: 'detalle', unidades: 1, precio: 1000, subtotal: 1000 }] });
+    localStorage.setItem('pos-nota-id', '77');
+    localStorage.setItem('pos-clientes-recientes', JSON.stringify([{ id: 'c-ana', nombre: 'Ana Pérez' }]));
+    let patchBody: Record<string, unknown> | null = null;
+    fetchMock.mockImplementation(((original) => async (url: string, init?: any) => {
+      if (url === '/api/notas-venta/77' && init?.method === 'PATCH') {
+        patchBody = JSON.parse(init.body);
+        return json({ ok: true });
+      }
+      return original(url, init);
+    })(fetchMock.getMockImplementation()!));
+
+    render(<PosPage session={session} />);
+    fireEvent.click(await screen.findByText('Cambiar cliente'));
+    fireEvent.click(await screen.findByTestId('pos-cliente-opcion-c-ana'));
+
+    await waitFor(() => expect(patchBody).toEqual({ cliente_id: 'c-ana' }));
   });
 });
 

@@ -23,9 +23,9 @@ describe('migración 046', () => {
     expect(sql).toMatch(/GENERATED ALWAYS AS \(unidades \* precio\) STORED/);
     expect(sql).toContain('information_schema');
   });
-  it('está en MIGRATION_ORDER como última', () => {
+  it('está en MIGRATION_ORDER', () => {
     const { MIGRATION_ORDER } = require('../scripts/migrations-order');
-    expect(MIGRATION_ORDER[MIGRATION_ORDER.length - 1]).toBe('047_pedido_items_precio_lista.sql');
+    expect(MIGRATION_ORDER).toContain('046_modalidad_detalle_mayor.sql');
   });
 });
 

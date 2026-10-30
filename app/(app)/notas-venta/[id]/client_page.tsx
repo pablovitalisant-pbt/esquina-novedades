@@ -341,6 +341,8 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   const [loading, setLoading] = useState(true);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+  // pos3 — la pantalla de éxito del POS pide PDF/WhatsApp al abrir esta nota.
+  const [accionAuto, setAccionAuto] = useState<'pdf' | 'whatsapp' | null>(null);
   const [clienteQuery, setClienteQuery] = useState('');
   const [clienteResults, setClienteResults] = useState<ClienteResult[]>([]);
   const [clientesLoading, setClientesLoading] = useState(false);
@@ -844,6 +846,22 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
       setEnviandoWhatsapp(false);
     }
   };
+
+  // pos3 — disparo por query param (?accion=pdf|whatsapp) desde el POS.
+  // Se lee window.location en un efecto para no forzar Suspense/useSearchParams.
+  useEffect(() => {
+    const a = new URLSearchParams(window.location.search).get('accion');
+    if (a === 'pdf' || a === 'whatsapp') setAccionAuto(a);
+  }, []);
+
+  useEffect(() => {
+    if (!accionAuto || !prenota?.items?.length) return;
+    const accion = accionAuto;
+    setAccionAuto(null);
+    if (accion === 'pdf') void exportarPDF();
+    else void compartirWhatsApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accionAuto, prenota]);
 
   return (
     <>

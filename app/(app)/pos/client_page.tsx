@@ -6,7 +6,8 @@ import { Minus, Plus, Printer, Trash2, Search, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
-import { PagarNotaDialog } from '@/components/PagarNotaDialog';
+import { PosClienteDialog, type ClientePos } from '@/components/PosClienteDialog';
+import { PosCobrarDialog } from '@/components/PosCobrarDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { EMPRESA } from '@/lib/empresa';
 import { formatCLP } from '@/lib/utils';
@@ -36,7 +37,7 @@ type ItemNota = {
   subtotal: number;
 };
 
-export function PosPage({}: { session: SessionProp }) {
+export function PosPage({ session }: { session: SessionProp }) {
   const router = useRouter();
 
   const [query, setQuery] = useState('');
@@ -55,6 +56,16 @@ export function PosPage({}: { session: SessionProp }) {
   const busyRef = useRef(false);
   const [cobrarOpen, setCobrarOpen] = useState(false);
 
+  // pos3 — cliente de la venta (null = sin elegir → mesón al crear la nota).
+  const [cliente, setCliente] = useState<ClientePos | null>(null);
+  const [clienteOpen, setClienteOpen] = useState(false);
+  const [mesonFaltante, setMesonFaltante] = useState(false);
+  // Cobros ya registrados en esta sesión (pago parcial → próximo COBRAR usa el resto).
+  const [pagado, setPagado] = useState(0);
+  // Saldo que informa la API de la nota (incluye pagos previos); null = usar total.
+  const [saldoNota, setSaldoNota] = useState<number | null>(null);
+  const mesonIdRef = useRef<string | null>(null);
+
   // Teclado: producto resaltado en la grilla y foco del buscador.
   const [highlighted, setHighlighted] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -66,12 +77,14 @@ export function PosPage({}: { session: SessionProp }) {
       if (res.status === 404) {
         setNotaId(null);
         setItems([]);
+        setSaldoNota(null);
         try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ }
         return;
       }
       if (!res.ok) { toast.error('No se pudo cargar la nota'); return; }
       const data = await res.json();
       setItems(data.items ?? []);
+      setSaldoNota(typeof data.saldo_pendiente === 'number' ? data.saldo_pendiente : null);
     } catch {
       toast.error('No se pudo cargar la nota');
     }
@@ -126,6 +139,41 @@ export function PosPage({}: { session: SessionProp }) {
     try { localStorage.setItem(LS_KEY, id); } catch { /* sin storage */ }
   };
 
+  // Cliente genérico (RUT 66.666.666-6), resuelto por RUT y cacheado en memoria.
+  // Si no existe/falla, la venta sigue: la nota queda sin cliente.
+  const obtenerClienteMeson = async (): Promise<string | null> => {
+    if (mesonIdRef.current) return mesonIdRef.current;
+    try {
+      const res = await fetch('/api/clientes?rut=66.666.666-6');
+      if (res.ok) {
+        const id = (await res.json())?.data?.[0]?.id;
+        if (id) {
+          mesonIdRef.current = String(id);
+          setMesonFaltante(false);
+          return mesonIdRef.current;
+        }
+      }
+    } catch { /* cae al aviso discreto */ }
+    setMesonFaltante(true);
+    return null;
+  };
+
+  const elegirCliente = async (c: ClientePos) => {
+    setCliente(c);
+    setMesonFaltante(false);
+    if (!notaId) return;
+    try {
+      const res = await fetch(`/api/notas-venta/${notaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: c.id }),
+      });
+      if (!res.ok) toast.error('No se pudo asignar el cliente');
+    } catch {
+      toast.error('No se pudo asignar el cliente');
+    }
+  };
+
   const agregar = (prod: Producto) => conBloqueo(async () => {
     let id = notaId;
     // Ya está en la nota con la misma modalidad: suma +1 a esa línea.
@@ -147,10 +195,12 @@ export function PosPage({}: { session: SessionProp }) {
       return;
     }
     if (!id) {
+      // Sin cliente elegido → Cliente de mesón. Si no existe, nota sin cliente.
+      const clienteId = cliente?.id ?? await obtenerClienteMeson();
       const res = await fetch('/api/notas-venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(clienteId ? { cliente_id: clienteId } : {}),
       });
       if (!res.ok) { toast.error('No se pudo crear la nota de venta'); return; }
       id = String((await res.json()).id);
@@ -233,13 +283,21 @@ export function PosPage({}: { session: SessionProp }) {
     });
   };
 
-  const nuevaVenta = () => {
-    if (items.length > 0 && !confirm('¿Descartar la venta en curso y empezar una nueva?')) return;
+  const resetearVenta = () => {
     setNotaId(null);
     setItems([]);
     setSelected(null);
     setQuery('');
+    setCliente(null);
+    setMesonFaltante(false);
+    setPagado(0);
+    setSaldoNota(null);
     try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ }
+  };
+
+  const nuevaVenta = () => {
+    if (items.length > 0 && !confirm('¿Descartar la venta en curso y empezar una nueva?')) return;
+    resetearVenta();
   };
 
   const cobrar = () => {
@@ -303,6 +361,7 @@ export function PosPage({}: { session: SessionProp }) {
 
   const atajosRef = useRef<{
     vacia: boolean;
+    bloqueado: boolean;
     escribir: (ch: string) => void;
     mover: (d: number) => void;
     cantidad: (d: number) => void;
@@ -310,12 +369,14 @@ export function PosPage({}: { session: SessionProp }) {
     quitar: () => void;
     escape: () => void;
     cobrar: () => void;
+    cambiarCliente: () => void;
     agregar: () => void;
   } | null>(null);
 
   useEffect(() => {
     atajosRef.current = {
       vacia: query.trim() === '',
+      bloqueado: cobrarOpen || clienteOpen,
       escribir: (ch) => {
         searchRef.current?.focus();
         setQuery(q => q + ch);
@@ -326,6 +387,7 @@ export function PosPage({}: { session: SessionProp }) {
       quitar: () => { const l = lineaSeleccionada(); if (l) quitar(l); },
       escape: () => { setQuery(''); setSheetOpen(false); },
       cobrar,
+      cambiarCliente: () => setClienteOpen(true),
       agregar: () => { void agregarDesdeBusqueda(); },
     };
   });
@@ -339,7 +401,7 @@ export function PosPage({}: { session: SessionProp }) {
       // Otro campo del panel (p.ej. monto del cobro): ningún atajo.
       if (enCampo && !enBuscador) return;
       const a = atajosRef.current;
-      if (!a) return;
+      if (!a || a.bloqueado) return;
 
       const k = e.key;
       const mas = k === '+' || k === 'Add' || e.code === 'NumpadAdd';
@@ -351,11 +413,12 @@ export function PosPage({}: { session: SessionProp }) {
         a.cantidad(mas ? 1 : -1);
         return;
       }
+      if (k === 'F4') { e.preventDefault(); a.cambiarCliente(); return; }
+      if ((k === 'Enter' && e.ctrlKey) || k === 'F9') { e.preventDefault(); a.cobrar(); return; }
       // Dentro del buscador, Enter/flechas/Esc los maneja el propio input.
       if (enBuscador) return;
 
-      if ((k === 'Enter' && e.ctrlKey) || k === 'F9') { e.preventDefault(); a.cobrar(); }
-      else if (k === 'F2') { e.preventDefault(); a.alternar(); }
+      if (k === 'F2') { e.preventDefault(); a.alternar(); }
       else if (k === 'Delete') { e.preventDefault(); a.quitar(); }
       else if (k === 'Escape') { e.preventDefault(); a.escape(); }
       else if (k === 'ArrowDown') { e.preventDefault(); a.mover(1); }
@@ -445,14 +508,29 @@ export function PosPage({}: { session: SessionProp }) {
 
   const panelNota = (
     <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-[var(--body-subtle)]">Cliente</p>
-          <p className="font-bold">Cliente de mesón</p>
+          <p className="font-bold truncate">{cliente?.nombre ?? 'Cliente de mesón'}</p>
+          {mesonFaltante && (
+            <p className="text-[11px] text-[var(--destructive)]" data-testid="pos-meson-faltante">
+              Sin Cliente de mesón: la nota quedó sin cliente.
+            </p>
+          )}
         </div>
-        <Button variant="outline" size="sm" onClick={nuevaVenta} disabled={busy || !notaId}>
-          Nueva venta
-        </Button>
+        <div className="flex flex-col gap-1 shrink-0">
+          <Button
+            variant="outline"
+            className="h-12 px-4 text-base font-bold"
+            onClick={() => setClienteOpen(true)}
+            disabled={busy}
+          >
+            Cambiar cliente
+          </Button>
+          <Button variant="ghost" size="sm" onClick={nuevaVenta} disabled={busy || !notaId}>
+            Nueva venta
+          </Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -489,7 +567,7 @@ export function PosPage({}: { session: SessionProp }) {
           </Button>
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-center text-[var(--body-subtle)]">
-          Enter agrega · +/− cantidad · F2 MENOR/MAYOR · Supr quita · F9 cobrar · Esc limpiar
+          Enter agrega · +/− cantidad · F2 MENOR/MAYOR · F4 cliente · Supr quita · F9 cobrar · Esc limpiar
         </p>
       </div>
     </div>
@@ -602,12 +680,16 @@ export function PosPage({}: { session: SessionProp }) {
         </SheetContent>
       </Sheet>
 
-      <PagarNotaDialog
-        notaId={notaId ?? 0}
-        saldoPendiente={total}
+      <PosClienteDialog open={clienteOpen} onOpenChange={setClienteOpen} onSelect={elegirCliente} />
+
+      <PosCobrarDialog
         open={cobrarOpen}
         onOpenChange={setCobrarOpen}
-        onSuccess={() => { setCobrarOpen(false); setSheetOpen(false); }}
+        notaId={notaId}
+        saldoPendiente={Math.max(0, (saldoNota ?? total) - pagado)}
+        usuarioId={session?.user?.id}
+        onNuevaVenta={resetearVenta}
+        onPagado={aplicado => setPagado(p => p + aplicado)}
       />
     </div>
   );

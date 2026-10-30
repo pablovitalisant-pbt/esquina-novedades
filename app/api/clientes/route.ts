@@ -23,6 +23,8 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
+  // pos3 — búsqueda exacta por RUT (resuelve el Cliente de mesón sin depender del nombre).
+  const rut = searchParams.get('rut');
   const etiqueta = searchParams.get('etiqueta');
   if (etiqueta !== null && !ETIQUETAS.includes(etiqueta)) {
     return NextResponse.json({ error: 'Etiqueta inválida' }, { status: 400 });
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
         WHERE cliente_id = c.id
       ), 0) AS saldo_favor
       FROM (
-        SELECT id, nombre, telefono, direccion, notas, created_at::text,
+        SELECT id, nombre, rut, telefono, direccion, notas, created_at::text,
           (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
                        WHEN BOOL_AND(pi.modalidad='mayor') THEN 'mayorista'
                        WHEN BOOL_AND(pi.modalidad='detalle') THEN 'minorista'
@@ -49,6 +51,7 @@ export async function GET(request: Request) {
              AND pi.codigo <> ${CODIGO_DESPACHO}) AS etiqueta
         FROM public.clientes
         WHERE (${q}::text IS NULL OR nombre ILIKE ${pattern})
+          AND (${rut}::text IS NULL OR rut = ${rut})
       ) c
       WHERE (${etiqueta}::text IS NULL
         OR (${etiqueta} = 'sin' AND c.etiqueta IS NULL)

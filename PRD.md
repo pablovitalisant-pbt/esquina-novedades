@@ -548,6 +548,32 @@ audit (`ImageWithFallback`, `TiendaPortada`, `TarjetaProductoTienda`,
 `AUTO-LOG.md` y los tests que mockeaban los 3 flags. No hay tipos compartidos,
 schema, middleware, variables de entorno ni feature flags nuevos afectados.
 
+## Slice `textos-kardex` (2026-10-31)
+
+Contrato aprobado por Pablo. Sin flag, sin migracion, sin cambios en
+`next.config`, sin datos de produccion.
+
+1. **Textos obsoletos de `/productos`.** En `/pedidos` el subtitulo pasa de
+   "Solicitudes recibidas desde el catálogo y /productos" a "Pedidos recibidos
+   desde la tienda online y los catálogos" (`/productos` redirige 308 a `/`).
+   Grep en `app/` y `components/` de otros textos visibles que ofrezcan
+   `/productos` como pagina: solo `CatalogFooter.tsx` lo menciona en un
+   comentario interno (no visible); no se toca. Rutas de API y el redirect de
+   `app/productos/page.tsx` no cambian.
+2. **Kardex Cliente fuera de los menus.** No existe hoy ningun enlace a
+   `/ventas/kardex` en `TopNav` ni `BottomNav` (verificado por grep); se deja
+   un comentario en el submenu Ventas de ambos indicando como reactivarlo. La
+   pagina y la ruta `app/(app)/ventas/kardex/page.tsx` se conservan.
+
+Fase B: `__tests__/slice-textos-kardex.test.tsx` (texto nuevo en `/pedidos` y
+ausencia de enlaces a `/ventas/kardex` en ambos menus).
+
+**Revision de impacto lateral**: cambian solo
+`app/(app)/pedidos/client_page.tsx`, `components/TopNav.tsx`,
+`components/BottomNav.tsx`, el test nuevo, este PRD y `AUTO-LOG.md`. Ningun
+otro archivo existente referencia los textos ni el enlace; no hay tipos
+compartidos, schema, middleware, variables de entorno ni flags afectados.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

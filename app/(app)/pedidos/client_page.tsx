@@ -161,7 +161,7 @@ export function PedidosPage({}: { session: SessionProp }) {
     <div className="flex flex-col gap-6 fade-in zoom-in-95 duration-200">
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight">Pedidos</h1>
-        <p className="text-[var(--body)] mt-1">Solicitudes recibidas desde el catálogo y /productos</p>
+        <p className="text-[var(--body)] mt-1">Pedidos recibidos desde la tienda online y los catálogos</p>
         <Button
           variant={soloRevision ? 'default' : 'outline'}
           size="sm"

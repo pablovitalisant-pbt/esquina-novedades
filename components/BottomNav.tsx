@@ -103,6 +103,9 @@ export function BottomNav() {
                   Ventas
                 </h3>
                 <div className="space-y-0">
+                  {/* Kardex Cliente (/ventas/kardex) oculto: la pagina y la ruta siguen
+                      existiendo. Para reactivarlo, agregar aqui un sheetLink('/ventas/kardex',
+                      <FileText className="w-5 h-5" />, 'Kardex Cliente', () => setVentasOpen(false)). */}
                   {(flags as Record<string, boolean>)['pos-v1'] && sheetLink('/pos', <ScanBarcode className="w-5 h-5" />, 'Punto de Venta', () => setVentasOpen(false))}
                   {sheetLink('/precios', <ShoppingCart className="w-5 h-5" />, 'Sala de Venta', () => setVentasOpen(false))}
                   {sheetLink('/notas-venta', <FileText className="w-5 h-5" />, 'Notas de Venta', () => setVentasOpen(false))}

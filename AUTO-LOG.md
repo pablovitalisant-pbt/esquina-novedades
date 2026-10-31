@@ -343,3 +343,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Fase B: `__tests__/mock-flags-helper.test.ts` (3 tests): overrides pisan al JSON real, set de claves no mencionadas = JSON real, sin cache entre llamadas.
 - Verificacion: antes jest --silent 254/254 suites, 2075/2075 tests; despues 255/255 suites (254 + helper), 2078/2078 tests (2075 + 3). tsc 0 errores; lint 0 warnings/0 errores. Sin commit, sin datos de produccion, sin next.config; finales de linea preservados.
 - Archivos: __tests__/helpers/mockFlags.ts, __tests__/mock-flags-helper.test.ts, jest.config.js, 42 suites de __tests__/ (+ app/(app)/precios/client_page.test.tsx), PRD.md, docs/BACKLOG.md, AUTO-LOG.md.
+
+## 2026-10-31 - Slice: textos-kardex
+- Contrato: PRD "Slice textos-kardex". Subtitulo de /pedidos pasa a "Pedidos recibidos desde la tienda online y los catálogos" (/productos redirige 308 a /); grep de otros textos visibles: solo un comentario interno en CatalogFooter.tsx, sin tocar. Sin flag, sin migracion, sin next.config.
+- Kardex Cliente: no existia ningun enlace a /ventas/kardex en TopNav ni BottomNav (grep); se dejan comentarios de reactivacion en el submenu Ventas de ambos. La pagina y la ruta /ventas/kardex se conservan.
+- Fase B roja verificada: el test del subtitulo fallo con el texto viejo (1 failed, 2 passed; los 2 de menus ya pasaban al no haber enlace). 3 tests nuevos en __tests__/slice-textos-kardex.test.tsx.
+- Verificacion: jest --silent 256/256 suites, 2081/2081 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 9.7s, 48/48 paginas, exit 0, First Load JS 103 kB, middleware 64.3 kB). Sin commit, sin datos de produccion, sin next.config; CRLF preservado.
+- Archivos: app/(app)/pedidos/client_page.tsx, components/TopNav.tsx, components/BottomNav.tsx, __tests__/slice-textos-kardex.test.tsx, PRD.md, AUTO-LOG.md.

@@ -279,3 +279,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Fix solo en `__tests__/catalogo-precio-override.test.ts`: producto propio `OVR-<ts>`, ambos catalogos acotados a ese codigo con `palabras_incluir`, T5 verifica sobre el mismo codigo y `afterAll` limpia por codigo exacto. Sin tocar codigo de app, sin `--runInBand`, sin next.config.
 - Verificacion: 5 corridas seguidas de la suite completa en verde (254/254 suites, 2050/2050 tests en cada una); tsc 0; lint 0/0. `.env.test` y safeguard BUG-034 intactos; finales de linea preservados.
 - Archivos: __tests__/catalogo-precio-override.test.ts, BUGS.md, docs/BACKLOG.md, AUTO-LOG.md.
+
+## 2026-10-31 - Mantenimiento: iconos PNG optimizados
+- `public/icon-512.png` y `public/marca/icon-512.png` (identicos): 217.691 B -> 53.526 B (-75.4%), 512x512, alpha conservado (PNG8 256 colores, `magick -strip -colors 256 -depth 8`). Copias previas en `~/.pbt-runner/iconos-originales/`.
+- Contraste visual a 128 px: `magick compare -metric RMSE` = 0.00383431 (0.38%), sin diferencia perceptible.
+- No tocados: `marca/icon-192.png` (43.884 B) y `app/favicon.ico` (2.585 B), ya < 60 KB. Manifest, layout, rutas y nombres sin cambios.
+- Verificacion: `npm run build` OK. Sin commit.

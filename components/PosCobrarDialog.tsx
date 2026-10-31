@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CreditCard, Delete, Loader2, MessageCircle, Plus, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { cargarCuentasActivas, ErrorPago, pagarNota } from '@/lib/api-pagos';
 import { formatCLP } from '@/lib/utils';
 import type { Cuenta, FormaPago } from '@/types';
 
@@ -68,9 +69,7 @@ export function PosCobrarDialog({
 
     (async () => {
       try {
-        const res = await fetch('/api/caja/cuentas?activas=true');
-        const data = res.ok ? await res.json() : { data: [] };
-        const lista: Cuenta[] = data.data ?? [];
+        const lista = await cargarCuentasActivas({ soloSiOk: true });
         setCuentas(lista);
         setCuentaId(lista.some(c => c.id === pref) ? pref : (lista[0]?.id ?? 0));
       } catch {
@@ -100,17 +99,10 @@ export function PosCobrarDialog({
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/notas-venta/${notaId}/pagar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cuenta_id: cuentaId, monto: montoEnviar, forma_pago: forma }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setError(typeof err.error === 'string' ? err.error : 'No se pudo registrar el cobro.');
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
+      const data = await pagarNota<{
+        monto_aplicado?: number;
+        saldo_pendiente_restante?: number;
+      }>(notaId, { cuenta_id: cuentaId, monto: montoEnviar, forma_pago: forma });
       setResultado({
         aplicado: Number(data.monto_aplicado ?? montoEnviar),
         vuelto,
@@ -118,8 +110,10 @@ export function PosCobrarDialog({
         forma,
       });
       onPagado?.(Number(data.monto_aplicado ?? montoEnviar));
-    } catch {
-      setError('No se pudo registrar el cobro.');
+    } catch (e) {
+      setError(
+        e instanceof ErrorPago && e.message ? e.message : 'No se pudo registrar el cobro.'
+      );
     } finally {
       loadingRef.current = false;
       setLoading(false);

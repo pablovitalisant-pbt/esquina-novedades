@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { cargarCuentasActivas, ErrorPago, pagarNota } from '@/lib/api-pagos';
 import type { Cuenta, FormaPago } from '@/types';
 
 interface Props {
@@ -38,9 +39,7 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
     (async () => {
       setCuentasLoading(true);
       try {
-        const cuentasRes = await fetch('/api/caja/cuentas?activas=true');
-        const cuentasData = await cuentasRes.json();
-        const lista = cuentasData.data || [];
+        const lista = await cargarCuentasActivas();
         setCuentas(lista);
         if (lista.length > 0) {
           setPagoForm({
@@ -68,21 +67,13 @@ export function PagarNotaDialog({ notaId, saldoPendiente, open, onOpenChange, on
     if (pagoForm.monto <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
     setPagoLoading(true);
     try {
-      const res = await fetch(`/api/notas-venta/${notaId}/pagar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pagoForm),
-      });
-      if (res.ok) {
-        toast.success('Pago registrado correctamente');
-        onOpenChange(false);
-        onSuccess();
-      } else {
-        const err = await res.json();
-        toast.error(typeof err.error === 'string' ? err.error : 'Error al registrar pago');
-      }
-    } catch {
-      toast.error('Error al procesar el pago');
+      await pagarNota(notaId, pagoForm);
+      toast.success('Pago registrado correctamente');
+      onOpenChange(false);
+      onSuccess();
+    } catch (e) {
+      if (e instanceof ErrorPago) toast.error(e.message || 'Error al registrar pago');
+      else toast.error('Error al procesar el pago');
     } finally {
       setPagoLoading(false);
     }

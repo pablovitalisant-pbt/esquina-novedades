@@ -305,3 +305,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Tests existentes adaptados al comportamiento ON (ya no hay rama OFF): `portada-auto-lib` (armarPortada recibe filtrados), `pos2` (parseo de `search` con URL; antes partia `split('search=')` e incluia `&soloStock=true`), `pos3`/`pos4` (matcher `startsWith`), `slice3b`/`slice5cd`/`slice5ef` (placeholder de imagen ahora siempre visible: `findAllByText`). Sin cambios de comportamiento fuera de lo pedido.
 - Verificacion: jest --silent 252/252 suites, 2055/2055 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 9.8s, 48/48 paginas, exit 0, First Load JS 103 kB, middleware 64.3 kB). `git diff --stat`: 34 archivos, 128 inserciones, 266 eliminaciones (neto -138). Sin commit, sin datos de produccion, sin next.config; finales de linea preservados.
 - Archivos: ver `git status` del slice (34 paths entre codigo, tests, config, PRD.md, docs/BACKLOG.md y AUTO-LOG.md).
+
+## 2026-10-31 - Slice: A17 lib/api-pagos (helpers de cobro)
+- Contrato: PRD "Refactors A16-A18" §A17. `lib/api-pagos.ts` con `cargarCuentasActivas({ soloSiOk })`, `pagarNota(notaId, payload)` y `ErrorPago`; PagarNotaDialog y PosCobrarDialog conservan sus catch/mensajes y payloads (byte-equivalentes). Sin fusionar dialogos, sin flag.
+- Diferencias preservadas: `soloSiOk` para el descarte de body no-ok del POS; el helper lanza `ErrorPago` solo en `!res.ok`, el resto (parseo del body de error y red) se propaga al catch de cada consumidor.
+- Fase B roja verificada por modulo inexistente; 9 tests nuevos en `__tests__/lib/api-pagos.test.ts` (payload exacto, error HTTP con mensaje, error HTTP sin mensaje, red, soloSiOk).
+- Verificacion: jest --silent 253/253 suites, 2064/2064 tests (tests de ambos dialogos sin modificar); tsc 0 errores; lint 0 warnings/0 errores; build exit 0. Sin commit, sin datos de produccion, sin next.config; CRLF preservado.
+- Archivos: lib/api-pagos.ts (45), components/PagarNotaDialog.tsx (167->158), components/PosCobrarDialog.tsx (354->348), __tests__/lib/api-pagos.test.ts (95), PRD.md, docs/BACKLOG.md, AUTO-LOG.md.

@@ -406,9 +406,54 @@ entorno, sin `config/feature-flags.json`, sin `next.config.mjs`. Los tests
 existentes (`pos3-cliente`, `AgregarAPrenotaModal`, `prenota-detalle`) no se
 modifican.
 
-### A17 / A18
+### A17 — `lib/api-pagos.ts` (aprobado 2026-10-31)
 
-Pendientes de ciclo propio; sin cambios en este slice.
+Refactor sin cambio de comportamiento ni flag: la red de seguridad son los
+tests existentes de ambos dialogos. Extrae a `lib/api-pagos.ts` las dos
+llamadas HTTP duplicadas en `components/PagarNotaDialog.tsx` y
+`components/PosCobrarDialog.tsx`. Se unifican las **llamadas**, no los
+dialogos (el POS tiene vuelto, pago parcial y cuenta predeterminada).
+
+API:
+
+```ts
+export class ErrorPago extends Error {} // error HTTP, message = err.error del servidor
+export function cargarCuentasActivas(opciones?: { soloSiOk?: boolean }): Promise<Cuenta[]>
+export function pagarNota<T = Record<string, unknown>>(
+  notaId: string | number,
+  payload: Record<string, unknown>
+): Promise<T>
+```
+
+Diferencias detectadas entre las 2 copias, preservadas por parametro o por
+el catch de cada consumidor:
+
+| Aspecto | PagarNotaDialog | PosCobrarDialog |
+|---|---|---|
+| Cuentas, respuesta no-ok | parsea el body igual (`data.data \|\| []`) | descarta body y usa `[]` (`soloSiOk: true`) |
+| Cuentas, error de red/parse | toast `Error al cargar datos de pago` | `setCuentas([])` silencioso |
+| Payload de pago | `cuenta_id, monto, forma_pago, observaciones` (orden incluido) | `cuenta_id, monto, forma_pago` |
+| Exito | no lee el body | lee `monto_aplicado` / `saldo_pendiente_restante` |
+| Error HTTP | message del servidor o `Error al registrar pago` | message o `No se pudo registrar el cobro.` |
+| Error de red | toast `Error al procesar el pago` | `setError('No se pudo registrar el cobro.')` |
+
+Contrato de errores del helper, para que ambos catches sigan dando los
+mismos mensajes: en `!res.ok` lanza `ErrorPago` con `err.error` si es string
+(o `''`); un body de error no parseable propaga el error de parseo (ambos
+dialogos caen a su mensaje generico, como hoy); los errores de red se
+propagan tal cual; el body de exito se parsea con `.catch(() => ({}))`.
+El payload se pasa intacto a `JSON.stringify` (mismo orden de claves), por
+lo que los bytes enviados al servidor son identicos a los actuales.
+
+Revision de impacto lateral: solo cambian los 2 consumidores, el modulo
+nuevo, este PRD, `docs/BACKLOG.md` y `AUTO-LOG.md`. Sin migracion, sin
+variables de entorno, sin `config/feature-flags.json`, sin `next.config.mjs`.
+Tests: uno nuevo (`__tests__/lib/api-pagos.test.ts`); los tests existentes
+de ambos dialogos no se modifican.
+
+### A18
+
+Pendiente de ciclo propio; sin cambios en este slice.
 
 ## Limpieza `lim3` (audit ponytail 2026-10-31)
 

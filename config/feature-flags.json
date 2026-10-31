@@ -11,5 +11,6 @@
   "tienda-mayor-online": true,
   "tienda-portada-v2": true,
   "pos-v1": true,
-  "tienda-portada-auto": true
+  "tienda-portada-auto": true,
+  "pos-solo-stock": false
 }

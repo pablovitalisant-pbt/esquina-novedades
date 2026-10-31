@@ -8,6 +8,23 @@ import { PosPage } from '@/app/(app)/pos/client_page';
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => null }));
+// Comportamiento previo a pos-stock: estas pruebas fijan el POS tal como era.
+jest.mock('@/config/feature-flags.json', () => ({
+  'fotos-v1': true,
+  'registro_notas_bodega_ui': false,
+  'precio-mayorista-ui': true,
+  'notas-venta-modalidad': true,
+  'clientes-etiqueta': true,
+  'tienda-pago-online': true,
+  'mp-webhook-ignorar-ipn-legacy': true,
+  'pedido-confetti': true,
+  'env-validacion-arranque': true,
+  'tienda-mayor-online': true,
+  'tienda-portada-v2': true,
+  'pos-v1': true,
+  'tienda-portada-auto': true,
+  'pos-solo-stock': false,
+}));
 
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body });
 const seis = Array.from({ length: 6 }, (_, i) => ({

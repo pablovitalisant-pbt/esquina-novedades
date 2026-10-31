@@ -264,6 +264,34 @@ de pago y en todos los lugares que enumeran formas de pago (Caja Mayor,
 schemas y tipos compartidos). No requiere migración: la columna
 `caja_movimientos.forma_pago` es `TEXT` sin `CHECK`.
 
+### pos-stock — el POS oculta productos sin stock (flag `pos-solo-stock`)
+
+Contrato aprobado por Pablo (2026-10-31). Flag nuevo en
+`config/feature-flags.json`, default `false`. Con OFF el POS queda exactamente
+como hoy (misma URL de búsqueda, sin check).
+
+1. **Grilla inicial y búsqueda por texto** con flag ON muestran solo productos
+   con stock > 0: `GET /api/productos?search=…&soloStock=true` (la API ya lo
+   soporta con `HAVING SUM(saldo) > 0`; su comportamiento no cambia).
+2. **Check "Ver sin stock"** junto a la búsqueda/chips, apagado por defecto y
+   sin persistencia (cada apertura del POS parte apagado). Encendido: lista
+   todo como hoy. Accesible por teclado; las teclas que enfocan la búsqueda no
+   togglean el check.
+3. **Lector de barras / Enter con código exacto**: la resolución del código
+   busca SIEMPRE sin filtro de stock. Si el producto exacto tiene `saldo <= 0`
+   y "Ver sin stock" está apagado → toast `Sin stock: <codigo>` y NO se agrega.
+   Con el check encendido se agrega como hoy. Si no es código exacto se usa la
+   lista visible (filtrada).
+4. **Móvil**: el check es visible y su área tocable mide >= 44 px de alto.
+
+**Revisión de impacto lateral**: cambian `app/(app)/pos/client_page.tsx`,
+`config/feature-flags.json`, este PRD y un test nuevo
+(`__tests__/pos-stock.test.tsx`). `app/api/productos/route.ts` ya expone
+`soloStock` y no se toca. No hay otros consumidores del filtro: tipos
+(`Producto.saldo`) ya existen, sin migración, sin variables de entorno ni
+middleware. Los tests POS existentes (pos2/pos3/pos4) siguen con el flag OFF
+(no mockean el flag → valor real `false`).
+
 ## Portada automatica (slice portada-auto, flag `tienda-portada-auto`)
 
 Contrato aprobado por Pablo (2026-10-31). Detalle e impacto lateral: `docs/slices/slice-portada-auto-fase-a.md`. Logica pura: `components/tienda/portada-auto.ts`.

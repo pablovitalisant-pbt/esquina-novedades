@@ -273,3 +273,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - `docs/BACKLOG.md`: fila A13 marcada ✅ (ya resuelta, reemplazada por slices 2-4). Sin otras filas.
 - Verificacion: jest --silent 254/254 suites, 2050/2050 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK, exit 0. Sin commits, sin tocar datos de produccion ni next.config; finales de linea preservados.
 - Archivos: lib/utils.ts, components/BottomNav.tsx, app/(app)/pos/client_page.tsx, PRD.md, docs/BACKLOG.md, __tests__/pos-detalles-plural.test.ts, __tests__/pos-detalles-bottomnav.test.tsx, __tests__/pos-detalles-nota-usuario.test.tsx, __tests__/pos2-pos-page.test.tsx, __tests__/pos3-qa-repro.test.tsx, AUTO-LOG.md.
+
+## 2026-10-31 - A15: T6 de catalogo-precio-override intermitente (solo tests)
+- No se reprodujo: 12 corridas verdes (6 con ambas suites juntas + 6 de la suite completa). Causa raiz visible en el codigo: los catalogos de fixture usaban `palabras_incluir = ''` (todos los productos activos de la empresa) y T2/T6/T7 tomaban `productos[0]` de esa lista global, que otras suites mutan en paralelo (slice4a inserta/borra su producto en beforeAll/afterAll).
+- Fix solo en `__tests__/catalogo-precio-override.test.ts`: producto propio `OVR-<ts>`, ambos catalogos acotados a ese codigo con `palabras_incluir`, T5 verifica sobre el mismo codigo y `afterAll` limpia por codigo exacto. Sin tocar codigo de app, sin `--runInBand`, sin next.config.
+- Verificacion: 5 corridas seguidas de la suite completa en verde (254/254 suites, 2050/2050 tests en cada una); tsc 0; lint 0/0. `.env.test` y safeguard BUG-034 intactos; finales de linea preservados.
+- Archivos: __tests__/catalogo-precio-override.test.ts, BUGS.md, docs/BACKLOG.md, AUTO-LOG.md.

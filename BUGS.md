@@ -39,3 +39,12 @@ Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protoc
   - "Simular notificacion" NO valida la clave de los pagos reales: verificar siempre con un pago real.
   - Las IPN legacy `MercadoPago Feed v2.0` (`?id=...&topic=payment|merchant_order`, enviadas por `notification_url`) no traen `data.id` ni firma y el webhook responde 401; MP las reintenta. Pendiente decidir (ver traspaso).
 - Commit: af3a8f5 (registro inicial, incorrecto) + este commit (correccion).
+
+## BUG-006 -- A15: T6 de `catalogo-precio-override` intermitente con BD real (2026-10-31)
+- Tipo: E (solo en test, carrera entre suites contra la misma BD).
+- Sintoma: `__tests__/catalogo-precio-override.test.ts` T6 fallaba a veces con la rama `test-integration`; sospecha inicial: concurrencia con `slice4a-catalogo-precio-detalle` (ambos crean datos reales en paralelo).
+- Reproduccion: 12 corridas sin falla (6 de ambas suites juntas + 6 de la suite completa, 254/254 y 2050/2050 verdes). No se reprodujo en esta sesion; se registra porque la carrera es visible en el codigo.
+- Causa raiz (evidencia de codigo): los catalogos del fixture se creaban con `palabras_incluir = ''`, asi que el catalogo incluia TODOS los productos activos de la empresa. T2/T6/T7 operaban sobre `productos[0]` de esa lista global. Si otra suite inserta o borra un producto entre dos GET (p. ej. `slice4a` inserta su producto en `beforeAll` y lo borra en `afterAll`), T2 puede comparar counts distintos y T6 puede elegir un codigo que ya no existe (`producto` undefined). Hoy `productos[0]` es el sembrado `QA-001` (orden por codigo), estable, por eso las 12 corridas pasaron; la dependencia de datos globales es la carrera.
+- Fix (solo tests, sin tocar codigo de app ni serializar suites): fixture propio `OVR-<ts>` en `productos`; ambos catalogos usan `palabras_incluir = TEST_CODIGO` (solo ven ese producto); T5 verifica aislamiento sobre ese mismo codigo y `afterAll` borra por codigo exacto.
+- Verificacion: 5 corridas seguidas de la suite completa en verde (254/254 suites, 2050/2050 tests en cada una); `tsc --noEmit` 0; lint 0 warnings / 0 errores. `.env.test` y el safeguard de BUG-034 intactos.
+- Leccion: en suites con BD real, un catalogo con `palabras_incluir = ''` no es un fixture aislado: es una consulta a toda la tabla que otras suites mutan en paralelo.

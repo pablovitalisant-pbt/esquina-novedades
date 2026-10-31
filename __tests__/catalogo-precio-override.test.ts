@@ -32,9 +32,14 @@ jest.mock('@/lib/auth', () => ({
 
 const TEST_CATALOGO_A_SLUG = `test-precio-override-a-${Date.now()}`;
 const TEST_CATALOGO_B_SLUG = `test-precio-override-b-${Date.now()}`;
+// A15: producto propio y único. Los catálogos se acotan a este código
+// (palabras_incluir) para no depender de productos que otras suites crean o
+// borran en paralelo contra la misma BD.
+const TEST_CODIGO = `OVR-${Date.now()}`;
 let testCatalogoIdA: number;
 let testCatalogoIdB: number;
 let testUserId: string;
+let testEmpresaId: number;
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown compartido (T2 y T5 comparten fixture)
@@ -47,13 +52,24 @@ beforeAll(async () => {
     throw new Error('No hay usuarios en la BD para obtener user_id de test');
   }
   testUserId = existingUser[0].id;
-  const existingCat = await sql`SELECT empresa_id FROM catalogos LIMIT 1`;
-  const testEmpresaId = existingCat[0].empresa_id;
+  const existingEmp = await sql`SELECT id FROM empresas LIMIT 1`;
+  if (existingEmp.length === 0) {
+    throw new Error('No hay empresas en la BD para el test');
+  }
+  testEmpresaId = existingEmp[0].id;
+
+  await sql`
+    INSERT INTO productos (empresa_id, codigo, detalle, prcventa, costo, cif, margen_pct, saldo,
+      umed, cantcaja, pesocaja, cubicaja, es_nuevo, prcminimo, categoria, stock_minimo,
+      precio_mayor, minimo_mayor, activo)
+    VALUES (${testEmpresaId}, ${TEST_CODIGO}, 'Producto test precio override', 7777, 100, 0, 0, 10,
+      'U', 1, 0, 0, true, null, null, null, null, null, true)
+  `;
 
   // Crear catálogo A
   const catA = await sql`
     INSERT INTO catalogos (empresa_id, user_id, slug, titulo, activo, mostrar_precio, margen_precio, solo_stock, solo_nuevo, palabras_incluir, palabras_excluir, categoria, mostrar_stock, solo_nuevo_top_n)
-    VALUES (${testEmpresaId}, ${testUserId}, ${TEST_CATALOGO_A_SLUG}, 'Test Precio Override A', true, true, 0, false, false, '', '', null, false, 1)
+    VALUES (${testEmpresaId}, ${testUserId}, ${TEST_CATALOGO_A_SLUG}, 'Test Precio Override A', true, true, 0, false, false, ${TEST_CODIGO}, '', null, false, 1)
     RETURNING id
   `;
   testCatalogoIdA = catA[0].id;
@@ -61,7 +77,7 @@ beforeAll(async () => {
   // Crear catálogo B
   const catB = await sql`
     INSERT INTO catalogos (empresa_id, user_id, slug, titulo, activo, mostrar_precio, margen_precio, solo_stock, solo_nuevo, palabras_incluir, palabras_excluir, categoria, mostrar_stock, solo_nuevo_top_n)
-    VALUES (${testEmpresaId}, ${testUserId}, ${TEST_CATALOGO_B_SLUG}, 'Test Precio Override B', true, true, 0, false, false, '', '', null, false, 1)
+    VALUES (${testEmpresaId}, ${testUserId}, ${TEST_CATALOGO_B_SLUG}, 'Test Precio Override B', true, true, 0, false, false, ${TEST_CODIGO}, '', null, false, 1)
     RETURNING id
   `;
   testCatalogoIdB = catB[0].id;
@@ -74,6 +90,8 @@ afterAll(async () => {
   } catch (_) { /* tabla no creada aún */ }
   // Limpiar catálogos de test
   await sql`DELETE FROM catalogos WHERE id IN (${testCatalogoIdA}, ${testCatalogoIdB})`;
+  // Limpiar producto de test (A15)
+  await sql`DELETE FROM productos WHERE empresa_id = ${testEmpresaId} AND codigo = ${TEST_CODIGO}`;
 });
 
 // ---------------------------------------------------------------------------
@@ -207,10 +225,10 @@ describe('T5 — Aislamiento entre catálogos', () => {
   it('un override del catálogo A no contamina el catálogo B', async () => {
     const { GET } = await import('@/app/api/catalogos/public/[slug]/route');
 
-    // Insertar override en catálogo A
+    // Insertar override en catálogo A para el código que ambos catálogos muestran
     await sql`
       INSERT INTO catalogo_precio_override (catalogo_id, codigo, precio)
-      VALUES (${testCatalogoIdA}, 'ISOLATION-TEST-CODE', 99999)
+      VALUES (${testCatalogoIdA}, ${TEST_CODIGO}, 99999)
       ON CONFLICT (catalogo_id, codigo) DO UPDATE SET precio = 99999
     `;
 
@@ -220,7 +238,7 @@ describe('T5 — Aislamiento entre catálogos', () => {
       { params: Promise.resolve({ slug: TEST_CATALOGO_A_SLUG }) }
     );
     const { data: dataA } = await resA.json();
-    const overrideA = dataA.productos.find((p: any) => p.codigo === 'ISOLATION-TEST-CODE');
+    const overrideA = dataA.productos.find((p: any) => p.codigo === TEST_CODIGO);
 
     // Consultar catálogo B — NO debe tener el override del A
     const resB = await GET(
@@ -228,16 +246,13 @@ describe('T5 — Aislamiento entre catálogos', () => {
       { params: Promise.resolve({ slug: TEST_CATALOGO_B_SLUG }) }
     );
     const { data: dataB } = await resB.json();
-    const overrideB = dataB.productos.find((p: any) => p.codigo === 'ISOLATION-TEST-CODE');
+    const overrideB = dataB.productos.find((p: any) => p.codigo === TEST_CODIGO);
 
-    // Si el código existe en B, su precio_override debe ser null (no el del A)
-    if (overrideB) {
-      expect(overrideB.precio_override).toBeNull();
-    }
-    // Si el código existe en A, debe tener el override
-    if (overrideA) {
-      expect(overrideA.precio_override).toBe(99999);
-    }
+    // Ambos catálogos muestran el mismo código: A con override, B sin él.
+    expect(overrideA).toBeDefined();
+    expect(overrideA.precio_override).toBe(99999);
+    expect(overrideB).toBeDefined();
+    expect(overrideB.precio_override).toBeNull();
   });
 });
 

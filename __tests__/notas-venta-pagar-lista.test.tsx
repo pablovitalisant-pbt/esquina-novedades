@@ -9,7 +9,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 
-jest.mock('@/config/feature-flags.json', () => ({}));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'notas-venta-modalidad': false }));
 
 // ─── Mocks de navegación ───
 const push = jest.fn();

@@ -6,7 +6,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PrenotasPage } from '@/app/(app)/notas-venta/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({}));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'notas-venta-modalidad': false }));
 
 jest.mock('next-auth/react', () => ({
   useSession: () => ({ data: { user: { rol: 'vendedor' } } }),

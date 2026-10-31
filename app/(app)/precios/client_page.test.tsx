@@ -4,7 +4,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PreciosClient } from './client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({}));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({}));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/components/ProductCard', () => ({ ProductCard: () => null }));
 jest.mock('@/components/ProductDrawer', () => ({ ProductDrawer: () => null }));

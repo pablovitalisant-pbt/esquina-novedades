@@ -15,7 +15,7 @@ jest.mock('next-auth/react', () => ({
   signOut: jest.fn(),
 }));
 jest.mock('next/navigation', () => ({ usePathname: jest.fn() }));
-jest.mock('@/config/feature-flags.json', () => ({ 'pos-v1': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'pos-v1': true }));
 
 const mockFlags = flags as unknown as Record<string, boolean>;
 

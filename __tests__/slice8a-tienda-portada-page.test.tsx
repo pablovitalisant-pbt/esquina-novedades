@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-portada-v2': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-portada-v2': true, 'pos-v1': false }));
 
 const mockRedirect = jest.fn();
 jest.mock('next/navigation', () => ({ redirect: (...args: unknown[]) => mockRedirect(...args) }));

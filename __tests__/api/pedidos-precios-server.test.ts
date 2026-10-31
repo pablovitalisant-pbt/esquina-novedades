@@ -2,7 +2,9 @@
  * Slice 7b — Fase B: precios y totales calculados en el servidor.
  * Pruebas unitarias de lib/pedidos/precios.ts (aún no toca POST /api/pedidos).
  */
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
+jest.mock('@/config/feature-flags.json', () =>
+  require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-mayor-online': false })
+);
 
 import { calcularPedido, ErrorPrecio } from '@/lib/pedidos/precios';
 import { precioEnCatalogo } from '@/lib/precio-catalogo';

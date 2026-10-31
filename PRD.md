@@ -497,6 +497,25 @@ Tests: uno nuevo (`__tests__/lib/api-notas.test.ts`); los existentes del POS
 (`pos-stock`, `pos2-pos-page`, `pos3-*`, `pos-detalles-*`) y del modal
 (`AgregarAPrenotaModal`) no se modifican.
 
+### A19 — helper `mockFlags` (aprobado 2026-10-31)
+
+Refactor solo de tests, sin cambio de codigo de la app ni flag. Hallazgo 4 del
+audit: las suites que mockean `@/config/feature-flags.json` con un objeto
+literal dejan en `undefined` cualquier flag nuevo del JSON y pueden ejercer
+la rama equivocada.
+
+`__tests__/helpers/mockFlags.ts` exporta `mockFlags(overrides)`, que devuelve
+`{ ...jest.requireActual('@/config/feature-flags.json'), ...overrides }`.
+Cada suite migrada reemplaza su literal por la factory
+`() => require('@/__tests__/helpers/mockFlags').mockFlags({ ... })`, donde
+`{ ... }` son exactamente los flags que la suite fijaba con un valor distinto
+al del JSON real. Los flags no mencionados pasan a venir del JSON real.
+
+Revision de impacto lateral: cambian solo suites de `__tests__/`, el helper,
+`jest.config.js` (ignorar `/__tests__/helpers/` como suite), este PRD,
+`docs/BACKLOG.md` y `AUTO-LOG.md`. Sin codigo de app, tipos, schema,
+middleware, variables de entorno ni flags.
+
 ## Limpieza `lim3` (audit ponytail 2026-10-31)
 
 Contrato aprobado por Pablo (2026-10-31). Sin flag nuevo, sin migracion, sin
@@ -541,5 +560,5 @@ schema, middleware, variables de entorno ni feature flags nuevos afectados.
 | lib/precio-catalogo.ts | El precio de catálogo se usa para mostrar Y para cobrar (`/api/pedidos`); la preferencia MP redondea cada ítem a entero | Mantener CLP entero; cualquier cambio de fórmula afecta cobros |
 | lib/precio-tienda.ts | La misma función decide el descuento por mayor en el carrito (estimado) y en el cobro server-side | Cambios siempre vía esta función; probar con flag true y false |
 | Migraciones con varias sentencias | El driver HTTP de neon no acepta multi-statement: aplicar con `Pool` (como `scripts/apply-migrations.ts`); `npm run migrate` completo falla en test-integration desde la 019 | Aplicar la migración nueva sola, en transacción, y verificar en information_schema |
-| config/feature-flags.json en tests | BUG-004: tests que leen el JSON real se rompen al activar flags | Mockear flags explícitamente en cada test |
+| config/feature-flags.json en tests | BUG-004: tests que leen el JSON real se rompen al activar flags; un literal parcial deja flags nuevos en `undefined` (A19) | `jest.mock(..., () => require('@/__tests__/helpers/mockFlags').mockFlags({ overrides }))`: overrides solo para lo que el test fija distinto al JSON real |
 | instrumentation.ts / lib/env.ts | Valida variables al arrancar y solo loguea (no tumba la app) | No imprimir valores; mantener listas al día al agregar variables |

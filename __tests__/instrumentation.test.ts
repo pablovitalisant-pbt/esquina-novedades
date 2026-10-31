@@ -4,7 +4,7 @@
  * Fase B — A3: register() solo valida entorno en runtime nodejs y con el flag on.
  * Flags mockeados explícitamente (lección BUG-004).
  */
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'tienda-pago-online': false,
   'env-validacion-arranque': true,
 }));

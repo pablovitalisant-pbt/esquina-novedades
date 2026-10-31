@@ -10,7 +10,7 @@ import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 // Flags controlados por el test (no el JSON real, que cambia según el despliegue).
-jest.mock('@/config/feature-flags.json', () => ({}));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'notas-venta-modalidad': false }));
 const mockFlags = (): Record<string, boolean> => require('@/config/feature-flags.json');
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));

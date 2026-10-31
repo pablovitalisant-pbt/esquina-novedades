@@ -335,3 +335,11 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - `public/icon-192.png` y `public/icon-512.png` no tenian referencias (grep en app/components/lib/tests/middleware); movidos a `~/.pbt-runner/iconos-originales/public-root/`. Originales reemplazados en `~/.pbt-runner/iconos-originales/`.
 - Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0 warnings/0 errores; build exit 0. Sin commit.
 - Archivos: public/marca/icon-512.png, public/marca/icon-192.png, public/marca/apple-touch-icon.png, app/favicon.ico, app/layout.tsx, app/manifest.ts, AUTO-LOG.md.
+
+## 2026-10-31 - A19: helper mockFlags para tests
+- Contrato: `__tests__/helpers/mockFlags.ts` devuelve `{ ...jest.requireActual('@/config/feature-flags.json'), ...overrides }`; 42 suites que mockeaban el JSON con literal pasan a usarlo. Sin codigo de app, sin flag, sin migracion.
+- Preservados exactamente los overrides de cada suite. Suites con `{}` (todas las flags falsy): `notas-venta-pagar-lista`, `prenotas-page` y `slice5cd-detalle-modalidad` fijan `notas-venta-modalidad: false`; las 2 de precios no leen flags en los modulos no mockeados. `slice8a-tienda-portada-page` necesito `pos-v1: false` (con el JSON real `app/page` redirigia a `/pos`) — unico rojo de la migracion.
+- `jest.config.js`: `'/__tests__/helpers/'` en `testPathIgnorePatterns` para que el helper no cuente como suite.
+- Fase B: `__tests__/mock-flags-helper.test.ts` (3 tests): overrides pisan al JSON real, set de claves no mencionadas = JSON real, sin cache entre llamadas.
+- Verificacion: antes jest --silent 254/254 suites, 2075/2075 tests; despues 255/255 suites (254 + helper), 2078/2078 tests (2075 + 3). tsc 0 errores; lint 0 warnings/0 errores. Sin commit, sin datos de produccion, sin next.config; finales de linea preservados.
+- Archivos: __tests__/helpers/mockFlags.ts, __tests__/mock-flags-helper.test.ts, jest.config.js, 42 suites de __tests__/ (+ app/(app)/precios/client_page.test.tsx), PRD.md, docs/BACKLOG.md, AUTO-LOG.md.

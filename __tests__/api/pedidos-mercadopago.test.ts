@@ -12,7 +12,7 @@ const mockCreatePreference = jest.fn();
 const sql = jest.fn();
 const sqlTransaction = jest.fn();
 
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': true }));
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
   mockSql.transaction = (...args: any[]) => sqlTransaction(...args);

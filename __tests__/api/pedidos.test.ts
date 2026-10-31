@@ -18,7 +18,7 @@ jest.mock('next-auth', () => ({
 
 // Este archivo cubre el camino SIN pago online; el camino con pago online está en
 // pedidos-reserva.test.ts y pedidos-mercadopago.test.ts. No depender del JSON real.
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': false, 'tienda-mayor-online': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': false, 'tienda-mayor-online': false }));
 
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);

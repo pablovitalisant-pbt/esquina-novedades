@@ -12,7 +12,7 @@ import { PosPage } from '@/app/(app)/pos/client_page';
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => null }));
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'registro_notas_bodega_ui': false,
   'precio-mayorista-ui': true,
   'notas-venta-modalidad': true,

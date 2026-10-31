@@ -6,7 +6,7 @@ import React from 'react';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDrawer } from '@/components/ProductDrawer';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'precio-mayorista-ui': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'precio-mayorista-ui': true }));
 const mockFlags = (): Record<string, boolean> => require('@/config/feature-flags.json');
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => <div /> }));
 

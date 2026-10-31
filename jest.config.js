@@ -13,7 +13,7 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testEnvironment: 'jest-environment-jsdom',
   // docs/specs/*.spec.ts son schemas Zod (documentos de especificación), no tests.
-  testPathIgnorePatterns: ['/node_modules/', '/docs/specs/'],
+  testPathIgnorePatterns: ['/node_modules/', '/docs/specs/', '/__tests__/helpers/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },

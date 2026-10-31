@@ -9,7 +9,7 @@ import { CarritoProvider, useCarrito, ItemCarrito } from '@/contexts/CarritoCont
 import { CarritoDrawer } from '@/components/CarritoDrawer';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'tienda-mayor-online': true,
   'tienda-pago-online': true,
 }));

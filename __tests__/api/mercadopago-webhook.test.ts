@@ -22,7 +22,7 @@ jest.mock('mercadopago', () => ({
 }));
 
 // Flag del ciclo IPN legacy (mutable por test vía jest.requireMock). Default ON.
-jest.mock('@/config/feature-flags.json', () => ({ 'mp-webhook-ignorar-ipn-legacy': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'mp-webhook-ignorar-ipn-legacy': true }));
 import { POST } from '@/app/api/mercadopago/webhook/route';
 
 const SECRET = 'secreto-test';

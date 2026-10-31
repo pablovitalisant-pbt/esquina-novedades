@@ -14,7 +14,7 @@ import { ProductDrawer } from '@/components/ProductDrawer';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'precio-mayorista-ui': true, 'notas-venta-modalidad': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'precio-mayorista-ui': true, 'notas-venta-modalidad': true }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));

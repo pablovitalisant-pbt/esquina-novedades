@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CarritoProvider, useCarrito, ItemCarrito } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'tienda-pago-online': false,
   'tienda-mayor-online': false,
 }));

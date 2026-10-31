@@ -5,7 +5,7 @@ import { BottomNav } from '@/components/BottomNav';
 jest.mock('next/navigation', () => ({ usePathname: () => '/dashboard', useSearchParams: () => ({ get: () => null }), useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { user: { nombre: 'Admin Test', rol: 'admin' } } }), signOut: jest.fn() }));
 jest.mock('@/contexts/AlertasContext', () => ({ useAlertas: () => ({ stockBajoCount: 0 }) }));
-jest.mock('@/config/feature-flags.json', () => ({ 'registro_notas_bodega_ui': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'registro_notas_bodega_ui': true }));
 jest.mock('next/link', () => ({ children, href }: any) => require('react').createElement('a', { href }, children));
 
 const openDropdown = (l: string) => { fireEvent.mouseEnter(screen.getByText(l)); };

@@ -80,14 +80,18 @@ describe('manifest start_url según flag', () => {
   beforeEach(() => jest.resetModules());
 
   test('flag ON -> /pos', () => {
-    jest.doMock('@/config/feature-flags.json', () => ({ 'pos-v1': true }));
+    jest.doMock('@/config/feature-flags.json', () =>
+      require('@/__tests__/helpers/mockFlags').mockFlags({ 'pos-v1': true })
+    );
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const manifest = require('@/app/manifest').default;
     expect(manifest().start_url).toBe('/pos');
   });
 
   test('flag OFF -> /precios', () => {
-    jest.doMock('@/config/feature-flags.json', () => ({ 'pos-v1': false }));
+    jest.doMock('@/config/feature-flags.json', () =>
+      require('@/__tests__/helpers/mockFlags').mockFlags({ 'pos-v1': false })
+    );
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const manifest = require('@/app/manifest').default;
     expect(manifest().start_url).toBe('/precios');

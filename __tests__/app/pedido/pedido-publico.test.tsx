@@ -19,7 +19,7 @@ jest.mock('@/lib/pedidos/liberar-reservas', () => ({
   liberarReservasVencidas: (...args: any[]) => mockLiberar(...args),
 }));
 
-jest.mock('@/config/feature-flags.json', () => ({ 'pedido-confetti': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'pedido-confetti': true }));
 
 import PedidoPage from '@/app/pedido/[id]/page';
 

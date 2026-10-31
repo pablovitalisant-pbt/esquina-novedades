@@ -3,7 +3,7 @@
  * Con el flag `tienda-mayor-online` en false, la modalidad que mande el cliente
  * se ignora y todo se cobra a precio detalle (base).
  */
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'tienda-pago-online': false,
   'tienda-mayor-online': false,
 }));

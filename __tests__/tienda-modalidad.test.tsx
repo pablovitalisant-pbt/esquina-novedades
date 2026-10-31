@@ -10,7 +10,7 @@ import { TarjetaProductoTienda } from '@/components/TarjetaProductoTienda';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 import { formatCLP } from '@/lib/utils';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-mayor-online': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-mayor-online': false }));
 
 jest.mock('@/components/ImageWithFallback', () => ({
   ImageWithFallback: () => <div data-testid="image-fallback" />,

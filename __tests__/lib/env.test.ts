@@ -4,7 +4,7 @@
  * Fase B — A3: validación de variables de entorno.
  * Los flags se mockean explícitamente (lección BUG-004): nunca leer el JSON real.
  */
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': false }));
 
 import flags from '@/config/feature-flags.json';
 import {

@@ -6,7 +6,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ClientesPage } from '@/app/(app)/clientes/client_page';
-jest.mock('@/config/feature-flags.json', () => ({ 'clientes-etiqueta': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'clientes-etiqueta': true }));
 const flags = (): Record<string, boolean> => require('@/config/feature-flags.json');
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('lucide-react', () => new Proxy({}, { get: () => () => null }));

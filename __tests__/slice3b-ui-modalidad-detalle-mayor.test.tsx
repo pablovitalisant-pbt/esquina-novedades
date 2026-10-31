@@ -16,7 +16,7 @@ import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { toast } from 'sonner';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
-jest.mock('@/config/feature-flags.json', () => ({ 'notas-venta-modalidad': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'notas-venta-modalidad': true }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
 jest.mock('@/components/AplicarSaldoFavorDialog', () => ({ AplicarSaldoFavorDialog: () => null }));

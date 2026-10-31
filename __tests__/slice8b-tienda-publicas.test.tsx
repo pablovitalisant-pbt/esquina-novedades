@@ -6,7 +6,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { FranjaBeneficios } from '@/components/tienda/FranjaBeneficios';
 import { PublicCatalogoClient } from '@/app/catalogo/[slug]/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
   'tienda-portada-v2': true,
   'tienda-mayor-online': true,
 }));

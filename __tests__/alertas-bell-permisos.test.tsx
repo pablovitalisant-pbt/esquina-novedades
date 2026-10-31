@@ -36,7 +36,7 @@ jest.mock('@/contexts/AlertasContext', () => ({ useAlertas: () => ({ stockBajoCo
 jest.mock('next/link', () => ({ children, href }: any) =>
   require('react').createElement('a', { href }, children)
 );
-jest.mock('@/config/feature-flags.json', () => ({ registro_notas_bodega_ui: false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ registro_notas_bodega_ui: false }));
 
 import { getServerSession } from 'next-auth';
 

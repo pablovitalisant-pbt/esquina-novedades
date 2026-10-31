@@ -13,7 +13,7 @@ jest.mock('@/lib/db', () => ({ sql: (...args: any[]) => mockSql(...args) }));
 jest.mock('@/lib/pedidos/liberar-reservas', () => ({
   liberarReservasVencidas: jest.fn().mockResolvedValue({ liberados: 0, unidades: 0 }),
 }));
-jest.mock('@/config/feature-flags.json', () => ({ 'pedido-confetti': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'pedido-confetti': false }));
 
 import PedidoPage from '@/app/pedido/[id]/page';
 

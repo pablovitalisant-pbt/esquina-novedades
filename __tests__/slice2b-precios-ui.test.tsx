@@ -15,7 +15,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { ProductDrawer } from '@/components/ProductDrawer';
 import { PreciosClient } from '@/app/(app)/precios/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'precio-mayorista-ui': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'precio-mayorista-ui': true }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => <div /> }));
 jest.mock('@/hooks/useShareImage', () => ({ useShareImage: () => ({ shareImage: jest.fn() }) }));

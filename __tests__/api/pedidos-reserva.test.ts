@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server';
 const sql = jest.fn();
 const sqlTransaction = jest.fn();
 
-jest.mock('@/config/feature-flags.json', () => ({ 'tienda-pago-online': true, 'tienda-mayor-online': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': true, 'tienda-mayor-online': false }));
 jest.mock('@/lib/pedidos/preferencia', () => ({
   crearPreferenciaPedido: jest.fn(async () => ({
     preferenceId: 'pref-1', initPoint: 'https://mp/sandbox',

@@ -7,7 +7,6 @@ import { TiendaPortada } from '@/components/TiendaPortada';
 import type { ProductoTienda } from '@/lib/tienda-productos';
 
 jest.mock('@/config/feature-flags.json', () => ({
-  'tienda-portada-auto': true,
   'tienda-mayor-online': false,
   'tienda-portada-v2': true,
 }));

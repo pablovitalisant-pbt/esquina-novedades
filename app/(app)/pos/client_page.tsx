@@ -9,18 +9,13 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { PosClienteDialog, type ClientePos } from '@/components/PosClienteDialog';
 import { PosCobrarDialog } from '@/components/PosCobrarDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { EMPRESA } from '@/lib/empresa';
 import { formatCLP, formatItems } from '@/lib/utils';
 import { puedeVenderMayor } from '@/lib/precio-mayor';
-import flags from '@/config/feature-flags.json';
 import type { Producto, SessionProp } from '@/types';
 
 // Clave de la nota en curso, por usuario: al recargar el POS retoma la misma
 // nota, pero nunca la de otra persona en el mismo navegador.
 const LS_KEY = 'pos-nota-id';
-// pos-stock: con el flag OFF el POS se comporta exactamente como antes.
-const POS_SOLO_STOCK = (flags as Record<string, boolean>)['pos-solo-stock'] === true;
-
 type ItemNota = {
   id: string;
   codigo: string;
@@ -39,14 +34,11 @@ export function PosPage({ session }: { session: SessionProp }) {
 
   const [query, setQuery] = useState('');
   const [productos, setProductos] = useState<Producto[]>([]);
-  // Texto al que corresponden los resultados cargados: Enter nunca resuelve
-  // contra resultados de una búsqueda anterior.
-  const [resultadosDe, setResultadosDe] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [cat, setCat] = useState('');
   // pos-stock: apagado en cada apertura (sin persistencia).
   const [verSinStock, setVerSinStock] = useState(false);
-  const soloStock = POS_SOLO_STOCK && !verSinStock;
+  const soloStock = !verSinStock;
 
   const [notaId, setNotaId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemNota[]>([]);
@@ -152,7 +144,6 @@ export function PosPage({ session }: { session: SessionProp }) {
           // Al togglear, la respuesta de la búsqueda anterior no pisa la nueva.
           if (controller.signal.aborted) return;
           setProductos(data);
-          setResultadosDe(query.trim().toLowerCase());
           setHighlighted(0);
         }
       } catch (err) {
@@ -379,21 +370,17 @@ export function PosPage({ session }: { session: SessionProp }) {
     // pos-stock: el código exacto se resuelve SIEMPRE contra el catálogo sin
     // filtro de stock; la grilla visible sí queda filtrada.
     let catalogo = productos;
-    let idx = Math.min(highlighted, Math.max(lista.length - 1, 0));
-    if (POS_SOLO_STOCK || resultadosDe !== q) {
-      try {
-        const res = await fetch(`/api/productos?search=${encodeURIComponent(texto)}`);
-        catalogo = res.ok ? ((await res.json()).data ?? []) : [];
-        lista = soloStock ? catalogo.filter(p => Number(p.saldo) > 0) : catalogo;
-      } catch {
-        toast.error('No se pudo buscar productos');
-        return;
-      }
-      setProductos(lista);
-      setResultadosDe(q);
-      setHighlighted(0);
-      idx = 0;
+    try {
+      const res = await fetch(`/api/productos?search=${encodeURIComponent(texto)}`);
+      catalogo = res.ok ? ((await res.json()).data ?? []) : [];
+      lista = soloStock ? catalogo.filter(p => Number(p.saldo) > 0) : catalogo;
+    } catch {
+      toast.error('No se pudo buscar productos');
+      return;
     }
+    setProductos(lista);
+    setHighlighted(0);
+    const idx = 0;
     const exacto = catalogo.find(p => p.codigo.toLowerCase() === q);
     if (exacto && soloStock && Number(exacto.saldo) <= 0) {
       toast.error(`Sin stock: ${exacto.codigo}`);
@@ -645,18 +632,16 @@ export function PosPage({ session }: { session: SessionProp }) {
           />
         </div>
 
-        {POS_SOLO_STOCK && (
-          <label className="flex min-h-11 items-center gap-3 self-start rounded-full px-2 text-sm font-bold text-[var(--body)] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={verSinStock}
-              onChange={e => setVerSinStock(e.target.checked)}
-              className="h-5 w-5 accent-[var(--primary)]"
-              data-testid="pos-ver-sin-stock"
-            />
-            Ver sin stock
-          </label>
-        )}
+        <label className="flex min-h-11 items-center gap-3 self-start rounded-full px-2 text-sm font-bold text-[var(--body)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={verSinStock}
+            onChange={e => setVerSinStock(e.target.checked)}
+            className="h-5 w-5 accent-[var(--primary)]"
+            data-testid="pos-ver-sin-stock"
+          />
+          Ver sin stock
+        </label>
 
         {categorias.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -693,7 +678,6 @@ export function PosPage({ session }: { session: SessionProp }) {
                 <ImageWithFallback
                   src={p.imagen_url}
                   codigo={p.codigo}
-                  empresaSlug={EMPRESA.slug}
                   alt={p.detalle ?? p.codigo}
                   fill
                   ancho={400}

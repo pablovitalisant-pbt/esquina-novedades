@@ -75,6 +75,14 @@ beforeEach(() => {
 });
 
 describe('ProductDrawer — subida de foto', () => {
+  it('el selector acepta exactamente los tipos soportados', () => {
+    renderDrawer();
+    expect(screen.getByTestId('upload-input')).toHaveAttribute(
+      'accept',
+      'image/jpeg,image/jpg,image/png,image/webp',
+    );
+  });
+
   const llamadasUpload = () =>
     (global.fetch as jest.Mock).mock.calls.filter(([url]) => url === '/api/productos/upload');
 

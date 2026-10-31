@@ -224,7 +224,6 @@ function PrenotaItemsTable({
                     <ImageWithFallback
                       src={item.imagen_url}
                       codigo={item.codigo}
-                      empresaSlug={EMPRESA.slug}
                       fill
                     />
                   </div>

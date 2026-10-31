@@ -75,7 +75,7 @@ const renderAndOpenDrawer = async (initial: UbicacionBodegaAgrupada) => {
     jest.advanceTimersByTime(300);
   });
 
-  // fotos-v1 ON: el código puede aparecer también en el placeholder de la imagen.
+  // El código puede aparecer también en el placeholder de la imagen.
   const codigos = await screen.findAllByText('P001');
   fireEvent.click(codigos[0]);
 

@@ -32,6 +32,6 @@ it('el detalle muestra el badge derivado de los items', async () => {
     ? Promise.resolve({ ok: true, json: async () => ({ id: '1', titulo: 'Nota', items, total: 60000, total_pagado: 0 }) })
     : Promise.resolve({ ok: true, json: async () => ({}) })) as any;
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
-  await screen.findByText('C-001');
+  await screen.findAllByText('C-001');
   expect(screen.getByText('MIXTA')).toBeInTheDocument();
 });

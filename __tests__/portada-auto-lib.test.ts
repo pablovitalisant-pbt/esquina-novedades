@@ -53,11 +53,13 @@ describe('armarPortada', () => {
     expect(TEXTO_BANNER_FIJO).toContain('más');
   });
 
-  test('categoría sin stock queda oculta; solo aparecen las que tienen stock', () => {
-    const r = armarPortada([
-      p({ id: 1, categoria: 'Hogar', saldo: 0 }),
-      p({ id: 2, categoria: 'Juguetes', saldo: 5 }),
-    ]);
+  test('una categoría sin productos (ya filtrados por el llamador) no aparece', () => {
+    const r = armarPortada(
+      [
+        p({ id: 1, categoria: 'Hogar', saldo: 0 }),
+        p({ id: 2, categoria: 'Juguetes', saldo: 5 }),
+      ].filter((x) => x.saldo > 0),
+    );
     expect(r.secciones.map((s) => s.nombre)).toEqual(['Juguetes']);
   });
 

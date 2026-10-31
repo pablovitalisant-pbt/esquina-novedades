@@ -88,6 +88,15 @@ describe('catálogo público con flag ON', () => {
     expect(grilla.queryByText('Mochila')).not.toBeInTheDocument();
   });
 
+  test('badge NUEVO solo en productos marcados', () => {
+    render(<PublicCatalogoClient data={DATA} slug="escolar" />);
+    const grilla = within(screen.getByTestId('catalogo-grilla'));
+    const marcado = within(grilla.getByText('Cuaderno Mágico').closest('article')!);
+    expect(marcado.getByText('NUEVO')).toBeInTheDocument();
+    const normal = within(grilla.getByText('Mochila').closest('article')!);
+    expect(normal.queryByText('NUEVO')).not.toBeInTheDocument();
+  });
+
   test('mostrar_precio=false: sin precio y sin botón agregar', () => {
     render(<PublicCatalogoClient data={{ ...DATA, mostrar_precio: false }} slug="escolar" />);
     expect(screen.queryByTestId('precio-menor')).not.toBeInTheDocument();

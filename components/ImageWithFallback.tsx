@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import flags from '@/config/feature-flags.json';
 import { urlCloudinary } from '@/lib/cloudinary-url';
 
 interface ImageWithFallbackProps {
   src?: string | null;
   codigo: string;
-  empresaSlug: string;
   alt?: string;
   fill?: boolean;
   width?: number;
@@ -21,7 +19,6 @@ interface ImageWithFallbackProps {
 export function ImageWithFallback({ 
   src, 
   codigo, 
-  empresaSlug, 
   alt, 
   fill = false,
   width,
@@ -30,15 +27,13 @@ export function ImageWithFallback({
   ancho = 600
 }: ImageWithFallbackProps) {
   const [error, setError] = useState(false);
-  const FOTOS_V1 = (flags as Record<string, boolean>)['fotos-v1'] === true;
 
   useEffect(() => {
     setError(false);
   }, [src]);
 
-  // fotos-1: con el flag ON no se adivina `${empresaSlug}/${codigo}.jpeg`;
-  // sin foto se muestra el placeholder directo.
-  if (error || (FOTOS_V1 && !src)) {
+  // Sin foto se muestra el placeholder directo (no se adivina una url).
+  if (error || !src) {
     return (
       <div className={`flex flex-col items-center justify-center bg-[var(--muted)] border border-[var(--border)] rounded-md overflow-hidden ${className}`} style={{ width: fill ? '100%' : width, height: fill ? '100%' : height }}>
          <span className="text-sm font-mono text-[var(--body)] dark:text-[var(--body)] tracking-wider break-all px-2 text-center">{codigo}</span>
@@ -46,9 +41,7 @@ export function ImageWithFallback({
     );
   }
 
-  // Con el flag OFF se conserva la url adivinada de siempre.
-  const cloudinaryFallbackUrl = `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${empresaSlug}/${codigo}.jpeg`;
-  const imgSrc = urlCloudinary(src || cloudinaryFallbackUrl, ancho);
+  const imgSrc = urlCloudinary(src, ancho);
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ width: fill ? '100%' : width, height: fill ? '100%' : height }}>

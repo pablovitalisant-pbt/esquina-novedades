@@ -104,8 +104,8 @@ function CatalogoTienda({ data }: { data: CatalogoPublico }) {
                     minimo_mayor: p.minimo_mayor ?? null,
                     saldo: p.saldo ?? null,
                   }}
-                  empresaSlug={data.empresa_slug}
                   mostrarPrecio={data.mostrar_precio}
+                  mostrarNuevo={p.es_nuevo}
                   mostrarStock={Boolean(data.mostrar_stock)}
                 />
               </div>

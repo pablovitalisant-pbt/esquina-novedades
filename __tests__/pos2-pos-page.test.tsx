@@ -12,9 +12,7 @@ import { PosPage } from '@/app/(app)/pos/client_page';
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => null }));
-// Comportamiento previo a pos-stock: estas pruebas fijan el POS tal como era.
 jest.mock('@/config/feature-flags.json', () => ({
-  'fotos-v1': true,
   'registro_notas_bodega_ui': false,
   'precio-mayorista-ui': true,
   'notas-venta-modalidad': true,
@@ -26,8 +24,6 @@ jest.mock('@/config/feature-flags.json', () => ({
   'tienda-mayor-online': true,
   'tienda-portada-v2': true,
   'pos-v1': true,
-  'tienda-portada-auto': true,
-  'pos-solo-stock': false,
 }));
 
 const fetchMock = jest.fn();
@@ -67,7 +63,7 @@ function servidor(
         : json({ data: [] });
     }
     if (url.startsWith('/api/productos?search=')) {
-      const q = decodeURIComponent(url.split('search=')[1] ?? '');
+      const q = new URL(url, 'http://test').searchParams.get('search') ?? '';
       return json({ data: filtrar ? filtrar(q, productos) : productos });
     }
     if (url === '/api/categorias') return json([{ nombre: 'Juguete' }]);

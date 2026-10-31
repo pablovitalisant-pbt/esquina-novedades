@@ -1,5 +1,4 @@
 {
-  "fotos-v1": true,
   "registro_notas_bodega_ui": false,
   "precio-mayorista-ui": true,
   "notas-venta-modalidad": true,
@@ -10,7 +9,5 @@
   "env-validacion-arranque": true,
   "tienda-mayor-online": true,
   "tienda-portada-v2": true,
-  "pos-v1": true,
-  "tienda-portada-auto": true,
-  "pos-solo-stock": true
+  "pos-v1": true
 }

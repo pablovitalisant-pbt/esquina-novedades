@@ -10,7 +10,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { PosPage } from '@/app/(app)/pos/client_page';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'pos-solo-stock': true }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/components/ImageWithFallback', () => ({ ImageWithFallback: () => null }));

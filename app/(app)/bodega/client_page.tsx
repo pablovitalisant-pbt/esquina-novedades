@@ -163,7 +163,6 @@ export function BodegaClient({ session }: { session: SessionProp }) {
                   <ImageWithFallback 
                     src={selectedUbi.producto_imagen_url} 
                     codigo={selectedUbi.codigo} 
-                    empresaSlug={empresaSlug}
                     fill
                     ancho={1200}
                     className="object-contain"

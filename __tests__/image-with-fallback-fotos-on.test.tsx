@@ -1,16 +1,14 @@
 /**
- * Fase B — fotos-1 con flag ON: sin src no se pide una URL adivinada.
+ * Sin src no se pide una URL adivinada (comportamiento unico tras lim3).
  */
 import { render, screen } from '@testing-library/react';
 
-jest.mock('@/config/feature-flags.json', () => ({ 'fotos-v1': true }));
-
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 
-describe('ImageWithFallback — fotos-v1 ON', () => {
+describe('ImageWithFallback — sin src', () => {
   it('sin src renderiza placeholder y no un <img> con url adivinada', () => {
     const { container } = render(
-      <ImageWithFallback codigo="SIN-FOTO" empresaSlug="la-esquina" fill />
+      <ImageWithFallback codigo="SIN-FOTO" fill />
     );
 
     expect(container.querySelector('img')).toBeNull();
@@ -22,7 +20,6 @@ describe('ImageWithFallback — fotos-v1 ON', () => {
       <ImageWithFallback
         src="https://res.cloudinary.com/demo/image/upload/v1/productos/A.jpg"
         codigo="A"
-        empresaSlug="la-esquina"
         ancho={400}
         fill
       />

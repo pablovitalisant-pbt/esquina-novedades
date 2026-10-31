@@ -410,6 +410,38 @@ modifican.
 
 Pendientes de ciclo propio; sin cambios en este slice.
 
+## Limpieza `lim3` (audit ponytail 2026-10-31)
+
+Contrato aprobado por Pablo (2026-10-31). Sin flag nuevo, sin migracion, sin
+cambios en `next.config`. Aplica los hallazgos 1, 2, 3, 5, 6, 7, 8 y 9 del
+audit `docs/audits/ponytail-audit-2026-10-31.md`; el hallazgo 4 queda en
+backlog (A19).
+
+1. **Flags sin rama OFF.** Se elimina la rama muerta OFF y el flag de
+   `fotos-v1` (`ImageWithFallback`), `tienda-portada-auto` (`TiendaPortada`,
+   `TarjetaProductoTienda`) y `pos-solo-stock` (POS). El comportamiento ON
+   pasa a ser el unico; el rollback es `git revert`. Las tres claves salen de
+   `config/feature-flags.json` y de los mocks de tests que las listaban. Se
+   borran los tres tests exclusivos del estado OFF.
+2. **Recortes mecanicos.** `useBusquedaClientes` usa constantes internas
+   (`MIN_CARACTERES`, `DEBOUNCE_MS`); `armarPortada` recibe productos ya
+   filtrados con stock; `CALIDAD_JPEG`, `MAX_BASE64_BYTES` y
+   `REENCODE_MIN_BYTES` dejan de exportarse.
+3. **`accept` del selector de fotos** vuelve a `TIPOS_ACEPTADOS.join(',')`
+   (`image/jpeg,image/jpg,image/png,image/webp`), la misma lista que valida
+   `reducirImagen`; el celular sigue ofreciendo camara/galeria.
+4. **Badge NUEVO en el catalogo publico** (`app/catalogo/[slug]`): se pasa
+   `mostrarNuevo={p.es_nuevo}` a `TarjetaProductoTienda`. La grilla "Todos"
+   de la portada sigue sin badge. Test nuevo del badge.
+
+**Revision de impacto lateral**: cambian los archivos de codigo citados por el
+audit (`ImageWithFallback`, `TiendaPortada`, `TarjetaProductoTienda`,
+`portada-auto`, POS, `useBusquedaClientes`, `imagen-reducir`, `ProductDrawer`,
+`ProductCard`, `BodegaCard`, `bodega`, `notas-venta/[id]`, `alertas-stock`,
+`catalogo/[slug]`), `config/feature-flags.json`, este PRD, `docs/BACKLOG.md`,
+`AUTO-LOG.md` y los tests que mockeaban los 3 flags. No hay tipos compartidos,
+schema, middleware, variables de entorno ni feature flags nuevos afectados.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

@@ -74,7 +74,7 @@ function mockFetch(items: any[], extra: any = {}) {
 async function renderNota(items: any[], extra: any = {}) {
   global.fetch = mockFetch(items, extra);
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
-  await screen.findByText(items[0].codigo);
+  await screen.findAllByText(items[0].codigo);
 }
 
 describe('5c — totales, modalidad y edición', () => {

@@ -41,10 +41,9 @@ export const ordenNovedades = <T extends { id: number; fecha_ingreso: string | n
 export const esOfertaMayor = (p: ProductoTienda): boolean =>
   puedeVenderMayor(p) && Number.isInteger(p.minimo_mayor) && (p.minimo_mayor as number) > 0;
 
-/** Arma todas las secciones de la portada a partir de los productos con stock. */
+/** Arma todas las secciones de la portada. Recibe productos ya filtrados con stock. */
 export function armarPortada(productos: ProductoTienda[]): PortadaAuto {
-  const conStock = productos.filter((p) => p.saldo > 0);
-  const recientes = ordenRecientes(conStock);
+  const recientes = ordenRecientes(productos);
 
   // Secciones por categoría (solo categorías con productos con stock).
   const porCategoria = new Map<string, ProductoTienda[]>();
@@ -67,7 +66,7 @@ export function armarPortada(productos: ProductoTienda[]): PortadaAuto {
     : TEXTO_BANNER_FIJO;
 
   return {
-    novedades: ordenNovedades(conStock).slice(0, 12),
+    novedades: ordenNovedades(productos).slice(0, 12),
     secciones,
     porMayor: recientes.filter(esOfertaMayor),
     destacados,

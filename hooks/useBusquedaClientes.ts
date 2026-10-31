@@ -7,9 +7,10 @@ export type OpcionesBusquedaClientes = {
   activo?: boolean;
   /** Recorta la query antes de mandarla a la API. Default false. */
   trim?: boolean;
-  minCaracteres?: number;
-  debounceMs?: number;
 };
+
+const MIN_CARACTERES = 2;
+const DEBOUNCE_MS = 200;
 
 /**
  * Búsqueda de clientes con debounce + AbortController.
@@ -17,7 +18,7 @@ export type OpcionesBusquedaClientes = {
  */
 export function useBusquedaClientes<T = { id: number | string; nombre: string }>(
   query: string,
-  { activo = true, trim = false, minCaracteres = 2, debounceMs = 200 }: OpcionesBusquedaClientes = {}
+  { activo = true, trim = false }: OpcionesBusquedaClientes = {}
 ): { resultados: T[]; cargando: boolean; limpiar: () => void } {
   const [resultados, setResultados] = useState<T[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -26,7 +27,7 @@ export function useBusquedaClientes<T = { id: number | string; nombre: string }>
   useEffect(() => {
     if (!activo) return;
     const q = trim ? query.trim() : query;
-    if (q.trim().length < minCaracteres) {
+    if (q.trim().length < MIN_CARACTERES) {
       setResultados([]);
       setCargando(false);
       return;
@@ -45,12 +46,12 @@ export function useBusquedaClientes<T = { id: number | string; nombre: string }>
       } finally {
         setCargando(false);
       }
-    }, debounceMs);
+    }, DEBOUNCE_MS);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, activo, trim, minCaracteres, debounceMs]);
+  }, [query, activo, trim]);
 
   return { resultados, cargando, limpiar };
 }

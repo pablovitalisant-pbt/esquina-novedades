@@ -46,7 +46,7 @@ function mockFetch(items: any[], opts: { patchBody?: any } = {}) {
 async function renderNota(items: any[], opts = {}) {
   global.fetch = mockFetch(items, opts);
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
-  await screen.findByText(items[0].codigo);
+  await screen.findAllByText(items[0].codigo);
 }
 
 const patches = () => (global.fetch as jest.Mock).mock.calls.filter(c => c[1]?.method === 'PATCH');

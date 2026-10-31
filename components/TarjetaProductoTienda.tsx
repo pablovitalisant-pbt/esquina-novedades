@@ -4,7 +4,6 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { formatCLP } from '@/lib/utils';
 import { ShoppingBag } from 'lucide-react';
-import flags from '@/config/feature-flags.json';
 import type { ProductoTienda } from '@/lib/tienda-productos';
 
 /** Forma mínima que necesitan las tarjetas de la tienda. */
@@ -36,30 +35,27 @@ export function PlaceholderProducto({ codigo }: { codigo: string }) {
  */
 export function TarjetaProductoTienda({
   producto,
-  empresaSlug,
   mostrarPrecio = true,
   mostrarStock = false,
   mostrarNuevo,
   className = '',
 }: {
   producto: ProductoTarjeta;
-  empresaSlug: string;
   mostrarPrecio?: boolean;
   mostrarStock?: boolean;
-  /** Con flag portada-auto, el badge depende de esta prop (no de es_nuevo). */
+  /** Si se muestra el badge NUEVO (lo decide quien renderiza la tarjeta). */
   mostrarNuevo?: boolean;
   className?: string;
 }) {
   const hayStock = mostrarStock && producto.saldo != null && producto.saldo > 0;
-  const PORTADA_AUTO = (flags as Record<string, boolean>)['tienda-portada-auto'] === true;
-  const mostrarBadge = PORTADA_AUTO ? Boolean(mostrarNuevo) : producto.es_nuevo;
+  const mostrarBadge = Boolean(mostrarNuevo);
   return (
     <article
       className={`h-full flex flex-col bg-[var(--card)] border border-[var(--border-default)] rounded-2xl overflow-hidden ${className}`}
     >
       <div className="relative aspect-square bg-[var(--muted)]">
         {producto.imagen_url ? (
-          <ImageWithFallback src={producto.imagen_url} codigo={producto.codigo} empresaSlug={empresaSlug} fill ancho={400} />
+          <ImageWithFallback src={producto.imagen_url} codigo={producto.codigo} fill ancho={400} />
         ) : (
           <PlaceholderProducto codigo={producto.codigo} />
         )}

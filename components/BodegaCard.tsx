@@ -9,7 +9,7 @@ interface BodegaCardProps {
   onClick: (ubicacion: UbicacionBodegaAgrupada) => void;
 }
 
-export function BodegaCard({ ubicacion, empresaSlug, onClick }: BodegaCardProps) {
+export function BodegaCard({ ubicacion, onClick }: BodegaCardProps) {
   const { saldo, fisico, diferencia, cantcaja, umed } = ubicacion;
 
   const difColor = diferencia === null
@@ -39,7 +39,6 @@ export function BodegaCard({ ubicacion, empresaSlug, onClick }: BodegaCardProps)
           <ImageWithFallback
             src={ubicacion.producto_imagen_url}
             codigo={ubicacion.codigo}
-            empresaSlug={empresaSlug}
             fill
             ancho={400}
           />

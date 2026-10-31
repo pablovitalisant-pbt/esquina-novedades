@@ -6,10 +6,10 @@
  * igual. El base64 resultante debe quedar bajo 3 MB.
  */
 export const LADO_MAX = 1600;
-export const CALIDAD_JPEG = 0.85;
+const CALIDAD_JPEG = 0.85;
 export const MAX_ENTRADA_BYTES = 20 * 1024 * 1024;
-export const MAX_BASE64_BYTES = 3 * 1024 * 1024;
-export const REENCODE_MIN_BYTES = 1.5 * 1024 * 1024;
+const MAX_BASE64_BYTES = 3 * 1024 * 1024;
+const REENCODE_MIN_BYTES = 1.5 * 1024 * 1024;
 export const TIPOS_ACEPTADOS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export function dimensionesReducidas(ancho: number, alto: number, ladoMax = LADO_MAX) {

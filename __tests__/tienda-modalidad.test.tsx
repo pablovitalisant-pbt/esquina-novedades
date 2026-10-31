@@ -115,7 +115,7 @@ describe('Páginas públicas — sin precio mayor ni mínimo visibles', () => {
   it('productos muestra el precio detalle y oculta el mayor', () => {
     render(
       <CarritoProvider origen="productos">
-        <TarjetaProductoTienda producto={productoPagina} empresaSlug="demo" />
+        <TarjetaProductoTienda producto={productoPagina} />
       </CarritoProvider>,
     );
     expect(screen.getByText(formatCLP(500))).toBeInTheDocument();

@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ImageWithFallback } from './ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
 import { calcularMargen } from '@/lib/calcular-precio';
-import { EMPRESA } from '@/lib/empresa';
 import { toast } from 'sonner';
 import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
 import { useShareImage } from '@/hooks/useShareImage';
@@ -48,8 +47,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const skipNextSync = useRef(false);
   const subiendoRef = useRef(false);
-  const empresaSlug = EMPRESA.slug;
-
   // BUG-019 fix: estado para edición completa de producto
   const [editCosto, setEditCosto] = useState('');
   const [editMinimoMayor, setEditMinimoMayor] = useState('');
@@ -404,7 +401,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
             <ImageWithFallback
               src={currentImageUrl || producto.imagen_url}
               codigo={producto.codigo}
-              empresaSlug={empresaSlug}
               fill
               ancho={1200}
               className="object-contain"
@@ -623,7 +619,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                        type="file"
                        ref={fileInputRef}
                        className="hidden"
-                       accept="image/*"
+                       accept={TIPOS_ACEPTADOS.join(',')}
                        onChange={handleFileChange}
                        data-testid="upload-input"
                      />

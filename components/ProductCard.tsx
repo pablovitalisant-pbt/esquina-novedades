@@ -17,7 +17,7 @@ interface ProductCardProps {
   rol?: string;
 }
 
-export function ProductCard({ producto, empresaSlug, onClick, ocultarPrecios, rol }: ProductCardProps) {
+export function ProductCard({ producto, onClick, ocultarPrecios, rol }: ProductCardProps) {
   const [showPrenota, setShowPrenota] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -39,7 +39,6 @@ export function ProductCard({ producto, empresaSlug, onClick, ocultarPrecios, ro
             <ImageWithFallback
               src={producto.imagen_url}
               codigo={producto.codigo}
-              empresaSlug={empresaSlug}
               fill
               ancho={400}
             />

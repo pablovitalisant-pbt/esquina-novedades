@@ -319,3 +319,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Fase B roja verificada por modulo inexistente; 10 tests nuevos en `__tests__/lib/api-notas.test.ts` (payload exacto con/sin precio, endpoint, id string, no-ok del POS vs modal, error HTTP con/sin mensaje, red). Tests existentes del POS y del modal verdes SIN modificarlos.
 - Verificacion: jest --silent 254/254 suites, 2074/2074 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 9.9s, 48/48 paginas, exit 0, First Load JS 103 kB, middleware 64.3 kB). Sin commit, sin datos de produccion, sin next.config; CRLF preservado.
 - Archivos: lib/api-notas.ts (52), app/(app)/pos/client_page.tsx, components/AgregarANotaVentaModal.tsx, __tests__/lib/api-notas.test.ts, PRD.md, docs/BACKLOG.md, AUTO-LOG.md.
+
+## 2026-10-31 - BUG-007: precio string en AgregarANotaVentaModal
+- Contrato: fix minimo solo en `components/AgregarANotaVentaModal.tsx`; la API de items no cambia. `Number(producto.prcventa)` en el estado inicial, el reset y al volver a "Por menor".
+- Fase B roja verificada: test en `__tests__/AgregarAPrenotaModal.test.tsx` con `prcventa` string "10680.00" fallo con `typeof body.precio === "string"` antes del fix.
+- Consumidores revisados: POS y la pagina de nota de venta no envian `precio` a `/items`; el modal era el unico.
+- Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0 warnings/0 errores; build OK. Sin commit; CRLF preservado en AUTO-LOG.md y en los archivos TSX.
+- Archivos: components/AgregarANotaVentaModal.tsx, __tests__/AgregarAPrenotaModal.test.tsx, BUGS.md, AUTO-LOG.md.

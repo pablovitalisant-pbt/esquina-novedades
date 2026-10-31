@@ -28,7 +28,9 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
   const [prenotaId, setPrenotaId] = useState<string>('nueva');
   const [unidades, setUnidades] = useState(1);
   const [modalidad, setModalidad] = useState<'detalle' | 'mayor'>('detalle');
-  const [precio, setPrecio] = useState(producto.prcventa);
+  // BUG-007: prcventa llega como string desde GET /api/productos (numeric de
+  // Postgres); la API de items exige typeof precio === 'number'.
+  const [precio, setPrecio] = useState(Number(producto.prcventa));
   const [saving, setSaving] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
   const { resultados: clientes, cargando: clientesLoading, limpiar: limpiarClientes } =
@@ -36,7 +38,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
   const [clienteId, setClienteId] = useState<number | null>(null);
 
   useEffect(() => {
-    setPrecio(producto.prcventa);
+    setPrecio(Number(producto.prcventa));
     setModalidad('detalle');
     setUnidades(1);
   }, [producto.prcventa]);
@@ -139,7 +141,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
                 disabled={m === 'mayor' && !puedeMayor}
                 onClick={() => {
                   setModalidad(m);
-                  setPrecio(m === 'mayor' ? Number(producto.precio_mayor) : producto.prcventa);
+                  setPrecio(m === 'mayor' ? Number(producto.precio_mayor) : Number(producto.prcventa));
                 }}
                 className={`flex-1 border rounded-lg px-4 py-2 text-sm disabled:opacity-50 ${modalidad === m ? 'bg-[var(--primary)] text-primary-foreground' : 'hover:bg-[var(--muted)]'}`}
               >

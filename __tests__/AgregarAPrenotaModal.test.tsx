@@ -134,6 +134,49 @@ describe('AgregarANotaVentaModal', () => {
     });
   });
 
+  // BUG-007: GET /api/productos entrega prcventa como string (numeric de
+  // Postgres). Sin tocar el precio, el POST de items debe mandar un number.
+  test('BUG-007 — prcventa string se envia como precio numerico', async () => {
+    const fetchMock = jest.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/notas-venta' && (!options || options.method !== 'POST')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [{ id: 1, titulo: 'Nota de Venta #1' }] }),
+        });
+      }
+      if (url.includes('/items')) {
+        return Promise.resolve({ ok: true, json: async () => ({ id: 55 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    global.fetch = fetchMock as any;
+
+    render(
+      <AgregarANotaVentaModal
+        open={true}
+        onClose={jest.fn()}
+        producto={{ ...producto, prcventa: '10680.00' as unknown as number }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nota de Venta #1')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: /agregar/i }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        (c: any[]) => c[0] === '/api/notas-venta/1/items' && c[1]?.method === 'POST'
+      );
+      expect(call).toBeTruthy();
+      const body = JSON.parse(call![1].body);
+      expect(typeof body.precio).toBe('number');
+      expect(body.precio).toBe(10680);
+    });
+  });
+
   test('no renderiza nada cuando open=false', () => {
     global.fetch = jest.fn();
 

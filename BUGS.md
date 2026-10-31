@@ -48,3 +48,12 @@ Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protoc
 - Fix (solo tests, sin tocar codigo de app ni serializar suites): fixture propio `OVR-<ts>` en `productos`; ambos catalogos usan `palabras_incluir = TEST_CODIGO` (solo ven ese producto); T5 verifica aislamiento sobre ese mismo codigo y `afterAll` borra por codigo exacto.
 - Verificacion: 5 corridas seguidas de la suite completa en verde (254/254 suites, 2050/2050 tests en cada una); `tsc --noEmit` 0; lint 0 warnings / 0 errores. `.env.test` y el safeguard de BUG-034 intactos.
 - Leccion: en suites con BD real, un catalogo con `palabras_incluir = ''` no es un fixture aislado: es una consulta a toda la tabla que otras suites mutan en paralelo.
+
+## BUG-007 -- AgregarANotaVentaModal enviaba precio string y la API respondia 400 (2026-10-31)
+- Tipo: B (datos) -- regresion presente desde la Sesion 0 (bdaef48).
+- Sintoma: en Lista de Precios, "Agregar a Nota de Venta" con modalidad "Por menor" y sin tocar el precio respondia `POST /api/notas-venta/455/items -> 400 {"error":"Precio inválido"}`.
+- Causa raiz: `useState(producto.prcventa)` (estado inicial) y el `setPrecio` al volver a "Por menor" usaban `producto.prcventa` tal como llega de `GET /api/productos`: string ("10680.00", numeric de Postgres). `app/api/notas-venta/[id]/items/route.ts:47` exige `typeof precio === 'number'`. El camino "Por mayor" ya usaba `Number(...)`.
+- Fix minimo (solo el modal): `Number(producto.prcventa)` en el estado inicial, en el `useEffect` de reset y al volver a "Por menor". La API no cambio.
+- Otros consumidores del patron: el POS (`app/(app)/pos/client_page.tsx:240`) y `app/(app)/notas-venta/[id]/client_page.tsx:458` no envian `precio` (el servidor lo resuelve), asi que no tienen el bug. `AgregarANotaVentaModal` era el unico que enviaba `precio` desde el producto.
+- Criterio: test BUG-007 en `__tests__/AgregarAPrenotaModal.test.tsx` renderiza el modal con `prcventa` string "10680.00" y verifica que el POST de items envia `typeof precio === 'number'` y `precio === 10680`.
+- Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0; build OK.

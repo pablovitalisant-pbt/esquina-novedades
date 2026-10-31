@@ -54,13 +54,13 @@ describe('eliminarItem — online', () => {
 
   it('eliminar hace fetch(DELETE) con el UUID y el ítem desaparece de la UI', async () => {
     render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} />);
-    await waitFor(() => expect(screen.getByText('X-001')).toBeInTheDocument());
+    await screen.findAllByText('X-001');
     fireEvent.click(screen.getAllByRole('button', { name: /editar/i })[0]);
     fireEvent.click(await screen.findByRole('button', { name: /eliminar/i }));
 
-    await waitFor(() => expect(screen.queryByText('X-001')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryAllByText('X-001')).toHaveLength(0));
     const deletes = fetchMock.mock.calls.filter(c => c[1]?.method === 'DELETE');
     expect(deletes.map(c => c[0])).toEqual(['/api/notas-venta/1/items/uuid-1']);
-    expect(screen.getByText('Y-002')).toBeInTheDocument();
+    expect(screen.getAllByText('Y-002').length).toBeGreaterThan(0);
   });
 });

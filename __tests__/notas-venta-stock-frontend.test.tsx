@@ -143,7 +143,7 @@ describe('R8b-d — PrenotaDetallePage manejo errores stock', () => {
 
     // Esperar a que cargue la nota y los items sean visibles
     await screen.findByText('Nota test');
-    await screen.findByText('ITEM-1');
+    await screen.findAllByText('ITEM-1');
 
     // Click "Editar" en el item para entrar en modo edicion
     fireEvent.click(screen.getByText('Editar'));
@@ -169,7 +169,7 @@ describe('R8b-d — PrenotaDetallePage manejo errores stock', () => {
 
     // Esperar a que cargue la nota
     await screen.findByText('Nota test');
-    await screen.findByText('ITEM-1');
+    await screen.findAllByText('ITEM-1');
 
     const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
 

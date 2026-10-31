@@ -48,7 +48,7 @@ describe('handleGuardar — online', () => {
 
   it('guardar hace fetch(PATCH) con unidades/precio (sin cajas) y cierra la edición', async () => {
     render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} />);
-    await waitFor(() => expect(screen.getByText('X-001')).toBeInTheDocument());
+    await screen.findAllByText('X-001');
     fireEvent.click(screen.getAllByRole('button', { name: /editar/i })[0]);
     const precio = (await screen.findAllByRole('spinbutton')).find(i => (i as HTMLInputElement).value === '10')!;
     fireEvent.change(precio, { target: { value: '12' } });

@@ -75,8 +75,9 @@ const renderAndOpenDrawer = async (initial: UbicacionBodegaAgrupada) => {
     jest.advanceTimersByTime(300);
   });
 
-  await screen.findByText('P001');
-  fireEvent.click(screen.getByText('P001'));
+  // fotos-v1 ON: el código puede aparecer también en el placeholder de la imagen.
+  const codigos = await screen.findAllByText('P001');
+  fireEvent.click(codigos[0]);
 
   const ubicacionLabel = screen.getByText('Código de ubicación');
   const panel = ubicacionLabel.closest('div')?.parentElement as HTMLElement;
@@ -161,8 +162,8 @@ describe('R6 — PUT drawer usa nueva URL/payload post-simplificación', () => {
     fireEvent.change(searchInput, { target: { value: 'P0' } });
 
     await act(async () => { jest.advanceTimersByTime(300); });
-    await screen.findByText('P001');
-    fireEvent.click(screen.getByText('P001'));
+    const codigos = await screen.findAllByText('P001');
+    fireEvent.click(codigos[0]);
 
     // Click en guardar para disparar el PUT
     const saveBtn = screen.getByText('Guardar ubicación');
@@ -203,8 +204,8 @@ describe('R6 — PUT drawer usa nueva URL/payload post-simplificación', () => {
     fireEvent.change(searchInput, { target: { value: 'P0' } });
 
     await act(async () => { jest.advanceTimersByTime(300); });
-    await screen.findByText('P001');
-    fireEvent.click(screen.getByText('P001'));
+    const codigos = await screen.findAllByText('P001');
+    fireEvent.click(codigos[0]);
 
     // Click en guardar para disparar el PUT
     const saveBtn = screen.getByText('Guardar ubicación');

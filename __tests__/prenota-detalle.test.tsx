@@ -67,7 +67,7 @@ describe('PrenotaDetallePage', () => {
     render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} />);
 
     await waitFor(() => {
-      expect(screen.getByText('ABC123')).toBeInTheDocument();
+      expect(screen.getAllByText('ABC123').length).toBeGreaterThan(0);
     });
   });
 
@@ -231,7 +231,7 @@ describe('PrenotaDetallePage', () => {
 
     // Esperar que cargue el detalle con el botón "Marcar como pagada"
     await waitFor(() => {
-      expect(screen.getByText('ABC')).toBeInTheDocument();
+      expect(screen.getAllByText('ABC').length).toBeGreaterThan(0);
     });
 
     const pagarBtn = screen.getByRole('button', { name: /marcar como pagada/i });

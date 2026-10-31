@@ -62,7 +62,7 @@ beforeEach(() => {
 
 it('el encabezado de cada hoja usa fondo violeta, texto claro y borde de marca', async () => {
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
-  await screen.findByText('A1');
+  await screen.findAllByText('A1');
   fireEvent.click(screen.getByText('Exportar Excel'));
   await waitFor(() => expect(hojas).toHaveLength(2));
 

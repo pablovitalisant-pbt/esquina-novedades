@@ -78,8 +78,8 @@ async function openDrawerAs(session: any) {
   render(<BodegaClient session={session} />);
   const input = await screen.findByPlaceholderText('Buscar ubicación o código...');
   fireEvent.change(input, { target: { value: 'P0' } });
-  await screen.findByText('P001');
-  fireEvent.click(screen.getByText('P001')); // abre el drawer
+  await screen.findAllByText('P001');
+  fireEvent.click(screen.getAllByText('P001')[0]); // abre el drawer
 }
 
 describe('app/(app)/bodega — carga y guardado por API', () => {
@@ -103,8 +103,8 @@ describe('app/(app)/bodega — carga y guardado por API', () => {
     });
 
     await typeSearch('P0');
-    await screen.findByText('P001');
-    fireEvent.click(screen.getByText('P001'));
+    await screen.findAllByText('P001');
+    fireEvent.click(screen.getAllByText('P001')[0]);
     fireEvent.click(screen.getByText('Guardar ubicación'));
 
     await waitFor(() => {

@@ -69,7 +69,7 @@ beforeEach(() => {
 describe('ProductDrawer — editar codigo', () => {
   test('vendedor NO ve el boton de editar codigo', () => {
     renderDrawer(vendedor);
-    expect(screen.getByText('PROD-01')).toBeInTheDocument();
+    expect(screen.getAllByText('PROD-01').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('editar-codigo-btn')).toBeNull();
   });
 
@@ -154,7 +154,7 @@ describe('ProductDrawer — editar codigo', () => {
     fireEvent.click(screen.getByTestId('cancelar-codigo-btn'));
 
     expect(screen.queryByTestId('input-codigo')).toBeNull();
-    expect(screen.getByText('PROD-01')).toBeInTheDocument();
+    expect(screen.getAllByText('PROD-01').length).toBeGreaterThan(0);
     expect((global.fetch as jest.Mock).mock.calls.some((c) => String(c[0]).includes('cambiar-codigo'))).toBe(false);
   });
 });

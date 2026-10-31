@@ -203,8 +203,8 @@ describe('Notas de Venta — auto-focus (Punto 2 del contrato)', () => {
     render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} />);
 
     // Esperar que se rendericen los items
-    await waitFor(() => expect(screen.getByText('X-001')).toBeInTheDocument());
-    expect(screen.getByText('Y-002')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText('X-001').length).toBeGreaterThan(0));
+    expect(screen.getAllByText('Y-002').length).toBeGreaterThan(0);
 
     // Click manual en botón "Editar" del item Y (id=20)
     const editButtons = screen.getAllByRole('button', { name: /editar/i });

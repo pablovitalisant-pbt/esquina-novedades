@@ -326,3 +326,12 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Consumidores revisados: POS y la pagina de nota de venta no envian `precio` a `/items`; el modal era el unico.
 - Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0 warnings/0 errores; build OK. Sin commit; CRLF preservado en AUTO-LOG.md y en los archivos TSX.
 - Archivos: components/AgregarANotaVentaModal.tsx, __tests__/AgregarAPrenotaModal.test.tsx, BUGS.md, AUTO-LOG.md.
+
+## 2026-10-31 - Marca: iconos PWA y favicon
+- Contrato aprobado por Pablo: iconos instalables y favicon desde `public/marca/logo-640.webp`, fondo solido `#21002F`, logo centrado a ~78% del lado, originales respaldados.
+- Generado con ImageMagick 7 (trim + Lanczos): `icon-512.png` 512x512 41.715 B (< 80 KB, PNG8 256c), `icon-192.png` 192x192 23.482 B, `apple-touch-icon.png` 180x180 20.757 B. `app/favicon.ico` multi-tamano 16/32/48 (13.294 B) usando el recorte central "NOVEDADES" (se lee mejor a 48 px que el wordmark completo; a 16 px ambos son ilegibles).
+- Preview para el DT en `~/.pbt-runner/iconos-preview/`: `favicon-full-{16,32,48}.png`, `favicon-novedades-{16,32,48}.png` e `icon-512-preview.png`.
+- `app/layout.tsx`: apple -> `/marca/apple-touch-icon.png` (icon sigue `/favicon.ico` + `/marca/icon-192.png`). `app/manifest.ts`: rutas de iconos sin cambios; `background_color` `#FFFCF6` -> `#21002F` (coherente con el fondo de los iconos); `theme_color` queda en `EMPRESA.colores.primario`.
+- `public/icon-192.png` y `public/icon-512.png` no tenian referencias (grep en app/components/lib/tests/middleware); movidos a `~/.pbt-runner/iconos-originales/public-root/`. Originales reemplazados en `~/.pbt-runner/iconos-originales/`.
+- Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0 warnings/0 errores; build exit 0. Sin commit.
+- Archivos: public/marca/icon-512.png, public/marca/icon-192.png, public/marca/apple-touch-icon.png, app/favicon.ico, app/layout.tsx, app/manifest.ts, AUTO-LOG.md.

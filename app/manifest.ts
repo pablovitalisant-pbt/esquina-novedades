@@ -11,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // bodeguero cae a /bodega por middleware.
     start_url: (flags as Record<string, boolean>)['pos-v1'] === true ? '/pos' : '/precios',
     display: 'standalone',
-    background_color: '#FFFCF6',
+    background_color: '#21002F',
     theme_color: EMPRESA.colores.primario,
     orientation: 'portrait',
     icons: [

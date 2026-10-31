@@ -54,7 +54,7 @@ export function TiendaHeader({
             type="button"
             data-testid="carrito-header"
             onClick={() => window.dispatchEvent(new Event('esquina:abrir-carrito'))}
-            aria-label={`Carrito, ${totalItems} artículos`}
+            aria-label={`Carrito, ${totalItems} ${totalItems === 1 ? 'artículo' : 'artículos'}`}
             className="relative inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#590078] hover:bg-[#6b0090] transition-colors"
           >
             <ShoppingBag className="w-5 h-5 text-[#F2B936]" aria-hidden />

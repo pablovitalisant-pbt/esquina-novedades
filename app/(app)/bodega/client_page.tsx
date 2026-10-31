@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
-import { EMPRESA } from '@/lib/empresa';
 
 export function BodegaClient({ session }: { session: SessionProp }) {
   const { shareImage } = useShareImage();
@@ -27,7 +26,6 @@ export function BodegaClient({ session }: { session: SessionProp }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const empresaSlug = EMPRESA.slug;
 
   // Autobocus on search input for fast warehouse operations
   useEffect(() => {
@@ -132,7 +130,6 @@ export function BodegaClient({ session }: { session: SessionProp }) {
              <BodegaCard
                key={u.codigo}
                ubicacion={u}
-               empresaSlug={empresaSlug}
                onClick={openDrawer}
              />
            ))

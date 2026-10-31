@@ -16,8 +16,8 @@ const CLIENT_FILE = path.join(PROJECT_ROOT, 'app/(app)/precios/client_page.tsx')
 describe('crear producto — imagen', () => {
   const content = fs.readFileSync(CLIENT_FILE, 'utf-8');
 
-  test('Dialog tiene input file con accept image/jpeg,image/png,image/webp', () => {
-    expect(content).toMatch(/accept.*image\/jpeg.*image\/png.*image\/webp/);
+  test('Dialog tiene input file con accept desde TIPOS_ACEPTADOS', () => {
+    expect(content).toMatch(/accept=\{TIPOS_ACEPTADOS\.join\(','\)\}/);
   });
 
   test('handleCrearProducto encadena POST /api/productos/upload', () => {

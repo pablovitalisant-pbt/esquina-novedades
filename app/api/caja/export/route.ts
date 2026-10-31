@@ -25,7 +25,8 @@ export async function GET(request: Request) {
 
     // Fetch all matching movements (no pagination — limit high enough for practical use)
     const rows = await sql`
-      SELECT m.id, m.fecha::text, m.tipo, m.kcodcli2, m.nombre_cliente,
+      SELECT m.id, m.fecha::text, m.tipo, m.kcodcli2,
+        COALESCE(m.nombre_cliente, c.nombre) AS nombre_cliente,
         m.cuenta_id, cc.nombre AS cuenta_nombre, m.moneda, m.monto, m.forma_pago, m.observaciones, m.empresa, m.es_credito,
         COALESCE((
           SELECT ARRAY_AGG(cmn.prenota_id::text ORDER BY cmn.id)
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
         m.usuario_id, m.usuario_nombre, m.created_at::text, m.updated_at::text
       FROM caja_movimientos m
       JOIN caja_cuentas cc ON cc.id = m.cuenta_id
+      LEFT JOIN public.clientes c ON c.id = m.kcodcli2
       WHERE (${cuentaId}::int IS NULL OR m.cuenta_id = ${cuentaId})
         AND (${tipoFiltro}::text IS NULL OR m.tipo = ${tipoFiltro})
         AND (${empresaFiltro}::text IS NULL OR m.empresa = ${empresaFiltro})

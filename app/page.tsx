@@ -46,7 +46,7 @@ export default async function HomePage() {
     redirect(rutaInicio(session.user.rol, flags as Record<string, boolean>));
   }
 
-  const [{ productos, empresaSlug }, categorias, opcionesEntrega] = await Promise.all([
+  const [{ productos }, categorias, opcionesEntrega] = await Promise.all([
     getProductosTienda(),
     getCategoriasConStock(),
     getOpcionesEntregaActivas(),
@@ -56,7 +56,6 @@ export default async function HomePage() {
       productos={productos}
       categorias={categorias}
       opcionesEntrega={opcionesEntrega}
-      empresaSlug={empresaSlug}
     />
   );
 }

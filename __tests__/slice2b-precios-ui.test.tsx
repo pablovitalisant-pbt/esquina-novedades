@@ -101,7 +101,7 @@ describe('ProductDrawer — edicion directa', () => {
 
 describe('ProductCard — Mayor', () => {
   test('muestra "Mayor: $X"', () => {
-    render(<ProductCard producto={producto} empresaSlug="x" onClick={() => {}} />);
+    render(<ProductCard producto={producto} onClick={() => {}} />);
     expect(screen.getByText(/^Por mayor: /)).toHaveTextContent('900');
     expect(screen.queryByText(/Caja:/)).toBeNull();
   });

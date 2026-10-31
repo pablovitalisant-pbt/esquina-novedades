@@ -23,17 +23,17 @@ type Props = {
   productos: ProductoTienda[];
   categorias: CategoriaTienda[];
   opcionesEntrega: OpcionEntregaTienda[];
-  empresaSlug: string;
 };
 
-export function TiendaPortada({ productos, categorias, opcionesEntrega, empresaSlug }: Props) {
+export function TiendaPortada({ productos, categorias, opcionesEntrega }: Props) {
   return (
+    // ponytail: 'productos' es el valor legado de la tienda online en la BD
+    // (CHECK de migrations/034); la UI lo muestra como "Tienda online".
     <CarritoProvider origen="productos">
       <TiendaPortadaInner
         productos={productos}
         categorias={categorias}
         opcionesEntrega={opcionesEntrega}
-        empresaSlug={empresaSlug}
       />
       <CarritoDrawer />
     </CarritoProvider>

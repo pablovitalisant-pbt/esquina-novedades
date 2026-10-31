@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Search, Eye, EyeOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { calcularMargen } from '@/lib/calcular-precio';
-import { EMPRESA } from '@/lib/empresa';
+import { reducirImagen, MAX_ENTRADA_BYTES, TIPOS_ACEPTADOS } from '@/lib/imagen-reducir';
 
 // ponytail: single-tenant (empresa única, migración 018)
 interface PreciosClientProps {
@@ -45,14 +45,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
   const [crearLoading, setCrearLoading] = useState(false);
   const [crearFile, setCrearFile] = useState<File | null>(null);
   const [crearPreview, setCrearPreview] = useState<string | null>(null);
-
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
 
   // Debounce search input
   useEffect(() => {
@@ -143,7 +135,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
 
       // 2. Subir imagen si hay archivo seleccionado
       if (crearFile) {
-        const base64 = await fileToBase64(crearFile);
+        const base64 = await reducirImagen(crearFile);
         const imgRes = await fetch('/api/productos/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -280,13 +272,17 @@ export function PreciosClient({ session }: PreciosClientProps) {
                         {crearPreview ? 'Cambiar imagen' : 'Seleccionar imagen'}
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept={TIPOS_ACEPTADOS.join(',')}
                           className="hidden"
                           onChange={e => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            if (file.size > 5 * 1024 * 1024) {
-                              toast.error('La imagen no puede superar los 5 MB');
+                            if (!TIPOS_ACEPTADOS.includes(file.type)) {
+                              toast.error('Solo se aceptan JPG, PNG o WEBP');
+                              return;
+                            }
+                            if (file.size > MAX_ENTRADA_BYTES) {
+                              toast.error('La imagen no puede superar 20 MB');
                               return;
                             }
                             setCrearFile(file);
@@ -295,7 +291,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
                         />
                       </label>
                     </div>
-                    <p className="text-xs text-[var(--body)] mt-1">JPEG, PNG o WebP. Máximo 5 MB.</p>
+                    <p className="text-xs text-[var(--body)] mt-1">JPEG, PNG o WebP. Máximo 20 MB.</p>
                   </div>
                 </div>
                 <DialogFooter>
@@ -360,7 +356,6 @@ export function PreciosClient({ session }: PreciosClientProps) {
             <ProductCard
               key={p.id}
               producto={p}
-              empresaSlug={EMPRESA.slug}
               onClick={openDrawer}
               ocultarPrecios={ocultarPrecios}
               rol={session?.rol}

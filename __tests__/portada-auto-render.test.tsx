@@ -36,7 +36,6 @@ function renderizar(productos: ProductoTienda[], categorias: { id: string; nombr
       productos={productos}
       categorias={categorias}
       opcionesEntrega={[{ codigo: 'retiro', nombre: 'Retiro en tienda', activa: true }]}
-      empresaSlug="la-esquina"
     />,
   );
 }

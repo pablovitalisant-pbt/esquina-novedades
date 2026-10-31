@@ -11,7 +11,6 @@ import flags from '@/config/feature-flags.json';
 
 interface ProductCardProps {
   producto: Producto;
-  empresaSlug: string;
   onClick: (producto: Producto) => void;
   ocultarPrecios?: boolean;
   rol?: string;

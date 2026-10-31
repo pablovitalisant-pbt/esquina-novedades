@@ -24,9 +24,9 @@ describe('Slice 20 — smoke limpieza Precios', () => {
     expect(content).not.toContain('empresasMap');
   });
 
-  test('client_page.tsx hardcodea empresaSlug como bazar-naty (single-tenant, migracion 018)', () => {
+  test('client_page.tsx ya no pasa empresaSlug a ProductCard', () => {
     const content = fs.readFileSync(path.join(PROJECT_ROOT, PRECIOS_CLIENT), 'utf-8');
-    expect(content).toContain("EMPRESA.slug");
+    expect(content).not.toContain('empresaSlug');
   });
 
   test('page.tsx NO contiene query de empresas', () => {
@@ -39,9 +39,9 @@ describe('Slice 20 — smoke limpieza Precios', () => {
     expect(content).toContain('IntersectionObserver');
   });
 
-  // Guard: ProductCard sigue recibiendo empresaSlug como prop
-  test('ProductCard sigue aceptando empresaSlug en su interfaz', () => {
+  // Guard: ProductCard ya no exige empresaSlug (single-tenant)
+  test('ProductCard ya no declara empresaSlug en su interfaz', () => {
     const content = fs.readFileSync(path.join(PROJECT_ROOT, 'components/ProductCard.tsx'), 'utf-8');
-    expect(content).toContain('empresaSlug');
+    expect(content).not.toContain('empresaSlug');
   });
 });

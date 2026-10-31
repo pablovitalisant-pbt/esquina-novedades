@@ -18,6 +18,15 @@ const FORMAS: { id: FormaPago; tecla: string; label: string }[] = [
 
 type Resultado = { aplicado: number; vuelto: number; restante: number; forma: FormaPago };
 
+/** Cuenta sugerida cuando no hay predeterminada: efectivo -> caja/efectivo. */
+function cuentaSugerida(cuentas: Cuenta[], forma: FormaPago): number {
+  if (forma === 'efectivo') {
+    const c = cuentas.find(c => /efectivo|caja/i.test(c.nombre));
+    if (c) return c.id;
+  }
+  return cuentas[0]?.id ?? 0;
+}
+
 /** pos3 — panel COBRAR del POS. */
 export function PosCobrarDialog({
   open,
@@ -47,6 +56,7 @@ export function PosCobrarDialog({
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const montoRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
+  const cuentaManual = useRef(false);
   const claveCuenta = `pos-cuenta-default-${usuarioId ?? 'anon'}`;
 
   const leerPredeterminada = () => {
@@ -63,15 +73,18 @@ export function PosCobrarDialog({
     setMonto(String(Math.round(saldoPendiente)));
     setCuentas([]);
     setCuentaId(0);
+    setPredeterminada(0);
+    cuentaManual.current = false;
     const pref = leerPredeterminada();
-    setPredeterminada(pref);
     setTimeout(() => { montoRef.current?.focus(); montoRef.current?.select(); }, 0);
 
     (async () => {
       try {
         const lista = await cargarCuentasActivas({ soloSiOk: true });
+        const prefValida = lista.some(c => c.id === pref) ? pref : 0;
         setCuentas(lista);
-        setCuentaId(lista.some(c => c.id === pref) ? pref : (lista[0]?.id ?? 0));
+        setPredeterminada(prefValida);
+        setCuentaId(prefValida || cuentaSugerida(lista, 'efectivo'));
       } catch {
         setCuentas([]);
       }
@@ -125,10 +138,18 @@ export function PosCobrarDialog({
     montoRef.current?.focus();
   };
 
+  /** Cambia la forma; sin predeterminada ni eleccion manual, recalcula la cuenta. */
+  const cambiarForma = (f: FormaPago) => {
+    setForma(f);
+    if (predeterminada === 0 && !cuentaManual.current) {
+      setCuentaId(cuentaSugerida(cuentas, f));
+    }
+  };
+
   // Teclado: Enter confirma; 1-4 eligen forma SOLO fuera del campo monto
   // (con foco en monto los dígitos son monto). En éxito, Enter = Nueva venta.
-  const teclasRef = useRef({ resultado, confirmar, onNuevaVenta, onOpenChange });
-  teclasRef.current = { resultado, confirmar, onNuevaVenta, onOpenChange };
+  const teclasRef = useRef({ resultado, confirmar, onNuevaVenta, onOpenChange, cambiarForma });
+  teclasRef.current = { resultado, confirmar, onNuevaVenta, onOpenChange, cambiarForma };
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -145,7 +166,7 @@ export function PosCobrarDialog({
       if (e.key === 'Escape') { e.preventDefault(); s.onOpenChange(false); return; }
       if (enCampo) return;
       const f = FORMAS.find(x => x.tecla === e.key);
-      if (f) { e.preventDefault(); setForma(f.id); }
+      if (f) { e.preventDefault(); s.cambiarForma(f.id); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -251,7 +272,7 @@ export function PosCobrarDialog({
                   className="h-14 flex-col gap-0 text-xs font-black"
                   data-testid={`pos-forma-${f.id}`}
                   aria-pressed={forma === f.id}
-                  onClick={() => setForma(f.id)}
+                  onClick={() => cambiarForma(f.id)}
                 >
                   <span className="text-[10px] opacity-70">{f.tecla}</span>
                   {f.label}
@@ -302,7 +323,7 @@ export function PosCobrarDialog({
               <select
                 className="h-12 rounded-pill border border-[var(--border)] bg-[var(--card)] px-4 text-base"
                 value={cuentaId}
-                onChange={e => setCuentaId(Number(e.target.value))}
+                onChange={e => { cuentaManual.current = true; setCuentaId(Number(e.target.value)); }}
                 data-testid="pos-cuenta"
                 disabled={cuentas.length === 0}
               >

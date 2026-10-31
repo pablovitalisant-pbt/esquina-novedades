@@ -5,7 +5,6 @@ import { ImageWithFallback } from './ImageWithFallback';
 
 interface BodegaCardProps {
   ubicacion: UbicacionBodegaAgrupada;
-  empresaSlug: string;
   onClick: (ubicacion: UbicacionBodegaAgrupada) => void;
 }
 

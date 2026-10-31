@@ -27,7 +27,6 @@ describe('ProductCard empresa badge (Slice 2)', () => {
     render(
       <ProductCardAny
         producto={producto}
-        empresaSlug="sanjh"
         onClick={() => {}}
       />
     );

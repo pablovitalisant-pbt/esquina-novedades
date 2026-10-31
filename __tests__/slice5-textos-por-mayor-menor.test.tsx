@@ -58,7 +58,7 @@ describe('ProductCard / ProductDrawer — textos', () => {
 
   it('ProductCard dice "Por mayor: $X"', () => {
     (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: producto }) });
-    render(<ProductCard producto={producto} empresaSlug="x" onClick={() => {}} />);
+    render(<ProductCard producto={producto} onClick={() => {}} />);
     expect(screen.getByText(/^Por mayor: /)).toHaveTextContent('30');
   });
 

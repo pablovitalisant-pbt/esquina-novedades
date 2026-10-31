@@ -556,7 +556,6 @@ export function CajaMayorClient({
         { header: "Fecha", key: "Fecha", width: 14 },
         { header: "Tipo", key: "Tipo", width: 9 },
         { header: "Cliente", key: "Cliente", width: 30 },
-        { header: "Org.", key: "Org.", width: 10 },
         { header: "Nota(s)", key: "Nota(s)", width: 13 },
         { header: "Monto", key: "Monto", width: 16 },
         { header: "Cuenta", key: "Cuenta", width: 12 },
@@ -580,7 +579,7 @@ export function CajaMayorClient({
           // Title row — violeta suave, tinta en negrita
           const titleRow = ws.addRow({
             Fecha: `CIERRE DE PERÍODO — ${c.fecha_desde} al ${c.fecha_hasta}`,
-            Tipo: "", Cliente: "", "Org.": "", "Nota(s)": "", Monto: "", Cuenta: "", Observación: "", Crédito: "",
+            Tipo: "", Cliente: "", "Nota(s)": "", Monto: "", Cuenta: "", Observación: "", Crédito: "",
           });
           titleRow.eachCell((cell) => {
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL.violetaSuave } };
@@ -590,7 +589,7 @@ export function CajaMayorClient({
           const activas = c.resumen.filter((r) => r.saldo_final !== 0 || r.total_cobros !== 0 || r.total_gastos !== 0);
           for (const r of activas) {
             const resumenRow = ws.addRow({
-              Fecha: "", Tipo: "", Cliente: "", "Org.": "", "Nota(s)": r.cuenta_nombre,
+              Fecha: "", Tipo: "", Cliente: "", "Nota(s)": r.cuenta_nombre,
               Monto: r.saldo_final,
               Cuenta: "",
               Observación: `Depósito ${formatCLP(r.total_cobros)} · Gasto ${formatCLP(r.total_gastos)}`,
@@ -606,7 +605,6 @@ export function CajaMayorClient({
             Fecha: m.fecha,
             Tipo: m.tipo === "cobro" ? "Cobro" : m.tipo === "reembolso" ? "Reembolso" : "Gasto",
             Cliente: m.nombre_cliente || "",
-            "Org.": m.empresa ? "La Esquina" : "",
             "Nota(s)": m.notas_imputadas?.join(", ") || "",
             Monto: m.monto,
             Cuenta: m.cuenta_nombre,
@@ -1023,7 +1021,6 @@ export function CajaMayorClient({
                     <th className="py-2 pr-2 font-medium w-[90px]">Fecha</th>
                     <th className="py-2 pr-2 font-medium w-[32px]">Tipo</th>
                     <th className="py-2 pr-2 font-medium">Cliente</th>
-                    <th className="py-2 pr-2 font-medium w-[36px]">Emp.</th>
                     <th className="py-2 pr-2 font-medium">Nota(s)</th>
                     <th className="py-2 pr-2 font-medium text-right w-[110px]">Monto</th>
                     <th className="py-2 pr-2 font-medium">Cuenta</th>
@@ -1037,7 +1034,7 @@ export function CajaMayorClient({
                   {movimientos.map((item) =>
                     item.tipo_fila === "cierre" ? (
                       <tr key={`cierre-${item.data.id}`} className="bg-[var(--primary)] dark:bg-[var(--primary)]/40 border-b">
-                        <td colSpan={11} className="py-3 px-4">
+                        <td colSpan={10} className="py-3 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-[var(--primary)] dark:text-[var(--primary)] text-sm">
@@ -1111,9 +1108,6 @@ export function CajaMayorClient({
                         <td className="py-1.5 pr-2 whitespace-nowrap w-[90px]">{item.data.fecha}</td>
                         <td className="py-1.5 pr-2 w-[32px]">{item.data.tipo === "cobro" ? "💰" : item.data.tipo === "reembolso" ? "📥" : "📤"}</td>
                         <td className="py-1.5 pr-2 max-w-[140px] truncate" title={item.data.nombre_cliente || undefined}>{item.data.nombre_cliente || "—"}</td>
-                        <td className="py-1.5 pr-2">
-                          {item.data.empresa ? <Badge variant="outline" className="text-[10px] px-1 py-0">BN</Badge> : "—"}
-                        </td>
                         <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : undefined}>
                           {item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : "—"}
                         </td>
@@ -1205,7 +1199,6 @@ export function CajaMayorClient({
                   <tr className="border-b text-left text-xs text-[var(--body)] uppercase">
                     <th className="py-2 pr-2 font-medium">Nota</th>
                     <th className="py-2 pr-2 font-medium">Fecha</th>
-                    <th className="py-2 pr-2 font-medium">Emp.</th>
                     <th className="py-2 pr-2 font-medium text-right">Total</th>
                     <th className="py-2 pr-2 font-medium text-right">Pagado</th>
                     <th className="py-2 font-medium text-right">Saldo</th>
@@ -1218,7 +1211,7 @@ export function CajaMayorClient({
                     const saldado = n.saldo_pendiente <= 0.005;
                     return (
                       <tr key={key}>
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={5} className="p-0">
                           <button
                             onClick={() => setNotaExpandida(expanded ? null : key)}
                             className={`w-full text-left border-b transition-colors ${
@@ -1230,9 +1223,6 @@ export function CajaMayorClient({
                             <div className="flex items-center px-2 py-2 gap-2">
                               <span className="font-medium min-w-[60px]">{n.id}</span>
                               <span className="text-[var(--body)] min-w-[80px]">{n.fecha}</span>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 min-w-[40px]">
-                                BN
-                              </Badge>
                               <span className="text-right min-w-[70px]">{formatCLP(n.total)}</span>
                               <span className="text-right min-w-[70px]">{formatCLP(n.total_pagado)}</span>
                               <span className={`text-right min-w-[70px] font-semibold ${saldado ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>

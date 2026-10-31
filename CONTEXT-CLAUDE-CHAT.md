@@ -102,7 +102,7 @@ Pendientes:
 
 ## Contador de slices desde el último ponytail audit (vigente)
 
-5 (lim3, A17, A18, A19, textos-kardex) — último audit: 2026-10-31 (`docs/audits/ponytail-audit-2026-10-31.md`; anterior 2026-10-30: `docs/audits/ponytail-audit-2026-10-30.md`). Audit 2026-10-31: limpieza aplicada en slice lim3 (hallazgos 1-3, 5-9; #4 -> A19); A16 hecho, A17/A18 vigentes.
+1 (detalles-prod) — último audit: 2026-10-31b (`docs/audits/ponytail-audit-2026-10-31b.md`); anteriores 2026-10-31 y 2026-10-30. Hallazgo 1 + P1-P5 van en slice detalles-prod; hallazgos 2-6 a backlog.
 
 ## Estado al 2026-10-28
 Ver `docs/TRASPASO-2026-10-28.md` (vigente): app en uso real, P0 mayorista abierto, siguientes A13, A14, C1.

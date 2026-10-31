@@ -37,7 +37,6 @@ describe('ProductCard — nota de venta', () => {
     render(
       <ProductCard
         producto={mockProducto as any}
-        empresaSlug="bazar-naty"
         onClick={jest.fn()}
         rol="admin"
       />
@@ -52,7 +51,6 @@ describe('ProductCard — nota de venta', () => {
     render(
       <ProductCard
         producto={mockProducto as any}
-        empresaSlug="bazar-naty"
         onClick={jest.fn()}
         rol="bodeguero"
       />

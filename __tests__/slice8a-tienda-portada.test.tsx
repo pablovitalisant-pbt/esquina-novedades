@@ -53,7 +53,6 @@ function renderizar(over: Partial<{ productos: ProductoTienda[]; categorias: typ
       productos={over.productos ?? PRODUCTOS}
       categorias={over.categorias ?? CATEGORIAS}
       opcionesEntrega={over.opciones ?? OPCIONES}
-      empresaSlug="la-esquina"
     />,
   );
 }

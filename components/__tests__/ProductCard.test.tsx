@@ -32,7 +32,6 @@ describe('ProductCard - Cantidad por Caja', () => {
     render(
       <ProductCard
         producto={producto}
-        empresaSlug="test-empresa"
         onClick={() => {}}
       />
     );
@@ -79,7 +78,6 @@ describe('ProductCard - Precio de venta (CLP)', () => {
     render(
       <ProductCard
         producto={producto}
-        empresaSlug="test-empresa"
         onClick={() => {}}
         ocultarPrecios={props.ocultarPrecios}
       />

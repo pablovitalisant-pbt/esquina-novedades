@@ -574,6 +574,59 @@ ausencia de enlaces a `/ventas/kardex` en ambos menus).
 otro archivo existente referencia los textos ni el enlace; no hay tipos
 compartidos, schema, middleware, variables de entorno ni flags afectados.
 
+## Slice `detalles-prod` (2026-10-31)
+
+Contrato aprobado por Pablo. Sin flag, sin migracion, sin cambios en
+`next.config`, sin datos de produccion. Ubicaciones tomadas del
+`docs/audits/ponytail-audit-2026-10-31b.md`.
+
+1. **P1 Caja Mayor.** Se elimina la columna "Emp." de las dos tablas
+   (`app/(app)/caja-mayor/client_page.tsx` movimientos y notas del cliente) y
+   la columna "Org." del Excel exportado (single-tenant: nunca varia). Sin
+   siglas inventadas. `GET /api/caja/movimientos` y `GET /api/caja/export`
+   agregan `LEFT JOIN public.clientes c ON c.id = m.kcodcli2` y devuelven
+   `COALESCE(m.nombre_cliente, c.nombre) AS nombre_cliente` para que la
+   columna Cliente muestre el nombre aunque el snapshot sea null.
+2. **P2 Tienda.** `components/tienda/TiendaHeader.tsx`: singular/plural en el
+   `aria-label` del carrito ("1 artículo" / "N artículos").
+3. **P3 POS cobrar.** `components/PosCobrarDialog.tsx`: si hay cuenta
+   predeterminada guardada y existe, se usa (igual que hoy). Sin
+   predeterminada: forma efectivo -> primera cuenta cuyo nombre contenga
+   "efectivo" o "caja" (case-insensitive), si no existe, la primera; otras
+   formas -> la primera. Al cambiar la forma con clic o teclas 1-4 se
+   recalcula la sugerida solo si el usuario no eligio una cuenta a mano en
+   este cobro.
+4. **P4 Nuevo producto.** `app/(app)/precios/client_page.tsx` usa
+   `lib/imagen-reducir` igual que `ProductDrawer`: `TIPOS_ACEPTADOS`,
+   `MAX_ENTRADA_BYTES` (20 MB), `reducirImagen` antes de subir y texto de
+   ayuda acorde.
+5. **P5 Origen de pedidos.** No se migra: la BD mantiene `'productos'`; la UI
+   lo muestra como "Tienda online" (helper de etiqueta en `/pedidos`).
+   Comentario en `components/TiendaPortada.tsx` explicando el valor legado.
+6. **Hallazgo 1 del audit.** Se termina de quitar `empresaSlug` de las
+   interfaces de `ProductCard`, `BodegaCard` y `TiendaPortada`, de sus call
+   sites y de los tests/guards que lo pasaban o exigian.
+
+Fase B: un test por punto (API devuelve el nombre del cliente y la tabla no
+tiene Emp.; singular de P2; P3 con y sin predeterminada; P4 archivo de 15 MB
+aceptado y reducido; P5 "Tienda online" en `/pedidos`).
+
+**Revision de impacto lateral**: cambian `app/api/caja/movimientos/route.ts`,
+`app/api/caja/export/route.ts`, `app/(app)/caja-mayor/client_page.tsx`,
+`components/tienda/TiendaHeader.tsx`, `components/PosCobrarDialog.tsx`,
+`app/(app)/precios/client_page.tsx`, `components/TiendaPortada.tsx`,
+`components/ProductCard.tsx`, `components/BodegaCard.tsx`,
+`app/(app)/bodega/client_page.tsx`, `app/page.tsx`,
+`app/(app)/pedidos/client_page.tsx`, los tests que pasaban `empresaSlug`
+(`components/__tests__/ProductCard.test.tsx`, `portada-auto-render`,
+`precio-mayorista-ui`, `precios-card-badge`, `ProductCard-prenota`,
+`slice2b-precios-ui`, `slice5-textos-por-mayor-menor`,
+`slice8a-tienda-portada`) y los guards `slice20-precios-smoke`,
+`slice22-bodega-smoke`, `subslice-b-badges`; mas los tests nuevos, este PRD y
+`AUTO-LOG.md`. `lib/tienda-productos.ts` conserva su retorno actual (no es
+prop). No hay tipos compartidos, schema, migraciones, middleware, variables
+de entorno ni flags afectados.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

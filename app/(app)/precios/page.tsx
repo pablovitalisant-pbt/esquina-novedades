@@ -9,6 +9,6 @@ export default async function PreciosPage() {
   // bodeguero solo accede a herramientas de bodega
   if (session.user.rol === 'bodeguero') redirect('/dashboard');
 
-  // ponytail: Slice 20 — single-tenant. empresaSlug hardcodeado en client_page.
+  // ponytail: Slice 20 — single-tenant.
   return <PreciosClient session={session.user} />;
 }

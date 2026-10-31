@@ -53,6 +53,12 @@ const ENTREGA_LABEL: Record<string, string> = {
   envio_arica: 'Envío a Arica',
 };
 
+// 'productos' es el valor legado de la tienda online en la BD (migrations/034).
+const ORIGEN_LABEL: Record<string, string> = {
+  productos: 'Tienda online',
+  catalogo: 'Catálogo',
+};
+
 function badgeClass(estado: string): string {
   if (estado === 'convertido' || estado === 'pagado') return 'bg-[var(--success-soft)] text-[var(--success)]';
   if (estado === 'descartado' || estado === 'expirado' || estado === 'rechazado') {
@@ -220,6 +226,7 @@ export function PedidosPage({}: { session: SessionProp }) {
                         : 'Sin entrega'}
                       {p.direccion_entrega ? ` · ${p.direccion_entrega}` : ''}
                     </span>
+                    <span>Origen: {ORIGEN_LABEL[p.origen] ?? p.origen}</span>
                   </div>
                   {(p.mp_payment_id || p.mp_revision_motivo) && (
                     <div className="text-sm text-[var(--body)] flex flex-col gap-0.5">

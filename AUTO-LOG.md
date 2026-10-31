@@ -312,3 +312,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Fase B roja verificada por modulo inexistente; 9 tests nuevos en `__tests__/lib/api-pagos.test.ts` (payload exacto, error HTTP con mensaje, error HTTP sin mensaje, red, soloSiOk).
 - Verificacion: jest --silent 253/253 suites, 2064/2064 tests (tests de ambos dialogos sin modificar); tsc 0 errores; lint 0 warnings/0 errores; build exit 0. Sin commit, sin datos de produccion, sin next.config; CRLF preservado.
 - Archivos: lib/api-pagos.ts (45), components/PagarNotaDialog.tsx (167->158), components/PosCobrarDialog.tsx (354->348), __tests__/lib/api-pagos.test.ts (95), PRD.md, docs/BACKLOG.md, AUTO-LOG.md.
+
+## 2026-10-31 - A18: lib/api-notas (crear nota + alta de item)
+- Contrato: PRD "Refactors A16-A18" §A18. `lib/api-notas.ts` con `crearNota(clienteId?, { verificarOk })`, `agregarItem(notaId, payload)` y `ErrorNota`; usados por el POS y `AgregarANotaVentaModal`. Sin flag, sin fusionar flujos.
+- Diferencias preservadas: el POS verifica `res.ok` al crear (`verificarOk: true`, toast fijo y corta) y no envia `precio`; el modal no verifica el no-ok (bug latente heredado) y envia `precio` siempre. Payloads byte-equivalentes (mismo orden de claves); `agregarItem` lanza `ErrorNota` solo en `!res.ok`, el resto de errores se propaga al catch de cada consumidor. `actualizar`/`borrar` items del POS no se tocaron.
+- Fase B roja verificada por modulo inexistente; 10 tests nuevos en `__tests__/lib/api-notas.test.ts` (payload exacto con/sin precio, endpoint, id string, no-ok del POS vs modal, error HTTP con/sin mensaje, red). Tests existentes del POS y del modal verdes SIN modificarlos.
+- Verificacion: jest --silent 254/254 suites, 2074/2074 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 9.9s, 48/48 paginas, exit 0, First Load JS 103 kB, middleware 64.3 kB). Sin commit, sin datos de produccion, sin next.config; CRLF preservado.
+- Archivos: lib/api-notas.ts (52), app/(app)/pos/client_page.tsx, components/AgregarANotaVentaModal.tsx, __tests__/lib/api-notas.test.ts, PRD.md, docs/BACKLOG.md, AUTO-LOG.md.

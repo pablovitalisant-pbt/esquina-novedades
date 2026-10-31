@@ -11,6 +11,7 @@ import { PosCobrarDialog } from '@/components/PosCobrarDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { formatCLP, formatItems } from '@/lib/utils';
 import { puedeVenderMayor } from '@/lib/precio-mayor';
+import { agregarItem, crearNota, ErrorNota } from '@/lib/api-notas';
 import type { Producto, SessionProp } from '@/types';
 
 // Clave de la nota en curso, por usuario: al recargar el POS retoma la misma
@@ -226,19 +227,17 @@ export function PosPage({ session }: { session: SessionProp }) {
     if (!id) {
       // Sin cliente elegido → Cliente de mesón. Si no existe, nota sin cliente.
       const clienteId = cliente?.id ?? await obtenerClienteMeson();
-      const res = await fetch('/api/notas-venta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(clienteId ? { cliente_id: clienteId } : {}),
-      });
-      if (!res.ok) { toast.error('No se pudo crear la nota de venta'); return; }
-      id = String((await res.json()).id);
+      try {
+        id = await crearNota(clienteId, { verificarOk: true });
+      } catch (e) {
+        if (!(e instanceof ErrorNota)) throw e;
+        toast.error('No se pudo crear la nota de venta');
+        return;
+      }
       recordarNota(id);
     }
-    const res = await fetch(`/api/notas-venta/${id}/items`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const item = await agregarItem<{ id: string }>(id, {
         codigo: prod.codigo,
         descripcion: prod.detalle,
         imagen_url: prod.imagen_url,
@@ -246,17 +245,14 @@ export function PosPage({ session }: { session: SessionProp }) {
         unidades: 1,
         modalidad: 'detalle',
         stock_referencia: prod.saldo,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      toast.error(err.error || 'No se pudo agregar el producto');
-      return;
+      });
+      setSelected(item.id);
+      setQuery('');
+      await cargarNota(id);
+    } catch (e) {
+      if (!(e instanceof ErrorNota)) throw e;
+      toast.error(e.message || 'No se pudo agregar el producto');
     }
-    const item = await res.json();
-    setSelected(item.id);
-    setQuery('');
-    await cargarNota(id);
   });
 
   const cambiarCantidad = (item: ItemNota, delta: number) => {

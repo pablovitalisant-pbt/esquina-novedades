@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import flags from '@/config/feature-flags.json';
 import { puedeVenderMayor } from '@/lib/precio-mayor';
 import { useBusquedaClientes } from '@/hooks/useBusquedaClientes';
+import { agregarItem, crearNota, ErrorNota } from '@/lib/api-notas';
 
 interface Props {
   open: boolean;
@@ -69,39 +70,23 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
     try {
       let id = prenotaId;
       if (prenotaId === 'nueva') {
-        const body: { cliente_id?: number } = {};
-        if (clienteId) body.cliente_id = clienteId;
-        const res = await fetch('/api/notas-venta', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        id = String(data.id);
+        id = await crearNota(clienteId);
       }
-      const res = await fetch(`/api/notas-venta/${id}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          codigo: producto.codigo,
-          descripcion: producto.detalle,
-          imagen_url: producto.imagen_url,
-          empresa_id: producto.empresa_id,
-          unidades,
-          precio,
-          modalidad,
-          stock_referencia: producto.saldo,
-        }),
+      await agregarItem(id, {
+        codigo: producto.codigo,
+        descripcion: producto.detalle,
+        imagen_url: producto.imagen_url,
+        empresa_id: producto.empresa_id,
+        unidades,
+        precio,
+        modalidad,
+        stock_referencia: producto.saldo,
       });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.error || 'Error al agregar producto');
-        return;
-      }
       toast.success('Producto agregado a nota de venta');
       onClose();
-    } catch {
-      toast.error('No se pudo agregar a nota de venta');
+    } catch (e) {
+      if (e instanceof ErrorNota) toast.error(e.message || 'Error al agregar producto');
+      else toast.error('No se pudo agregar a nota de venta');
     } finally {
       setSaving(false);
     }

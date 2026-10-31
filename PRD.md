@@ -451,9 +451,51 @@ variables de entorno, sin `config/feature-flags.json`, sin `next.config.mjs`.
 Tests: uno nuevo (`__tests__/lib/api-pagos.test.ts`); los tests existentes
 de ambos dialogos no se modifican.
 
-### A18
+### A18 — `lib/api-notas.ts` (aprobado 2026-10-31)
 
-Pendiente de ciclo propio; sin cambios en este slice.
+Refactor sin cambio de comportamiento ni flag: la red de seguridad son los
+tests existentes del POS y del modal. Extrae a `lib/api-notas.ts` las dos
+llamadas HTTP duplicadas para crear la nota y dar de alta un item.
+
+API:
+
+```ts
+export class ErrorNota extends Error {} // error HTTP, message = err.error del servidor
+export function crearNota(
+  clienteId?: number | string | null,
+  opciones?: { verificarOk?: boolean }
+): Promise<string> // id de la nota como string
+export function agregarItem<T = { id: string }>(
+  notaId: string | number,
+  payload: Record<string, unknown>
+): Promise<T>
+```
+
+Diferencias detectadas entre las 2 copias, preservadas por parametro o por
+el catch de cada consumidor:
+
+| Aspecto | POS | AgregarANotaVentaModal |
+|---|---|---|
+| Creacion, respuesta no-ok | toast `No se pudo crear la nota de venta` y corta (`verificarOk: true`) | no la verifica: parsea el body igual (bug latente heredado) |
+| Creacion, body | `{}` o `{ cliente_id }` | identico |
+| Item, precio | no se envia | se envia siempre `precio` |
+| Item, resto | `codigo, descripcion, imagen_url, empresa_id, unidades: 1, modalidad: 'detalle', stock_referencia` | `codigo, descripcion, imagen_url, empresa_id, unidades, precio, modalidad, stock_referencia` |
+| Item, respuesta no-ok | toast `err.error` o `No se pudo agregar el producto` | toast `err.error` o `Error al agregar producto` |
+| Item, exito | lee `item.id` | ignora el body |
+| Error de red / body de error no parseable | no se captura (igual que hoy) | toast generico `No se pudo agregar a nota de venta` |
+
+El payload de item se pasa intacto a `JSON.stringify` (mismo orden de claves),
+por lo que los bytes enviados al servidor son identicos a los actuales.
+`agregarItem` lanza `ErrorNota` solo en `!res.ok`; el resto de errores se
+propaga al catch de cada consumidor. `crearNota` devuelve `String(data.id)`
+para reproducir ambos parseos.
+
+Revision de impacto lateral: solo cambian los 2 consumidores, el modulo
+nuevo, este PRD, `docs/BACKLOG.md` y `AUTO-LOG.md`. Sin migracion, sin
+variables de entorno, sin `config/feature-flags.json`, sin `next.config.mjs`.
+Tests: uno nuevo (`__tests__/lib/api-notas.test.ts`); los existentes del POS
+(`pos-stock`, `pos2-pos-page`, `pos3-*`, `pos-detalles-*`) y del modal
+(`AgregarAPrenotaModal`) no se modifican.
 
 ## Limpieza `lim3` (audit ponytail 2026-10-31)
 

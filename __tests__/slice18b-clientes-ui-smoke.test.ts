@@ -24,10 +24,13 @@ describe('Slice 18b — smoke UI de Clientes', () => {
 
   // ──── Modal: selector de cliente ────
 
-  test('AgregarANotaVentaModal usa /api/clientes?q=', () => {
-    const content = fs.readFileSync(path.join(PROJECT_ROOT, 'components/AgregarANotaVentaModal.tsx'), 'utf-8');
-    expect(content).toContain('/api/clientes');
-    expect(content).not.toContain('/api/prenotas'); // ya no depende de prenotas
+  test('AgregarANotaVentaModal busca clientes vía el hook compartido (/api/clientes?q=)', () => {
+    // A16: la búsqueda se extrajo a hooks/useBusquedaClientes.ts; el modal la consume.
+    const modal = fs.readFileSync(path.join(PROJECT_ROOT, 'components/AgregarANotaVentaModal.tsx'), 'utf-8');
+    const hook = fs.readFileSync(path.join(PROJECT_ROOT, 'hooks/useBusquedaClientes.ts'), 'utf-8');
+    expect(modal).toContain('useBusquedaClientes');
+    expect(hook).toContain('/api/clientes?q=');
+    expect(modal).not.toContain('/api/prenotas'); // ya no depende de prenotas
   });
 
   // ──── POST acepta cliente_id ────

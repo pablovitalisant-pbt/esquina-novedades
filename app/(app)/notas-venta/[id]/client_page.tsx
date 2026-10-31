@@ -16,6 +16,7 @@ import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
 import { EMPRESA, hexToRgb, hexToArgb } from '@/lib/empresa';
+import { useBusquedaClientes } from '@/hooks/useBusquedaClientes';
 
 // Convierte un Blob (de /api/share-image) a data URL base64 para doc.addImage.
 function blobToDataURL(blob: Blob): Promise<string> {
@@ -344,9 +345,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   // pos3 — la pantalla de éxito del POS pide PDF/WhatsApp al abrir esta nota.
   const [accionAuto, setAccionAuto] = useState<'pdf' | 'whatsapp' | null>(null);
   const [clienteQuery, setClienteQuery] = useState('');
-  const [clienteResults, setClienteResults] = useState<ClienteResult[]>([]);
-  const [clientesLoading, setClientesLoading] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const { resultados: clienteResults, cargando: clientesLoading } = useBusquedaClientes<ClienteResult>(clienteQuery);
   const prodAbortRef = useRef<AbortController | null>(null);
 
   // Auto-focus on newly added item
@@ -388,33 +387,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Búsqueda de clientes con debounce + AbortController (patrón AgregarANotaVentaModal)
-  useEffect(() => {
-    if (clienteQuery.trim().length < 2) {
-      setClienteResults([]);
-      return;
-    }
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setClientesLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/clientes?q=${encodeURIComponent(clienteQuery)}`, {
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const { data } = await res.json();
-          setClienteResults(data || []);
-        }
-      } catch (err) {
-        if (!(err instanceof Error && err.name === 'AbortError')) setClienteResults([]);
-      } finally {
-        setClientesLoading(false);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [clienteQuery]);
+  // Búsqueda de clientes (hook compartido; ver PRD §"Refactors A16-A18")
 
   const asignarCliente = async (c: ClienteResult) => {
     try {
@@ -424,7 +397,6 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
         body: JSON.stringify({ cliente_id: c.id }),
       });
       setClienteQuery('');
-      setClienteResults([]);
       await fetchPrenota();
     } catch {
       toast.error('No se pudo asignar cliente');

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import flags from '@/config/feature-flags.json';
 import { puedeVenderMayor } from '@/lib/precio-mayor';
+import { useBusquedaClientes } from '@/hooks/useBusquedaClientes';
 
 interface Props {
   open: boolean;
@@ -29,10 +30,9 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
   const [precio, setPrecio] = useState(producto.prcventa);
   const [saving, setSaving] = useState(false);
   const [clienteQuery, setClienteQuery] = useState('');
-  const [clientes, setClientes] = useState<Array<{ id: number; nombre: string; telefono: string | null }>>([]);
+  const { resultados: clientes, cargando: clientesLoading, limpiar: limpiarClientes } =
+    useBusquedaClientes<{ id: number; nombre: string; telefono: string | null }>(clienteQuery);
   const [clienteId, setClienteId] = useState<number | null>(null);
-  const [clientesLoading, setClientesLoading] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setPrecio(producto.prcventa);
@@ -60,33 +60,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
     fetchPrenotas();
   }, [open]);
 
-  // ─── Búsqueda de clientes con debounce + AbortController ───
-  useEffect(() => {
-    if (clienteQuery.trim().length < 2) {
-      setClientes([]);
-      return;
-    }
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setClientesLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/clientes?q=${encodeURIComponent(clienteQuery)}`, {
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const { data } = await res.json();
-          setClientes(data || []);
-        }
-      } catch (err) {
-        if (!(err instanceof Error && err.name === 'AbortError')) setClientes([]);
-      } finally {
-        setClientesLoading(false);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [clienteQuery]);
+  // ─── Búsqueda de clientes (hook compartido) ───
 
   if (open === false) return null;
 
@@ -153,7 +127,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
               {clientes.map((c) => (
                 <li
                   key={c.id}
-                  onClick={() => { setClienteId(c.id); setClienteQuery(c.nombre); setClientes([]); }}
+                  onClick={() => { setClienteId(c.id); setClienteQuery(c.nombre); limpiarClientes(); }}
                   className={`px-3 py-2 cursor-pointer hover:bg-[var(--muted)] dark:hover:bg-[var(--muted)] ${clienteId === c.id ? 'bg-[var(--primary)] dark:bg-[var(--primary)]/40' : ''}`}
                 >
                   <span className="font-medium">{c.nombre}</span>

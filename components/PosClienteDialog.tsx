@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Search, UserRound } from 'lucide-react';
+import { useBusquedaClientes } from '@/hooks/useBusquedaClientes';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -38,7 +39,6 @@ export function PosClienteDialog({
   onSelect: (cliente: ClientePos) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [resultados, setResultados] = useState<ClientePos[]>([]);
   const [recientes, setRecientes] = useState<ClientePos[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -46,36 +46,14 @@ export function PosClienteDialog({
   useEffect(() => {
     if (!open) return;
     setQuery('');
-    setResultados([]);
     setRecientes(leerRecientes());
     setHighlighted(0);
     setTimeout(() => searchRef.current?.focus(), 0);
   }, [open]);
 
   // Búsqueda con debounce sobre la API de clientes existente.
-  useEffect(() => {
-    if (!open) return;
-    const q = query.trim();
-    if (q.length < 2) {
-      setResultados([]);
-      setHighlighted(0);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/clientes?q=${encodeURIComponent(q)}`, { signal: controller.signal });
-        if (res.ok) {
-          const { data } = await res.json();
-          setResultados(((data ?? []) as ClientePos[]).map(c => ({ id: c.id, nombre: c.nombre })));
-          setHighlighted(0);
-        }
-      } catch (err) {
-        if (!(err instanceof Error && err.name === 'AbortError')) setResultados([]);
-      }
-    }, 200);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [query, open]);
+  const { resultados } = useBusquedaClientes<ClientePos>(query, { activo: open, trim: true });
+  useEffect(() => { setHighlighted(0); }, [resultados]);
 
   const visibles = query.trim().length >= 2 ? resultados : recientes;
 

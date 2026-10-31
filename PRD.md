@@ -371,6 +371,45 @@ Sin cambios: `next.config.mjs`, `lib/env.ts` (Cloudinary ya figura como opcional
 tipos/migraciones (no hay columna nueva), `notas-venta/[id]` (usa el ancho default,
 el cambio de props no lo exige).
 
+## Refactors A16-A18
+
+### A16 — `hooks/useBusquedaClientes.ts` (aprobado 2026-10-31)
+
+Refactor sin cambio de comportamiento ni flag: la red de seguridad son los
+tests existentes. Extrae la búsqueda de clientes duplicada en
+`components/PosClienteDialog.tsx`, `components/AgregarANotaVentaModal.tsx` y
+`app/(app)/notas-venta/[id]/client_page.tsx` (esta última zona frágil: solo
+se reemplaza el efecto de búsqueda, sin reformatear ni mover nada más).
+
+Firma: `useBusquedaClientes<T>(query, { activo?, trim?, minCaracteres?,
+debounceMs? }) -> { resultados, cargando }`.
+
+Diferencias detectadas entre las 3 copias, preservadas por opciones:
+
+| Aspecto | PosClienteDialog | Modal + client_page |
+|---|---|---|
+| Gate | solo con `open` (`activo`) | siempre activo |
+| Query en la URL | `query.trim()` (`trim: true`) | query cruda (`trim: false`) |
+| Mínimo / debounce | 2 caracteres / 200 ms | 2 caracteres / 200 ms |
+| Endpoint | `GET /api/clientes?q=` | idéntico |
+| Error | limpia resultados (salvo AbortError) | idéntico |
+| `cargando` | no lo usa | lo muestra |
+| Abort | en cleanup | aborta la anterior al iniciar la nueva |
+
+Única desviación intencional: con query < 2 el hook pone `cargando = false`;
+hoy el modal y `client_page` dejan "Buscando..." encendido para siempre en
+ese caso (bug latente, no observable en tests). Se declara aquí.
+
+Revision de impacto lateral: solo cambian los 3 consumidores, el hook nuevo,
+este PRD, `docs/BACKLOG.md` y `AUTO-LOG.md`. Sin migración, sin variables de
+entorno, sin `config/feature-flags.json`, sin `next.config.mjs`. Los tests
+existentes (`pos3-cliente`, `AgregarAPrenotaModal`, `prenota-detalle`) no se
+modifican.
+
+### A17 / A18
+
+Pendientes de ciclo propio; sin cambios en este slice.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

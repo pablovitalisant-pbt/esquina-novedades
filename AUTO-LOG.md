@@ -285,3 +285,12 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Contraste visual a 128 px: `magick compare -metric RMSE` = 0.00383431 (0.38%), sin diferencia perceptible.
 - No tocados: `marca/icon-192.png` (43.884 B) y `app/favicon.ico` (2.585 B), ya < 60 KB. Manifest, layout, rutas y nombres sin cambios.
 - Verificacion: `npm run build` OK. Sin commit.
+
+## 2026-10-31 - A16: hook useBusquedaClientes (refactor sin cambio de comportamiento)
+- Contrato en PRD.md seccion "Refactors A16-A18" + revision de impacto lateral. Sin flag; red de seguridad = tests existentes.
+- `hooks/useBusquedaClientes.ts`: debounce 200 ms + AbortController + fetch a `/api/clientes?q=`; opciones `activo` (PosClienteDialog solo con el dialogo abierto), `trim` (Pos usa query recortada; modal y client_page cruda), `minCaracteres` (2), `debounceMs`; devuelve `{ resultados, cargando, limpiar }`. Unica desviacion declarada: con query < 2 pone `cargando = false` (hoy quedaba "Buscando..." encendido para siempre; bug latente no cubierto por tests).
+- Consumidores: `components/PosClienteDialog.tsx` (activo=open, trim; resaltado se resetea con un effect sobre resultados), `components/AgregarANotaVentaModal.tsx` (limpiar() al elegir cliente) y `app/(app)/notas-venta/[id]/client_page.tsx` (solo se reemplazo el bloque de busqueda; sin reformat ni otros cambios).
+- Fase B roja verificada antes del hook (suite no resolvia el modulo). Tests nuevos: `__tests__/hooks/use-busqueda-clientes.test.ts` (6: debounce un solo fetch, abort de la anterior, query corta, trim true/false, activo=false, error de red).
+- Un test existente requirio cambio: `__tests__/slice18b-clientes-ui-smoke.test.ts` verificaba por texto que el modal contuviera `/api/clientes?q=`; ahora comprueba que el modal use el hook y que el hook tenga el endpoint (mismo intento, la busqueda ya no vive en el modal). `pos3-cliente`, `AgregarAPrenotaModal` y `prenota-detalle` verdes SIN modificarlos.
+- Verificacion: jest --silent 255/255 suites, 2056/2056 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 8.7s, 48 paginas, exit 0). Sin commits, sin tocar datos de produccion ni next.config; finales de linea preservados.
+- Archivos: hooks/useBusquedaClientes.ts, components/PosClienteDialog.tsx, components/AgregarANotaVentaModal.tsx, app/(app)/notas-venta/[id]/client_page.tsx, __tests__/hooks/use-busqueda-clientes.test.ts, __tests__/slice18b-clientes-ui-smoke.test.ts, PRD.md, docs/BACKLOG.md, AUTO-LOG.md.

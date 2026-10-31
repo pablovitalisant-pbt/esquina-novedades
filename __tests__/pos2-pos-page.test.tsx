@@ -148,7 +148,7 @@ describe('POS pos2 — flujo con mouse', () => {
     fireEvent.click(within(linea).getByText('POR MENOR'));
     await waitFor(() => expect(within(screen.getByTestId('pos-linea-GL1')).getByText('POR MAYOR')).toBeTruthy());
     expect(screen.getByTestId('pos-total')).toHaveTextContent('1.600');
-    expect(localStorage.getItem('pos-nota-id')).toBe('55');
+    expect(localStorage.getItem('pos-nota-id:1')).toBe('55');
   });
 
   it('MAYOR deshabilitado si el producto no tiene precio_mayor', async () => {
@@ -163,12 +163,12 @@ describe('POS pos2 — flujo con mouse', () => {
 
   it('"Nueva venta" olvida la nota guardada', async () => {
     servidor([GL1], { id: 77, items: [{ id: 'it-1', codigo: 'GL1', descripcion: 'Producto A', modalidad: 'detalle', unidades: 1, precio: 1000, subtotal: 1000 }] });
-    localStorage.setItem('pos-nota-id', '77');
+    localStorage.setItem('pos-nota-id:1', '77');
     render(<PosPage session={session} />);
 
     await waitFor(() => expect(screen.getByTestId('pos-linea-GL1')).toBeTruthy());
     fireEvent.click(screen.getByText('Nueva venta'));
-    await waitFor(() => expect(localStorage.getItem('pos-nota-id')).toBeNull());
+    await waitFor(() => expect(localStorage.getItem('pos-nota-id:1')).toBeNull());
   });
 });
 
@@ -246,7 +246,7 @@ describe('POS pos2 — race y teclado', () => {
     render(<PosPage session={session} />);
     fireEvent.click(await screen.findByTestId('pos-producto-GL1'));
     await waitFor(() =>
-      expect(screen.getByTestId('pos-barra-movil')).toHaveTextContent('1 items'));
+      expect(screen.getByTestId('pos-barra-movil')).toHaveTextContent('1 ítem'));
     expect(screen.getByTestId('pos-barra-movil')).toHaveTextContent('1.000');
   });
 });
@@ -287,7 +287,7 @@ describe('POS pos3 — cliente de la venta', () => {
 
   it('con nota creada, elegir cliente actualiza por PATCH', async () => {
     const state = servidor([GL1], { id: 77, items: [{ id: 'it-1', codigo: 'GL1', descripcion: 'Producto A', modalidad: 'detalle', unidades: 1, precio: 1000, subtotal: 1000 }] });
-    localStorage.setItem('pos-nota-id', '77');
+    localStorage.setItem('pos-nota-id:1', '77');
     localStorage.setItem('pos-clientes-recientes', JSON.stringify([{ id: 'c-ana', nombre: 'Ana Pérez' }]));
     let patchBody: Record<string, unknown> | null = null;
     fetchMock.mockImplementation(((original) => async (url: string, init?: any) => {

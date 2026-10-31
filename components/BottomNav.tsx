@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { signOut, useSession } from 'next-auth/react';
 import flags from '@/config/feature-flags.json';
+import { RUTAS_POR_ROL } from '@/lib/rutas-por-rol';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -25,9 +26,14 @@ export function BottomNav() {
   const isAdmin = rol === 'admin';
   const isVendedor = rol === 'vendedor';
   const isBodeguero = rol === 'bodeguero';
+  // Regla única de acceso a /pos (lib/rutas-por-rol.ts), no duplicada acá.
+  const puedePos = !!rol && (RUTAS_POR_ROL[rol] ?? []).includes('/pos');
+  const mostrarPos = puedePos && (flags as Record<string, boolean>)['pos-v1'] === true;
 
+  // w-14 (56 px) en vez de w-16: 6 botones caben en 360 px sin desbordar,
+  // manteniendo el área tocable >= 44 px.
   const btnClass = (active: boolean) => cn(
-    'flex flex-col items-center justify-center flex-shrink-0 w-16 h-full gap-1 transition-colors',
+    'flex flex-col items-center justify-center flex-shrink-0 w-14 h-full gap-1 transition-colors',
     active
       ? 'text-[var(--primary)] dark:text-[var(--primary)]'
       : 'text-[var(--body)] hover:text-[var(--body)] dark:hover:text-[var(--body)]'
@@ -68,9 +74,17 @@ export function BottomNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--border)] dark:border-[var(--border)] bg-card/80 backdrop-blur-xl pb-safe">
       <div
-        className="flex items-center justify-around h-full px-2"
+        className="flex items-center justify-around h-full px-2 overflow-x-auto"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
       >
+
+        {/* POS — admin, vendedor (solo con pos-v1) */}
+        {mostrarPos && (
+          <Link href="/pos" className={btnClass(pathname === '/pos')}>
+            <ScanBarcode className="w-6 h-6" />
+            <span className="text-[10px] font-medium">POS</span>
+          </Link>
+        )}
 
         {/* Ventas — admin, vendedor */}
         {(isAdmin || isVendedor) && (

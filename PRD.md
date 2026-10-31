@@ -292,6 +292,37 @@ como hoy (misma URL de búsqueda, sin check).
 middleware. Los tests POS existentes (pos2/pos3/pos4) siguen con el flag OFF
 (no mockean el flag → valor real `false`).
 
+### pos-detalles — plural, acceso al POS y venta en curso por usuario
+
+Contrato aprobado por Pablo (2026-10-31). Sin flag nuevo: correcciones chicas;
+el acceso se condiciona al flag existente `pos-v1`.
+
+1. **Plural correcto** en los contadores del POS (barra inferior movil y
+   cualquier otro contador): "0 items", "1 item", "N items" (con tilde).
+   Helper puro `formatItems(n)` en `lib/utils.ts`.
+2. **Boton POS en la barra inferior movil** (`components/BottomNav.tsx`), con
+   icono `ScanBarcode`, visible solo si `pos-v1` ON y el rol tiene `/pos`
+   permitido segun `lib/rutas-por-rol.ts` (admin, vendedor; nunca bodeguero).
+   Activo cuando `pathname === '/pos'`. Para que 6 botones quepan en 360 px
+   cada uno mide 56 px de ancho (area tocable >= 44 px) y el contenedor
+   permite scroll horizontal si hace falta.
+3. **Venta en curso por usuario**: la clave de localStorage pasa de
+   `pos-nota-id` a `pos-nota-id:<id de usuario de la sesion>`. Al cargar, si
+   existe la clave antigua y no la del usuario, se consulta la nota con
+   `GET /api/notas-venta/[id]` y se adopta solo si `usuario_id` coincide con
+   el usuario actual; si la API no entrega el campo, no se adopta. La clave
+   antigua se borra siempre. Sin sesion o sin id no se persiste ni se adopta.
+
+**Revision de impacto lateral**: cambian `lib/utils.ts`,
+`components/BottomNav.tsx`, `app/(app)/pos/client_page.tsx`, este PRD y
+`docs/BACKLOG.md` (A13 ya resuelta). Tests existentes actualizados a la clave
+por usuario: `__tests__/pos2-pos-page.test.tsx`,
+`__tests__/pos3-qa-repro.test.tsx`. Tests nuevos:
+`__tests__/pos-detalles-plural.test.ts`,
+`__tests__/pos-detalles-bottomnav.test.tsx`,
+`__tests__/pos-detalles-nota-usuario.test.tsx`. Sin migracion, sin variables
+de entorno, sin cambios en `next.config.mjs`, sin flag nuevo.
+
 ## Portada automatica (slice portada-auto, flag `tienda-portada-auto`)
 
 Contrato aprobado por Pablo (2026-10-31). Detalle e impacto lateral: `docs/slices/slice-portada-auto-fase-a.md`. Logica pura: `components/tienda/portada-auto.ts`.

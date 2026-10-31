@@ -263,3 +263,13 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 ## 2026-10-31 - Ajuste DT pos-stock: tests POS con flag ON y OFF
 - pos2/pos3-qa/pos4 fijan comportamiento previo: mockean `@/config/feature-flags.json` con los flags reales y `pos-solo-stock: false`; el ON queda cubierto por pos-stock.test.tsx. Codigo de la app sin cambios (sin bug real encontrado).
 - Verificacion: jest completo --silent con flag false = 251/251 suites, 2034/2034 tests; con flag true temporal = 251/251, 2034/2034; json restaurado byte-exacto (diff solo la linea del flag). tsc 0; lint 0/0.
+
+## 2026-10-31 - pos-detalles: plural, boton POS en BottomNav y venta en curso por usuario
+- Contrato en PRD.md seccion "POS v1", subseccion "pos-detalles" + revision de impacto lateral. Sin flag nuevo: el boton usa `pos-v1` (hoy true).
+- `lib/utils.ts`: `formatItems(n)` -> "0 items" / "1 item" / "N items" (con tilde). La barra movil del POS lo usa en vez de `"N items"` fijo.
+- `components/BottomNav.tsx`: link POS (`ScanBarcode`) visible solo si `pos-v1` ON y el rol incluye `/pos` en `RUTAS_POR_ROL` (admin, vendedor; bodeguero no). Activo con `pathname === '/pos'`. Botones de 56 px de ancho (toque >= 44 px) + contenedor con scroll horizontal: 6 items caben en 360 px.
+- `app/(app)/pos/client_page.tsx`: clave `pos-nota-id:<usuario_id>`. Al cargar, la clave antigua `pos-nota-id` se consulta y solo se adopta si `GET /api/notas-venta/[id]` devuelve `usuario_id` igual al de la sesion (sin campo -> no adopta); la clave antigua se borra siempre. Sin sesion/id no se persiste ni se adopta.
+- Tests nuevos: `__tests__/pos-detalles-plural.test.ts` (4), `__tests__/pos-detalles-bottomnav.test.tsx` (6), `__tests__/pos-detalles-nota-usuario.test.tsx` (6). Fase B roja verificada antes de implementar (18 rojos / 17 verdes en las 5 suites tocadas). Actualizados a la clave por usuario: `__tests__/pos2-pos-page.test.tsx` (incluye "1 item") y `__tests__/pos3-qa-repro.test.tsx`.
+- `docs/BACKLOG.md`: fila A13 marcada ✅ (ya resuelta, reemplazada por slices 2-4). Sin otras filas.
+- Verificacion: jest --silent 254/254 suites, 2050/2050 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK, exit 0. Sin commits, sin tocar datos de produccion ni next.config; finales de linea preservados.
+- Archivos: lib/utils.ts, components/BottomNav.tsx, app/(app)/pos/client_page.tsx, PRD.md, docs/BACKLOG.md, __tests__/pos-detalles-plural.test.ts, __tests__/pos-detalles-bottomnav.test.tsx, __tests__/pos-detalles-nota-usuario.test.tsx, __tests__/pos2-pos-page.test.tsx, __tests__/pos3-qa-repro.test.tsx, AUTO-LOG.md.

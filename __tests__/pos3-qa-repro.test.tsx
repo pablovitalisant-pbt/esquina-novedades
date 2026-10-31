@@ -64,7 +64,7 @@ beforeEach(() => {
 });
 
 it('QA: con productos y nota restaurada, la grilla y la nota se pintan', async () => {
-  localStorage.setItem('pos-nota-id', '283');
+  localStorage.setItem('pos-nota-id:7', '283');
   render(<PosPage session={{ user: { id: '7', rol: 'vendedor' } }} />);
 
   await waitFor(() => expect(screen.getByTestId('pos-producto-P1')).toBeTruthy());

@@ -10,12 +10,13 @@ import { PosClienteDialog, type ClientePos } from '@/components/PosClienteDialog
 import { PosCobrarDialog } from '@/components/PosCobrarDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { EMPRESA } from '@/lib/empresa';
-import { formatCLP } from '@/lib/utils';
+import { formatCLP, formatItems } from '@/lib/utils';
 import { puedeVenderMayor } from '@/lib/precio-mayor';
 import flags from '@/config/feature-flags.json';
 import type { Producto, SessionProp } from '@/types';
 
-// Clave de la nota en curso: al recargar, el POS retoma la misma nota.
+// Clave de la nota en curso, por usuario: al recargar el POS retoma la misma
+// nota, pero nunca la de otra persona en el mismo navegador.
 const LS_KEY = 'pos-nota-id';
 // pos-stock: con el flag OFF el POS se comporta exactamente como antes.
 const POS_SOLO_STOCK = (flags as Record<string, boolean>)['pos-solo-stock'] === true;
@@ -32,6 +33,9 @@ type ItemNota = {
 
 export function PosPage({ session }: { session: SessionProp }) {
   const router = useRouter();
+  // Sin id de usuario no hay clave: no se persiste la venta en curso.
+  const usuarioId = session?.user?.id == null ? '' : String(session.user.id);
+  const claveNota = usuarioId ? `${LS_KEY}:${usuarioId}` : null;
 
   const [query, setQuery] = useState('');
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -74,7 +78,9 @@ export function PosPage({ session }: { session: SessionProp }) {
         setNotaId(null);
         setItems([]);
         setSaldoNota(null);
-        try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ }
+        if (claveNota) {
+          try { localStorage.removeItem(claveNota); } catch { /* sin storage */ }
+        }
         return;
       }
       if (!res.ok) { toast.error('No se pudo cargar la nota'); return; }
@@ -84,14 +90,44 @@ export function PosPage({ session }: { session: SessionProp }) {
     } catch {
       toast.error('No se pudo cargar la nota');
     }
-  }, []);
+  }, [claveNota]);
 
-  // Retoma la nota en curso guardada en localStorage (si sigue existiendo).
+  // Retoma la nota en curso guardada para ESTE usuario. La clave antigua
+  // ('pos-nota-id') solo se adopta si la API confirma que la nota es suya; en
+  // cualquier caso se borra para que nadie más la herede.
   useEffect(() => {
-    let id: string | null = null;
-    try { id = localStorage.getItem(LS_KEY); } catch { id = null; }
-    if (id) { setNotaId(id); cargarNota(id); }
-  }, [cargarNota]);
+    let vigente = true;
+    const iniciar = async () => {
+      let legacy: string | null = null;
+      try { legacy = localStorage.getItem(LS_KEY); } catch { /* sin storage */ }
+      if (!claveNota) {
+        if (legacy) { try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ } }
+        return;
+      }
+      let guardada: string | null = null;
+      try { guardada = localStorage.getItem(claveNota); } catch { /* sin storage */ }
+      if (guardada) {
+        setNotaId(guardada);
+        void cargarNota(guardada);
+      }
+      if (!legacy) return;
+      try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ }
+      if (guardada) return;
+      try {
+        const res = await fetch(`/api/notas-venta/${legacy}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!vigente) return;
+        // Sin dueño en la respuesta no se adopta (no se puede verificar).
+        if (data?.usuario_id == null || String(data.usuario_id) !== usuarioId) return;
+        setNotaId(legacy);
+        try { localStorage.setItem(claveNota, legacy); } catch { /* sin storage */ }
+        await cargarNota(legacy);
+      } catch { /* se descarta */ }
+    };
+    void iniciar();
+    return () => { vigente = false; };
+  }, [claveNota, usuarioId, cargarNota]);
 
   useEffect(() => {
     (async () => {
@@ -136,7 +172,9 @@ export function PosPage({ session }: { session: SessionProp }) {
 
   const recordarNota = (id: string) => {
     setNotaId(id);
-    try { localStorage.setItem(LS_KEY, id); } catch { /* sin storage */ }
+    if (claveNota) {
+      try { localStorage.setItem(claveNota, id); } catch { /* sin storage */ }
+    }
   };
 
   // Cliente genérico (RUT 66.666.666-6), resuelto por RUT y cacheado en memoria.
@@ -292,7 +330,9 @@ export function PosPage({ session }: { session: SessionProp }) {
     setMesonFaltante(false);
     setPagado(0);
     setSaldoNota(null);
-    try { localStorage.removeItem(LS_KEY); } catch { /* sin storage */ }
+    if (claveNota) {
+      try { localStorage.removeItem(claveNota); } catch { /* sin storage */ }
+    }
   };
 
   const nuevaVenta = () => {
@@ -686,7 +726,7 @@ export function PosPage({ session }: { session: SessionProp }) {
           onClick={() => setSheetOpen(true)}
           className="w-full h-16 rounded-full bg-[var(--primary)] text-primary-foreground font-black text-lg px-6 flex items-center justify-between gap-2"
         >
-          <span>{items.reduce((s, i) => s + Number(i.unidades), 0)} items</span>
+          <span>{formatItems(items.reduce((s, i) => s + Number(i.unidades), 0))}</span>
           <span>{formatCLP(total)}</span>
           <span>COBRAR</span>
         </button>

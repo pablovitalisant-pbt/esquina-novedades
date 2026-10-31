@@ -5,6 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Contador de ítems del POS: "0 ítems", "1 ítem", "N ítems" (con tilde).
+export function formatItems(value: number): string {
+  const n = Number(value);
+  return `${n} ${n === 1 ? 'ítem' : 'ítems'}`;
+}
+
 export function formatCLP(value: number): string {
   const n = Number(value);
   if (value == null || !Number.isFinite(n)) return '—';

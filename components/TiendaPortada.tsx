@@ -110,7 +110,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega, empresaSlu
               <div key={p.id} className="bg-[#FFF8EA] text-[#21002F] rounded-xl overflow-hidden">
                 <div className="relative aspect-square bg-[var(--muted)]">
                   {p.imagen_url ? (
-                    <ImageWithFallback src={p.imagen_url} codigo={p.codigo} empresaSlug={empresaSlug} fill />
+                    <ImageWithFallback src={p.imagen_url} codigo={p.codigo} empresaSlug={empresaSlug} fill ancho={400} />
                   ) : (
                     <PlaceholderProducto codigo={p.codigo} />
                   )}

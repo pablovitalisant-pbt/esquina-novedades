@@ -7,10 +7,16 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function uploadImage(base64Data: string, folder: string, publicId?: string): Promise<UploadApiResponse> {
+export async function uploadImage(base64Data: string, publicId: string): Promise<UploadApiResponse> {
   // cloudinary v2.9 devuelve Promise nativa sin callback.
+  // fotos-1: public_id estable + overwrite + invalidate = reemplazo inmediato.
   return cloudinary.uploader.upload(
     base64Data,
-    { folder, public_id: publicId, overwrite: true, transformation: [{ quality: "auto", width: 1200, crop: "limit" }] }
+    {
+      public_id: publicId,
+      overwrite: true,
+      invalidate: true,
+      transformation: [{ quality: "auto", width: 1200, crop: "limit" }],
+    }
   );
 }

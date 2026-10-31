@@ -19,6 +19,7 @@ import flags from '@/config/feature-flags.json';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { mensajeError } from '@/lib/errores';
+import { reducirImagen, MAX_ENTRADA_BYTES, TIPOS_ACEPTADOS } from '@/lib/imagen-reducir';
 
 interface ProductDrawerProps {
   producto: Producto | null;
@@ -46,6 +47,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const skipNextSync = useRef(false);
+  const subiendoRef = useRef(false);
   const empresaSlug = EMPRESA.slug;
 
   // BUG-019 fix: estado para edición completa de producto
@@ -142,12 +144,12 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!TIPOS_ACEPTADOS.includes(file.type)) {
       toast.error('Solo se aceptan JPG, PNG o WEBP');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Imagen debe ser menor a 5MB');
+    if (file.size > MAX_ENTRADA_BYTES) {
+      toast.error('La imagen no puede superar 20 MB');
       return;
     }
 
@@ -158,16 +160,13 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !producto) return;
+    if (!selectedFile || !producto || subiendoRef.current) return;
+    subiendoRef.current = true;
     setIsUploading(true);
 
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-      });
-      reader.readAsDataURL(selectedFile);
-      const base64Data = await base64Promise;
+      // fotos-1: reducir (<=1600 px, JPEG 0.85, base64 < 3 MB) antes de subir.
+      const base64Data = await reducirImagen(selectedFile);
 
       const res = await fetch('/api/productos/upload', {
         method: 'POST',
@@ -195,6 +194,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
     } catch (error) {
       toast.error(mensajeError(error));
     } finally {
+      subiendoRef.current = false;
       setIsUploading(false);
     }
   };
@@ -406,6 +406,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
               codigo={producto.codigo}
               empresaSlug={empresaSlug}
               fill
+              ancho={1200}
               className="object-contain"
             />
             {session.rol !== 'bodeguero' && (
@@ -622,7 +623,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                        type="file"
                        ref={fileInputRef}
                        className="hidden"
-                       accept="image/jpeg,image/png,image/webp"
+                       accept="image/*"
                        onChange={handleFileChange}
                        data-testid="upload-input"
                      />

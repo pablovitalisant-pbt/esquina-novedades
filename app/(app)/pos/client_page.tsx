@@ -625,6 +625,7 @@ export function PosPage({ session }: { session: SessionProp }) {
                   empresaSlug={EMPRESA.slug}
                   alt={p.detalle ?? p.codigo}
                   fill
+                  ancho={400}
                 />
               </div>
               <div className="p-3">

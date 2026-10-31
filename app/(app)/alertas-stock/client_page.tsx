@@ -169,6 +169,7 @@ export function AlertasStockClient() {
                         src={p.imagen_url}
                         codigo={p.codigo}
                         empresaSlug={EMPRESA.slug}
+                        ancho={400}
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                     </td>

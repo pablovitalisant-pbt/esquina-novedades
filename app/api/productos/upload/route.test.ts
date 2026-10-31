@@ -28,6 +28,13 @@ import { uploadImage } from "@/lib/cloudinary";
 // We'll use require to load it more dynamically
 const { POST } = require("./route");
 
+beforeEach(() => {
+  // fotos-1: la ruta exige credenciales configuradas; en test son ficticias.
+  process.env.CLOUDINARY_CLOUD_NAME = "test";
+  process.env.CLOUDINARY_API_KEY = "test";
+  process.env.CLOUDINARY_API_SECRET = "test";
+});
+
 describe("POST /api/productos/upload", () => {
   it("returns 401 if user is not authorized", async () => {
     (getServerSession as jest.Mock).mockResolvedValue(null);

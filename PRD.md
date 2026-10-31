@@ -276,6 +276,42 @@ Contrato aprobado por Pablo (2026-10-31). Detalle e impacto lateral: `docs/slice
 6. Texto del banner: hasta 3 categorias con stock + " y mas · Por mayor y por menor"; con 0 categorias, texto fijo.
 7. `/catalogo/[slug]` sin cambios salvo que con flag ON no muestra NUEVO por `es_nuevo`.
 
+## Fotos de productos (slice fotos-1, flag `fotos-v1`)
+
+Contrato aprobado por Pablo (2026-10-31). Flag nuevo en `config/feature-flags.json`,
+default `false`; con OFF todo se comporta como hoy.
+
+1. **Reduccion en cliente** (`lib/imagen-reducir.ts`): canvas, lado mayor <= 1600 px,
+   JPEG calidad 0.85. Si ya es menor y pesa <= 1.5 MB se manda tal cual; si pesa mas se
+   re-encodea igual. Entrada aceptada hasta 20 MB (jpeg/png/webp). El base64 enviado debe
+   quedar < 3 MB; si no, error "La foto es muy pesada". Servidor: 413 si `imageBase64`
+   supera 4 MB, antes de llamar a Cloudinary.
+2. **Entrega rapida** (`lib/cloudinary-url.ts`): `urlCloudinary(url, ancho)` inserta
+   `f_auto,q_auto,c_limit,w_<ancho>` tras `/image/upload/`, sin duplicar si ya hay
+   transformacion; urls no-Cloudinary quedan intactas. `ImageWithFallback` acepta `ancho`
+   (default 600): tarjetas ~400, drawer/detalle 1200. Se mantiene `unoptimized`.
+3. **Sin `src`**: placeholder directo, sin pedir la url adivinada
+   `${empresaSlug}/${codigo}.jpeg`, con flag ON; con flag OFF se conserva la peticion
+   actual. `onError` sigue llevando al placeholder.
+4. **Camara en movil**: `accept="image/*"` (sin `capture` forzado) para que el celular
+   ofrezca camara o galeria.
+5. **Reemplazo inmediato**: `public_id = productos/<codigo saneado>` (solo
+   `[A-Za-z0-9_-]`, el resto a `_`); upload con `overwrite` + `invalidate`; se guarda
+   `secure_url` (incluye version, rompe cache). `UPDATE productos ... WHERE codigo = X
+   AND empresa_id = <empresa de la sesion>`.
+6. **Sin credenciales** `CLOUDINARY_*` en runtime, `POST /api/productos/upload`
+   responde 503 "Fotos no configuradas" sin intentar subir.
+
+Revision de impacto lateral: cambian `components/ImageWithFallback.tsx`,
+`components/ProductDrawer.tsx`, `app/api/productos/upload/route.ts`,
+`lib/cloudinary.ts`, `config/feature-flags.json` y los call sites de
+`ImageWithFallback` que ajustan `ancho` (TarjetaProductoTienda, TiendaPortada,
+ProductCard, BodegaCard, POS, bodega, alertas-stock); el test existente
+`app/api/productos/upload/route.test.ts` fija credenciales ficticias por el nuevo 503.
+Sin cambios: `next.config.mjs`, `lib/env.ts` (Cloudinary ya figura como opcional),
+tipos/migraciones (no hay columna nueva), `notas-venta/[id]` (usa el ancho default,
+el cambio de props no lo exige).
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

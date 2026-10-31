@@ -59,7 +59,7 @@ export function TarjetaProductoTienda({
     >
       <div className="relative aspect-square bg-[var(--muted)]">
         {producto.imagen_url ? (
-          <ImageWithFallback src={producto.imagen_url} codigo={producto.codigo} empresaSlug={empresaSlug} fill />
+          <ImageWithFallback src={producto.imagen_url} codigo={producto.codigo} empresaSlug={empresaSlug} fill ancho={400} />
         ) : (
           <PlaceholderProducto codigo={producto.codigo} />
         )}

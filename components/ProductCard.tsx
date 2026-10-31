@@ -41,6 +41,7 @@ export function ProductCard({ producto, empresaSlug, onClick, ocultarPrecios, ro
               codigo={producto.codigo}
               empresaSlug={empresaSlug}
               fill
+              ancho={400}
             />
           </div>
           <div className="flex flex-col flex-1 min-w-0 gap-1">

@@ -3,9 +3,21 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { uploadImage } from "@/lib/cloudinary";
+import { sanearCodigo } from "@/lib/cloudinary-url";
 import { mensajeError } from '@/lib/errores';
 
 export const runtime = "nodejs";
+
+// fotos-1: el cliente ya manda < 3 MB; 4 MB es el limite duro del servidor.
+const MAX_BASE64_BYTES = 4 * 1024 * 1024;
+
+function fotosConfiguradas(): boolean {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -16,33 +28,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
   }
 
+  // fotos-1: sin credenciales no se intenta subir.
+  if (!fotosConfiguradas()) {
+    return NextResponse.json({ error: "Fotos no configuradas" }, { status: 503 });
+  }
+
   try {
-    const { imageBase64, codigo } = await request.json();
+    const { imageBase64, codigo: codigoRaw } = await request.json();
+    const codigo = typeof codigoRaw === 'string' ? codigoRaw.trim() : '';
 
     if (!imageBase64 || !codigo) {
       return NextResponse.json({ error: "Faltan datos (imageBase64, codigo)" }, { status: 400 });
     }
 
-    // 1. Upload to Cloudinary. Use folder 'productos/' and public_id = codigo as requested.
-    // Cloudinary will overwrite if public_id is the same.
-    const uploadResult = await uploadImage(imageBase64, 'productos', codigo);
+    // fotos-1: rechazar antes de llamar a Cloudinary.
+    if (Buffer.byteLength(String(imageBase64), 'utf8') > MAX_BASE64_BYTES) {
+      return NextResponse.json({ error: "La foto es muy pesada" }, { status: 413 });
+    }
+
+    const empresaId = Number(user.empresas?.[0]);
+    if (!empresaId) {
+      return NextResponse.json({ error: "Sin empresa asignada" }, { status: 400 });
+    }
+
+    // fotos-1: public_id estable por codigo saneado -> overwrite real.
+    const publicId = `productos/${sanearCodigo(codigo)}`;
+    const uploadResult = await uploadImage(String(imageBase64), publicId);
     if (!uploadResult || !uploadResult.secure_url) {
       throw new Error("Fallo al subir imagen a Cloudinary");
     }
 
     const imageUrl = uploadResult.secure_url;
-    const publicId = uploadResult.public_id;
+    const publicIdSubido = uploadResult.public_id;
 
-    // 2. Update all product variants with this code
-    // We update imagen_url and if public_id column exists we update it too.
-    // Based on user request, they want to return it, so we store it if possible.
+    // fotos-1: el UPDATE solo toca la empresa de la sesion.
     await sql`
       UPDATE productos 
-      SET imagen_url = ${imageUrl}, public_id = ${publicId}, updated_at = NOW()
-      WHERE codigo = ${codigo}
+      SET imagen_url = ${imageUrl}, public_id = ${publicIdSubido}, updated_at = NOW()
+      WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
     `;
 
-    return NextResponse.json({ imagen_url: imageUrl, public_id: publicId });
+    return NextResponse.json({ imagen_url: imageUrl, public_id: publicIdSubido });
   } catch (error) {
     console.error(`POST /api/productos/upload error:`, error);
     const message = mensajeError(error);

@@ -9,5 +9,6 @@
   "env-validacion-arranque": true,
   "tienda-mayor-online": true,
   "tienda-portada-v2": true,
-  "pos-v1": true
+  "pos-v1": true,
+  "tienda-portada-auto": false
 }

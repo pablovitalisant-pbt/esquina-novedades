@@ -14,6 +14,7 @@ export type ProductoTienda = {
   minimo_mayor: number | null;
   saldo: number;
   es_nuevo: boolean;
+  fecha_ingreso: string | null;
 };
 
 export type CategoriaTienda = { id: string; nombre: string };
@@ -35,6 +36,7 @@ type ProductoRow = {
   minimo_mayor: string | null;
   saldo: string;
   es_nuevo: boolean;
+  fecha_ingreso: Date | string | null;
 };
 
 /**
@@ -66,7 +68,8 @@ export async function getProductosTienda(): Promise<{
       MAX(precio_mayor) as precio_mayor,
       MAX(minimo_mayor) as minimo_mayor,
       SUM(saldo) as saldo,
-      BOOL_OR(es_nuevo) as es_nuevo
+      BOOL_OR(es_nuevo) as es_nuevo,
+      MAX(fecha_ingreso) as fecha_ingreso
     FROM productos
     WHERE empresa_id = 1
       AND activo = true
@@ -82,6 +85,7 @@ export async function getProductosTienda(): Promise<{
     precio_mayor: r.precio_mayor == null ? null : parseFloat(r.precio_mayor),
     minimo_mayor: r.minimo_mayor == null ? null : parseInt(r.minimo_mayor),
     es_nuevo: Boolean(r.es_nuevo),
+    fecha_ingreso: r.fecha_ingreso == null ? null : new Date(r.fecha_ingreso).toISOString(),
   }));
 
   return { productos, empresaSlug };

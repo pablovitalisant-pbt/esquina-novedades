@@ -26,6 +26,7 @@ const producto = (over: Partial<ProductoTienda>): ProductoTienda => ({
   saldo: 5,
   es_nuevo: false,
   categoria: 'Hogar',
+  fecha_ingreso: null,
   ...over,
 });
 

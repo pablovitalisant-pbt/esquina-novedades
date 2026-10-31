@@ -68,6 +68,8 @@ export async function POST(request: Request) {
     const margenCalculado = calcularMargen(Number(costo), prcventa);
     // cantcaja opcional: default 1 (mismo comportamiento que antes del slice)
     const cantcajaNum = cantcaja !== undefined ? Number(cantcaja) : 1;
+    // Slice portada-auto: es_nuevo ahora significa "Destacar". Nuevo producto = false.
+    const esNuevo = typeof body.es_nuevo === 'boolean' ? body.es_nuevo : false;
 
     // Chequear duplicado
     const empresaId = user.empresas?.[0] ?? 1;
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
     // Insertar
     const result = await sql`
       INSERT INTO productos (empresa_id, codigo, detalle, prcventa, costo, cif, margen_pct, saldo, umed, cantcaja, pesocaja, cubicaja, es_nuevo, prcminimo, categoria, stock_minimo, precio_mayor, minimo_mayor)
-      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventa}, ${Number(costo)}, ${Number(costo)}, ${margenCalculado}, ${saldo !== undefined ? Number(saldo) : 0}, 'U', ${cantcajaNum}, 0, 0, true, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null}, ${pm}, ${minimoMayor})
+      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventa}, ${Number(costo)}, ${Number(costo)}, ${margenCalculado}, ${saldo !== undefined ? Number(saldo) : 0}, 'U', ${cantcajaNum}, 0, 0, ${esNuevo}, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null}, ${pm}, ${minimoMayor})
       RETURNING *
     `;
 

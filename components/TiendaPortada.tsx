@@ -13,6 +13,8 @@ import { BarraCategorias } from '@/components/tienda/BarraCategorias';
 import { FranjaConfianza } from '@/components/tienda/FranjaConfianza';
 import { TiendaFooter } from '@/components/tienda/TiendaFooter';
 import { filtrarProductos } from '@/components/tienda/filtrarProductos';
+import { TEXTO_BANNER_FIJO, armarPortada, compararNovedades } from '@/components/tienda/portada-auto';
+import flags from '@/config/feature-flags.json';
 import type { CategoriaTienda, OpcionEntregaTienda, ProductoTienda } from '@/lib/tienda-productos';
 import { ShoppingBag } from 'lucide-react';
 
@@ -44,19 +46,35 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega, empresaSlu
   const [categoria, setCategoria] = useState<string | null>(null);
   const [orden, setOrden] = useState<Orden>('novedades');
 
+  const PORTADA_AUTO = (flags as Record<string, boolean>)['tienda-portada-auto'] === true;
+
   // La consulta ya filtra stock; el filtro acá es defensa ante datos sucios.
   const conStock = useMemo(() => productos.filter((p) => p.saldo > 0), [productos]);
+  const auto = useMemo(() => (PORTADA_AUTO ? armarPortada(conStock) : null), [PORTADA_AUTO, conStock]);
 
   const filtrados = useMemo(() => {
     const copia = filtrarProductos(conStock, { categoria, busqueda });
     if (orden === 'menor') copia.sort((a, b) => a.precio - b.precio);
     else if (orden === 'mayor') copia.sort((a, b) => b.precio - a.precio);
+    else if (auto) copia.sort(compararNovedades);
     else copia.sort((a, b) => Number(b.es_nuevo) - Number(a.es_nuevo) || b.id - a.id);
     return copia;
-  }, [conStock, categoria, busqueda, orden]);
+  }, [conStock, categoria, busqueda, orden, auto]);
 
-  const novedades = useMemo(() => conStock.filter((p) => p.es_nuevo).slice(0, 10), [conStock]);
-  const destacados = useMemo(() => [...conStock].sort((a, b) => b.id - a.id).slice(0, 3), [conStock]);
+  const novedades = useMemo(
+    () => (auto ? auto.novedades : conStock.filter((p) => p.es_nuevo).slice(0, 10)),
+    [auto, conStock],
+  );
+  const destacados = useMemo(
+    () => (auto ? auto.destacados : [...conStock].sort((a, b) => b.id - a.id).slice(0, 3)),
+    [auto, conStock],
+  );
+  const tituloBanner = auto ? auto.tituloBanner : TEXTO_BANNER_FIJO;
+
+  const verTodos = (nombre: string) => {
+    setCategoria(nombre);
+    document.getElementById('grilla-productos')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const opcionesActivas = opcionesEntrega.filter((o) => o.activa !== false);
   const nombresEntrega = opcionesActivas.map((o) => o.nombre).join(' · ');
@@ -78,9 +96,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega, empresaSlu
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#F2B936] leading-tight">
               {EMPRESA.nombre}
             </h1>
-            <p className="mt-3 text-base sm:text-lg text-[#FFE6A0]">
-              Hogar, regalos, juguetes y más · Por mayor y por menor
-            </p>
+            <p className="mt-3 text-base sm:text-lg text-[#FFE6A0]">{tituloBanner}</p>
             <button
               type="button"
               onClick={() => document.getElementById('grilla-productos')?.scrollIntoView({ behavior: 'smooth' })}
@@ -116,12 +132,52 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega, empresaSlu
       <div className="mx-auto px-3 sm:px-4" style={{ maxWidth: '1152px' }}>
         {/* Novedades */}
         {novedades.length > 0 && (
-          <section className="py-6">
+          <section className="py-6" data-testid="portada-novedades">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Novedades</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
               {novedades.map((p) => (
                 <div key={p.id} className="w-[150px] sm:w-[180px] shrink-0 snap-start">
-                  <TarjetaProductoTienda producto={p} empresaSlug={empresaSlug} />
+                  <TarjetaProductoTienda producto={p} empresaSlug={empresaSlug} mostrarNuevo={PORTADA_AUTO ? true : undefined} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Una sección por categoría con stock (flag portada-auto) */}
+        {auto?.secciones.map((s) => (
+          <section key={s.nombre} className="py-6" data-testid="seccion-categoria">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">{s.nombre}</h2>
+              <button
+                type="button"
+                onClick={() => verTodos(s.nombre)}
+                className="text-sm font-semibold text-[var(--primary)] hover:underline"
+              >
+                Ver todos
+              </button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+              {s.productos.map((p) => (
+                <div key={p.id} className="w-[150px] sm:w-[180px] shrink-0 snap-start">
+                  <TarjetaProductoTienda producto={p} empresaSlug={empresaSlug} mostrarNuevo={false} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {/* Ahorra comprando por mayor (flag portada-auto) */}
+        {auto && auto.porMayor.length > 0 && (
+          <section className="py-6" data-testid="portada-mayor">
+            <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Ahorra comprando por mayor</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+              {auto.porMayor.map((p) => (
+                <div key={p.id} className="w-[150px] sm:w-[180px] shrink-0 snap-start flex flex-col">
+                  <TarjetaProductoTienda producto={p} empresaSlug={empresaSlug} mostrarNuevo={false} />
+                  <p className="mt-1 text-[11px] text-[var(--body)]">
+                    Desde {p.minimo_mayor} unidades: descuento especial
+                  </p>
                 </div>
               ))}
             </div>

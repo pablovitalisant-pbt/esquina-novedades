@@ -263,6 +263,26 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
     }
   };
 
+  // Slice portada-auto: es_nuevo = "Destacar". Check directo, sin entrar a edición.
+  const handleToggleDestacar = async (destacar: boolean) => {
+    if (!producto) return;
+    setEditEsNuevo(destacar);
+    try {
+      const res = await fetch(`/api/productos/${producto.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ es_nuevo: destacar }),
+      });
+      if (!res.ok) throw new Error('Error actualizando destacado');
+      const { data } = await res.json();
+      onUpdated(data);
+      toast.success(destacar ? 'Producto destacado' : 'Producto quitado de destacados');
+    } catch (error) {
+      setEditEsNuevo(!destacar);
+      toast.error(mensajeError(error));
+    }
+  };
+
   const handleSaveCodigo = async () => {
     if (!producto) return;
     setIsSavingCodigo(true);
@@ -355,7 +375,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
               ) : (
                 <>
                   <span>{producto.codigo}</span>
-                  {editEsNuevo && <Badge variant="outline" className="text-xs">Nuevo</Badge>}
+                  {editEsNuevo && <Badge variant="outline" className="text-xs">Destacado</Badge>}
                   {isAdmin && (
                     <button
                       data-testid="editar-codigo-btn"
@@ -644,6 +664,19 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                     ))}
                   </select>
                 </div>
+                )}
+
+                {isAdmin && !isEditing && (
+                  <label className="flex items-center gap-2 text-sm text-[var(--body)] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      data-testid="destacar-checkbox"
+                      checked={editEsNuevo}
+                      onChange={(e) => handleToggleDestacar(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--primary)]"
+                    />
+                    Destacar en la tienda
+                  </label>
                 )}
 
                 {isAdmin && !isEditing && (

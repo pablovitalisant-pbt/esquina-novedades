@@ -102,7 +102,7 @@ Pendientes:
 
 ## Contador de slices desde el último ponytail audit (vigente)
 
-0 — último audit: 2026-10-30 (`docs/audits/ponytail-audit-2026-10-30.md`), aplicado en slice lim2 (hallazgos 3, 4, 6, 7 + tokens Tailwind rotos). Hallazgos 1, 2 y 5 quedan como backlog (A16–A18) por decisión del DT.
+1 (portada-auto) — último audit: 2026-10-30 (`docs/audits/ponytail-audit-2026-10-30.md`), aplicado en slice lim2 (hallazgos 3, 4, 6, 7 + tokens Tailwind rotos). Hallazgos 1, 2 y 5 quedan como backlog (A16–A18) por decisión del DT.
 
 ## Estado al 2026-10-28
 Ver `docs/TRASPASO-2026-10-28.md` (vigente): app en uso real, P0 mayorista abierto, siguientes A13, A14, C1.

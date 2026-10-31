@@ -4,6 +4,7 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { formatCLP } from '@/lib/utils';
 import { ShoppingBag } from 'lucide-react';
+import flags from '@/config/feature-flags.json';
 import type { ProductoTienda } from '@/lib/tienda-productos';
 
 /** Forma mínima que necesitan las tarjetas de la tienda. */
@@ -38,15 +39,20 @@ export function TarjetaProductoTienda({
   empresaSlug,
   mostrarPrecio = true,
   mostrarStock = false,
+  mostrarNuevo,
   className = '',
 }: {
   producto: ProductoTarjeta;
   empresaSlug: string;
   mostrarPrecio?: boolean;
   mostrarStock?: boolean;
+  /** Con flag portada-auto, el badge depende de esta prop (no de es_nuevo). */
+  mostrarNuevo?: boolean;
   className?: string;
 }) {
   const hayStock = mostrarStock && producto.saldo != null && producto.saldo > 0;
+  const PORTADA_AUTO = (flags as Record<string, boolean>)['tienda-portada-auto'] === true;
+  const mostrarBadge = PORTADA_AUTO ? Boolean(mostrarNuevo) : producto.es_nuevo;
   return (
     <article
       className={`h-full flex flex-col bg-[var(--card)] border border-[var(--border-default)] rounded-2xl overflow-hidden ${className}`}
@@ -57,7 +63,7 @@ export function TarjetaProductoTienda({
         ) : (
           <PlaceholderProducto codigo={producto.codigo} />
         )}
-        {producto.es_nuevo && (
+        {mostrarBadge && (
           <span className="absolute top-2 left-2 z-10 bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px] font-bold px-2 py-0.5 rounded-full">
             NUEVO
           </span>

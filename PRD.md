@@ -264,6 +264,18 @@ de pago y en todos los lugares que enumeran formas de pago (Caja Mayor,
 schemas y tipos compartidos). No requiere migración: la columna
 `caja_movimientos.forma_pago` es `TEXT` sin `CHECK`.
 
+## Portada automatica (slice portada-auto, flag `tienda-portada-auto`)
+
+Contrato aprobado por Pablo (2026-10-31). Detalle e impacto lateral: `docs/slices/slice-portada-auto-fase-a.md`. Logica pura: `components/tienda/portada-auto.ts`.
+
+1. Novedades: 12 productos con stock; primero los marcados "Destacar" (`es_nuevo`), luego `MAX(fecha_ingreso)` DESC con desempate `id` DESC (la importacion del 26-oct dejo 68 productos con la misma fecha).
+2. `es_nuevo` significa "Destacar": producto nuevo se crea en `false`; check "Destacar en la tienda" (solo admin) en el drawer. El badge NUEVO de la tienda aparece en las tarjetas de Novedades, no por `es_nuevo`.
+3. Una seccion por categoria con stock, orden por cantidad de productos con stock DESC (desempate nombre); carrusel con sus 10 mas recientes + "Ver todos" (filtro existente). Productos sin categoria: solo Novedades y Todos.
+4. "Ahorra comprando por mayor": `puedeVenderMayor()` + `minimo_mayor` entero > 0; oculta si no hay. Precio mostrado sigue POR MENOR.
+5. Banner: 3 mas recientes, priorizando los con `imagen_url`.
+6. Texto del banner: hasta 3 categorias con stock + " y mas · Por mayor y por menor"; con 0 categorias, texto fijo.
+7. `/catalogo/[slug]` sin cambios salvo que con flag ON no muestra NUEVO por `es_nuevo`.
+
 ## Zonas de riesgo conocidas
 
 | Archivo / módulo | Riesgo | Qué no tocar sin revisar |

@@ -56,4 +56,3 @@ Validar safeguards antes de tests con DB; nunca apuntarlos a producción. Eviden
 ## Gate
 
 Autorización de Pablo vigente para contratos, fases y commits. DT exige rojo verificado antes de autorizar C y verde más smoke antes del cierre. Push/deploy y datos reales se evalúan separadamente.
-

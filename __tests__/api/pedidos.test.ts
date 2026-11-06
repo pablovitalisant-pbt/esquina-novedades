@@ -481,3 +481,54 @@ describe('GET /api/pedidos — staff', () => {
     expect(sql.mock.calls[0][0].join('')).toMatch(/estado/);
   });
 });
+
+describe('GET /api/pedidos — N04d1 cobro manual', () => {
+  const flagsMock = jest.requireMock('@/config/feature-flags.json') as Record<string, boolean>;
+  const PEDIDO = {
+    id: 'b3f1-0000', pedido_id: 'b3f1-0000', cliente_id: null, origen: 'productos',
+    origen_slug: null, estado: 'pagado', created_at: '2026-08-17T20:10:00Z', total: 3000,
+    email_contacto: null, entrega_codigo: 'retiro', entrega_costo: 0, nombre: null,
+    telefono: null, direccion_entrega: null, metodo_pago: 'transferencia',
+    metodo: 'transferencia', caja_movimiento_id: '1a2b3c4d-0000-4000-8000-000000000042',
+    cuenta_id: 3, referencia: 'TRX-123',
+  };
+  // Mock secundario: responde al SELECT por IDs con LEFT JOIN 050 y a los ítems.
+  const setupGet = () => sql.mockImplementation((strings: any[]) => Promise.resolve(
+    strings.join('').includes('pedido_items') ? [] : [PEDIDO],
+  ));
+  const cobroConsultado = () =>
+    sql.mock.calls.some((c: any[]) => c[0].join('').includes('pedido_pagos_manuales'));
+
+  beforeEach(() => { jest.clearAllMocks(); });
+  afterEach(() => { flagsMock['pedido-cobro-manual'] = false; });
+
+  test('admin + flag activo expone método, caja y confirmación', async () => {
+    flagsMock['pedido-cobro-manual'] = true;
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    setupGet();
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data[0]).toMatchObject({ metodo_pago: 'transferencia',
+      caja_movimiento_id: '1a2b3c4d-0000-4000-8000-000000000042',
+      confirmacion: { cuenta_id: 3, referencia: 'TRX-123' } });
+    const consulta = sql.mock.calls.find((c: any[]) => c[0].join('').includes('pedido_pagos_manuales'));
+    expect(consulta[0].join('')).toMatch(/LEFT JOIN/i);
+  });
+
+  test.each([
+    ['ventas + flag activo', 'vendedor', true],
+    ['admin + flag apagado', 'admin', false],
+  ])('%s no consulta ni expone cobro manual', async (_l: string, rol: string, flag: boolean) => {
+    flagsMock['pedido-cobro-manual'] = flag;
+    getServerSession.mockResolvedValue({ user: { id: '7', rol } });
+    setupGet();
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(cobroConsultado()).toBe(false);
+    expect(body.data[0]).not.toHaveProperty('metodo_pago');
+    expect(body.data[0]).not.toHaveProperty('caja_movimiento_id');
+    expect(body.data[0]).not.toHaveProperty('confirmacion');
+  });
+});

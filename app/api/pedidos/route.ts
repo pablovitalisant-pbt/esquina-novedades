@@ -42,6 +42,13 @@ type ItemLista = {
   precio_lista: number | null;
   subtotal: number;
 };
+type CobroManualFila = {
+  id: string;
+  metodo_pago: string | null;
+  caja_movimiento_id: string | null;
+  cuenta_id: number | null;
+  referencia: string | null;
+};
 type CuerpoPedido = {
   nombre_contacto?: unknown;
   telefono_contacto?: unknown;
@@ -397,9 +404,11 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if (usuarioSesion(session).rol === 'bodeguero') {
+  const rol = usuarioSesion(session).rol;
+  if (rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
+  const cobroManual = flags['pedido-cobro-manual'] === true && rol === 'admin';
 
   try {
     const { searchParams } = new URL(request.url);
@@ -421,6 +430,19 @@ export async function GET(request: NextRequest) {
     }
 
     const pedidoIds = pedidos.map((p) => p.id);
+
+    // N04d1: solo admin con flag. LEFT JOIN 050 por PK conserva cardinalidad.
+    const cobrosPorId = new Map<string, CobroManualFila>();
+    if (cobroManual) {
+      const cobros = (await sql`
+        SELECT p.id, p.metodo_pago, p.caja_movimiento_id, pm.cuenta_id, pm.referencia
+        FROM public.pedidos p
+        LEFT JOIN public.pedido_pagos_manuales pm ON pm.pedido_id = p.id
+        WHERE p.id = ANY(${pedidoIds})
+      `) as CobroManualFila[];
+      for (const c of cobros) cobrosPorId.set(c.id, c);
+    }
+
     const items = (await sql`
       SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
              pi.precio, pi.precio_lista, pi.subtotal
@@ -443,23 +465,33 @@ export async function GET(request: NextRequest) {
       itemsPorPedido.set(it.pedido_id, lista);
     }
 
-    const data = pedidos.map((p) => ({
-      id: p.id,
-      cliente: { id: p.cliente_id, nombre: p.nombre, telefono: p.telefono },
-      email_contacto: p.email_contacto,
-      origen: p.origen,
-      origen_slug: p.origen_slug,
-      estado: p.estado,
-      entrega_codigo: p.entrega_codigo,
-      entrega_costo: p.entrega_costo,
-      direccion_entrega: p.direccion_entrega,
-      total: p.total,
-      created_at: p.created_at,
-      mp_payment_id: p.mp_payment_id ?? null,
-      mp_fecha_pago: p.mp_fecha_pago ?? null,
-      mp_revision_motivo: p.mp_revision_motivo ?? null,
-      items: itemsPorPedido.get(p.id) ?? [],
-    }));
+    const data = pedidos.map((p) => {
+      const cobro = cobrosPorId.get(p.id);
+      return {
+        id: p.id,
+        cliente: { id: p.cliente_id, nombre: p.nombre, telefono: p.telefono },
+        email_contacto: p.email_contacto,
+        origen: p.origen,
+        origen_slug: p.origen_slug,
+        estado: p.estado,
+        entrega_codigo: p.entrega_codigo,
+        entrega_costo: p.entrega_costo,
+        direccion_entrega: p.direccion_entrega,
+        total: p.total,
+        created_at: p.created_at,
+        mp_payment_id: p.mp_payment_id ?? null,
+        mp_fecha_pago: p.mp_fecha_pago ?? null,
+        mp_revision_motivo: p.mp_revision_motivo ?? null,
+        items: itemsPorPedido.get(p.id) ?? [],
+        ...(cobroManual ? {
+          metodo_pago: cobro?.metodo_pago ?? null,
+          caja_movimiento_id: cobro?.caja_movimiento_id ?? null,
+          confirmacion: cobro && cobro.cuenta_id !== null
+            ? { cuenta_id: cobro.cuenta_id, referencia: cobro.referencia ?? null }
+            : null,
+        } : {}),
+      };
+    });
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error) {

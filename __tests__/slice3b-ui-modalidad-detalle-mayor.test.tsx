@@ -10,7 +10,7 @@
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PrenotaDetallePage } from '@/app/(app)/notas-venta/[id]/client_page';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
 import { toast } from 'sonner';
@@ -108,6 +108,49 @@ describe('edición — PATCH sin cajas', () => {
 
     await waitFor(() => expect(patches()).toHaveLength(1));
     expect(JSON.parse(patches()[0][1].body)).toEqual({ modalidad: 'mayor', precio: 800 });
+  });
+
+  it('conserva las 6 unidades en el editor tras cambiar modalidad y recargar', async () => {
+    await renderNota([DETALLE]);
+
+    // La recarga posterior al PATCH queda pendiente hasta que el test la libere:
+    // así se ve el render intermedio y la respuesta del servidor no llega antes
+    // de que React pueda desmontar el editor.
+    const fetchInicial = global.fetch as jest.Mock;
+    let liberarRecarga!: (valor: any) => void;
+    const recargaPendiente = new Promise(resolve => { liberarRecarga = resolve; });
+    const fetchRecarga = jest.fn((url: string, req?: any) =>
+      String(url) === '/api/notas-venta/1' && !req?.method
+        ? recargaPendiente
+        : fetchInicial(url, req)
+    );
+    global.fetch = fetchRecarga as any;
+
+    fireEvent.click(screen.getByRole('button', { name: /editar/i }));
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '6' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'mayor' } });
+
+    await waitFor(() => expect(fetchRecarga).toHaveBeenCalledWith('/api/notas-venta/1'));
+
+    // El servidor devuelve las unidades persistidas (12), no el borrador.
+    await act(async () => {
+      liberarRecarga({
+        ok: true,
+        json: async () => ({
+          id: '1', titulo: 'Nota', estado: 'activa', saldo_pendiente: 0, total_pagado: 0,
+          items: [{ ...DETALLE, modalidad: 'mayor', precio: 900, subtotal: '10800.00' }],
+        }),
+      });
+      await recargaPendiente;
+    });
+
+    expect(screen.getByDisplayValue('6')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('900')).toBeInTheDocument();
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('mayor');
+
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+    await waitFor(() => expect(patches()).toHaveLength(2));
+    expect(JSON.parse(patches()[1][1].body)).toEqual({ unidades: 6, precio: 900 });
   });
 
   it('Mayor sin precio mayor (400 del servidor) → toast, no cambia el selector', async () => {

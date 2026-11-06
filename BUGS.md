@@ -57,3 +57,10 @@ Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protoc
 - Otros consumidores del patron: el POS (`app/(app)/pos/client_page.tsx:240`) y `app/(app)/notas-venta/[id]/client_page.tsx:458` no envian `precio` (el servidor lo resuelve), asi que no tienen el bug. `AgregarANotaVentaModal` era el unico que enviaba `precio` desde el producto.
 - Criterio: test BUG-007 en `__tests__/AgregarAPrenotaModal.test.tsx` renderiza el modal con `prcventa` string "10680.00" y verifica que el POST de items envia `typeof precio === 'number'` y `precio === 10680`.
 - Verificacion: jest --silent 254/254 suites, 2075/2075 tests; tsc 0; lint 0; build OK.
+
+## BUG-008 — El cambio de modalidad borraba la cantidad en edición (2026-11-06)
+
+- Reproducción: escribir 6 unidades en una línea de nota y cambiar a Por mayor antes de guardar. Con el GET de recarga pendiente desaparece el editor.
+- Causa: la recarga posterior al PATCH activaba loading global y desmontaba la tabla que guarda el borrador.
+- Fix: recarga silenciosa tras cambiar modalidad y bloqueo de la edición hasta que termine. Guardar sigue siendo el paso que persiste las unidades.
+- Evidencia: test rojo con GET diferido y 19 pruebas del archivo en verde tras el arreglo. Smoke Playwright con PostgreSQL TEST confirmó que quedan 6 unidades y que Guardar persiste modalidad mayor, precio unitario 2000 y subtotal 12000. Fixtures sintéticos eliminados.

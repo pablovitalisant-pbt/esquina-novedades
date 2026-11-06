@@ -105,7 +105,7 @@ function PrenotaItemsTable({
   items: PrenotaItem[];
   onEliminar: (itemId: string) => void;
   prenotaId: string;
-  onActualizar: () => void;
+  onActualizar: (opciones?: { silencioso?: boolean }) => Promise<void>;
   autoFocusItemId?: string | null;
   onAutoFocusConsumed?: () => void;
 }) {
@@ -148,6 +148,7 @@ function PrenotaItemsTable({
   }, [editingId]);
 
   const handleGuardar = async (item: PrenotaItem) => {
+    if (saving) return; // evita carrera con el refresh silencioso de modalidad
     setSaving(true);
     try {
       const res = await fetch(`/api/notas-venta/${prenotaId}/items/${item.id}`, {
@@ -173,7 +174,7 @@ function PrenotaItemsTable({
   // La modalidad es mutable por línea. Se aplica al instante: sin precio
   // explícito el servidor usa el de la nueva modalidad (y valida precio mayor).
   const handleModalidad = async (item: PrenotaItem, nueva: 'detalle' | 'mayor') => {
-    if (nueva === editModalidad) return;
+    if (nueva === editModalidad || saving) return;
     setSaving(true);
     try {
       const body = precioEditado ? { modalidad: nueva, precio: editPrecio } : { modalidad: nueva };
@@ -191,7 +192,9 @@ function PrenotaItemsTable({
       setEditModalidad(nueva);
       setEditPrecio(Number(actualizado?.precio ?? editPrecio));
       setPrecioEditado(false);
-      onActualizar();
+      // await: el refresh silencioso termina antes de liberar `saving` —
+      // si no, Guardar puede pisar la recarga con el estado viejo.
+      await onActualizar({ silencioso: true });
     } catch {
       toast.error('Error al cambiar modalidad');
     } finally {
@@ -258,6 +261,7 @@ function PrenotaItemsTable({
                         <label className="text-xs text-[var(--body-subtle)]">Modalidad</label>
                         <select
                           value={editModalidad}
+                          disabled={saving}
                           onChange={e => handleModalidad(item, e.target.value as 'detalle' | 'mayor')}
                           className="border rounded px-2 py-1 text-sm w-full"
                         >
@@ -364,8 +368,11 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   const [pagarOpen, setPagarOpen] = useState(false);
   const [aplicarSaldoOpen, setAplicarSaldoOpen] = useState(false);
 
-  const fetchPrenota = async () => {
-    setLoading(true);
+  // silencioso: recarga en segundo plano sin desmontar la tabla (no pierde el
+  // borrador del editor abierto, p.ej. tras cambiar modalidad).
+  const fetchPrenota = async (opciones?: { silencioso?: boolean }) => {
+    const silencioso = opciones?.silencioso === true;
+    if (!silencioso) setLoading(true);
     try {
       const res = await fetch(`/api/notas-venta/${id}`);
       if (res.ok) {
@@ -377,7 +384,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     } catch {
       toast.error('No se pudo cargar la nota de venta');
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   };
 

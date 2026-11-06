@@ -279,4 +279,35 @@ describe('ProductDrawer', () => {
       expect(mockShare.mock.calls[0][0].text).toBeUndefined();
     });
   });
+
+  describe('N10 — empaque sin peso ni cubicaje', () => {
+    const productoEmpaque = { ...mockProducto, cantcaja: 12, pesocaja: 3.5, cubicaja: 0.02 };
+    const renderEmpaque = () => render(
+      <ProductDrawer producto={productoEmpaque} session={mockAdmin} open={true} onOpenChange={() => {}} onUpdated={() => {}} />
+    );
+
+    it('muestra unidades por caja y oculta peso/cubicaje en lectura', () => {
+      renderEmpaque();
+      expect(screen.getByText('12 UND/Caja')).toBeInTheDocument();
+      expect(screen.queryByText(/kg ·/)).toBeNull();
+      expect(screen.queryByText(/m³/)).toBeNull();
+    });
+
+    it('al editar mantiene cantidad por caja y el PUT omite peso/cubicaje', () => {
+      let capturedBody: any = null;
+      (global.fetch as jest.Mock).mockImplementation((url: string, opts: any) => {
+        if (opts?.body) { try { capturedBody = JSON.parse(opts.body); } catch {} }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: productoEmpaque }) });
+      });
+      renderEmpaque();
+      fireEvent.click(screen.getByTitle('Editar producto'));
+      expect((screen.getByPlaceholderText('Cant/caja') as HTMLInputElement).value).toBe('12');
+      expect(screen.queryByText(/Peso por caja/)).toBeNull();
+      expect(screen.queryByText(/Cubicaje por caja/)).toBeNull();
+      fireEvent.click(screen.getByText(/guardar/i));
+      expect(capturedBody.cantcaja).toBe(12);
+      expect(capturedBody.pesocaja).toBeUndefined();
+      expect(capturedBody.cubicaja).toBeUndefined();
+    });
+  });
 });

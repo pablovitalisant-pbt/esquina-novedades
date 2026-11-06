@@ -53,8 +53,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
   const [editDetalle, setEditDetalle] = useState('');
   const [editUmed, setEditUmed] = useState('');
   const [editCantCaja, setEditCantCaja] = useState('');
-  const [editPesoCaja, setEditPesoCaja] = useState('');
-  const [editCubiCaja, setEditCubiCaja] = useState('');
   const [editEsNuevo, setEditEsNuevo] = useState(false);
   const [editStockMinimo, setEditStockMinimo] = useState('');
   // Slice cambiar-codigo: codigo editable por admin (endpoint dedicado, propaga
@@ -95,8 +93,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
       setEditDetalle(producto.detalle ?? '');
       setEditUmed(['U', 'SET'].includes(producto.umed) ? producto.umed : 'U');
       setEditCantCaja(producto.cantcaja.toString());
-      setEditPesoCaja(producto.pesocaja.toString());
-      setEditCubiCaja(producto.cubicaja.toString());
       setEditEsNuevo(producto.es_nuevo);
       setPrcVenta(producto.prcventa.toString());
       setEditPrecioMayor(producto.precio_mayor?.toString() ?? '');
@@ -126,8 +122,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
       setEditDetalle(producto.detalle ?? '');
       setEditUmed(['U', 'SET'].includes(producto.umed) ? producto.umed : 'U');
       setEditCantCaja(producto.cantcaja.toString());
-      setEditPesoCaja(producto.pesocaja.toString());
-      setEditCubiCaja(producto.cubicaja.toString());
       setEditEsNuevo(producto.es_nuevo);
       setEditStockMinimo(producto.stock_minimo?.toString() ?? '');
       setIsEditing(false);
@@ -213,8 +207,6 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
     if (editDetalle) body.detalle = editDetalle;
     if (editUmed) body.umed = editUmed;
     body.cantcaja = Number(editCantCaja);
-    body.pesocaja = Number(editPesoCaja);
-    body.cubicaja = Number(editCubiCaja);
     body.es_nuevo = editEsNuevo;
     if (editStockMinimo) body.stock_minimo = Number(editStockMinimo);
     body.categoria = categoria || null;
@@ -459,21 +451,12 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
                     <Label className="text-xs text-[var(--body)] uppercase tracking-wider">Cantidad por caja</Label>
                     <Input value={editCantCaja} onChange={e => setEditCantCaja(e.target.value)} type="number" min="1" step="1" className="h-8 text-sm" placeholder="Cant/caja" />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-[var(--body)] uppercase tracking-wider">Peso por caja (kg)</Label>
-                    <Input value={editPesoCaja} onChange={e => setEditPesoCaja(e.target.value)} type="number" min="0" step="0.01" className="h-8 text-sm" placeholder="kg" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-[var(--body)] uppercase tracking-wider">Cubicaje por caja (m³)</Label>
-                    <Input value={editCubiCaja} onChange={e => setEditCubiCaja(e.target.value)} type="number" min="0" step="0.01" className="h-8 text-sm" placeholder="m³" />
-                  </div>
                 </div>
               ) : (
                 <>
                   {producto.cantcaja > 1 ? (
                     <>
                       <p className="font-medium text-sm">{producto.cantcaja} {producto.umed}/Caja</p>
-                      <p className="text-xs text-[var(--body)]">{producto.pesocaja} kg · {producto.cubicaja} m³</p>
                     </>
                   ) : (
                     <p className="text-sm text-[var(--body)]">—</p>

@@ -110,3 +110,7 @@ Ver `docs/TRASPASO-2026-10-28.md` (vigente): app en uso real, P0 mayorista abier
 ## Handoff 2026-10-30
 Estado completo en el Project de claude.ai: claude/estado-proyecto-2026-10-30.md. HEAD f60f876. Siguiente: slice 'Portada automatica' (APROBADO: novedades por fecha_ingreso, 'Es nuevo' = Destacar, seccion por categoria, seccion por mayor, banner y destacados automaticos), luego Cloudinary + fotos.
 
+## Backlog 2026-11-06
+
+Estado de los cambios y secuencia de activación en `docs/BACKLOG-2026-11-06.md`. Rama de trabajo `codex/backlog-2026-11-06`. Última auditoría en `docs/audits/ponytail-audit-2026-11-06-pagos-app.md`. Después de esa revisión se cerraron dos cortes, el CLI con validación de entrada y el ajuste de estructura y acceso de la página privada.
+

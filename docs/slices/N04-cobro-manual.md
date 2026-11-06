@@ -1,0 +1,22 @@
+# N04 — Confirmar transferencia o efectivo recibido
+
+Decisión DT por delegación. El comprador elige el medio en N03. Solo un admin confirma un abono efectivamente verificado o efectivo recibido, con cuenta activa CLP, monto exacto y referencia bancaria en transferencia. El pago manual pertenece a Caja Mayor de la tienda. Los pagos de Paola por el desarrollo se registran por separado en N12.
+
+El endpoint autenticado POST /api/pedidos/{id}/confirmar-pago recibe {cuenta_id, monto, referencia?}. Método viene del pedido. Reserva pendiente vigente y stock reservado obligatorios en primera confirmación. Respuesta 200 al completarse o al repetir los mismos datos. 409 para datos distintos, falta de vigencia, importe incorrecto o un método incompatible. Si la transferencia llegó después del vencimiento, revisión manual sin recrear stock ni cobrar otro pedido. No prolongar automáticamente las 36 horas de reserva.
+
+Sub-slices previstos:
+
+- N04a. Migración aditiva con registro de confirmación por pedido, actor, monto, cuenta, método, referencia y hora. Clave única por pedido y referencia de transferencia única por cuenta. Pruebas reales de constraints.
+- N04b. Adquirir pago de forma atómica con la reserva y registrar datos de confirmación. Serializar con cancelación/expiración. Rechazar descarte de un pedido con confirmación registrada. Proteger el webhook de MP frente a un pedido elegido por otro método, conservando legados sin método.
+- N04c. Convertir al estado pagado/convertido y registrar cobro. Reutilizar la idempotencia de convertirPedido y el CTE de cobro de caja. Si falla un paso, el mismo registro permite completar al reintentar. La UI no declara cobro cerrado hasta que exista caja_movimiento_id.
+- N04d. Acción en administración /pedidos, solo para admin, medio visible, importe bloqueado al total y selección de cuenta. Mensaje de operación completada y reintento en fallo.
+
+Antes de cada corte, delimitar archivos y fixtures concretos, analizar impacto lateral y comprobar rojo/verde, lint, tipos y smoke correspondiente. Límite de 200 líneas por corte. Flags apagados y base de integración únicamente.
+
+N04a files-to-touch: nueva migrations/050_pedidos_pago_manual.sql, nuevo __tests__/integration/pedido-pago-manual-schema.test.ts, scripts/migrations-order.ts y __tests__/pos3-cliente-meson-migracion.test.ts. La expectativa de 049 pasa a comprobar su posición relativa respecto de 048 para tolerar futuras migraciones. Sin consumidores de aplicación en este corte.
+
+Tabla public.pedido_pagos_manuales: pedido_id UUID PK y FK, cuenta_id INT FK caja_cuentas, usuario_id INT FK usuarios, metodo TEXT efectivo/transferencia, monto INT positivo, referencia TEXT nullable, confirmado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(). Referencia de transferencia obligatoria, sin espacios en extremos, hasta 128 caracteres. Para efectivo referencia NULL. Índice único parcial cuenta_id + lower(referencia) para transferencias. Migración idempotente. Pruebas contra TEST: inserción/lectura, dos confirmaciones del mismo pedido, referencia repetida en la misma cuenta, transferencia sin referencia y monto cero. Smoke de esquema con fixtures propios en la DB de integración, sin aplicar a producción.
+
+N04b1 files-to-touch: nuevos lib/pedidos/adquirir-pago-manual.ts y __tests__/integration/adquirir-pago-manual.test.ts. adquirirPagoManual({pedidoId, cuentaId, usuarioId, monto, referencia}) retorna adquirido, reintento o conflicto. La ruta de administración validará la sesión antes de llamar. Una sentencia CTE cambia pendiente_pago a pagado y registra confirmación en la misma transacción, sin modificar stock. Exige expiración futura, stock reservado, método efectivo/transferencia, cuenta activa CLP, monto exacto y referencia compatible. Referencia trim, efectivo null. Si SQL 23505, conflicto y rollback. Si no adquirió, consultar confirmación para reconocer mismos cuenta/monto/referencia sin exigir el mismo operador. Otros errores se propagan para reintento. Pruebas en DB TEST de dos solicitudes concurrentes, importe distinto, vencido y referencia duplicada con rollback. Sin uso en runtime hasta N04c.
+
+N04b2 protegerá cancelación y webhook antes de habilitar N04c. En cancelación, el predicado debe mirar estado y método en la fila tras adquirir lock. Un NOT EXISTS sobre el registro por sí solo no protege frente a una instantánea previa a la confirmación.

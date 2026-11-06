@@ -24,9 +24,9 @@ describe('pos3 — migración 048', () => {
       .toBe(MIGRATION_ORDER.indexOf('047_pedido_items_precio_lista.sql') + 1);
   });
 
-  test('la migración que la sigue (049) queda al final', () => {
+  test('la migración que la sigue (049) va después de 048', () => {
     expect(MIGRATION_ORDER).toContain('049_pedidos_metodo_pago.sql');
     expect(MIGRATION_ORDER.indexOf('049_pedidos_metodo_pago.sql'))
-      .toBe(MIGRATION_ORDER.length - 1);
+      .toBeGreaterThan(MIGRATION_ORDER.indexOf('048_cliente_meson.sql'));
   });
 });

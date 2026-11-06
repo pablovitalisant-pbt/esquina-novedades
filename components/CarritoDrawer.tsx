@@ -18,6 +18,8 @@ import { precioLineaTienda } from '@/lib/precio-tienda';
 import flags from '@/config/feature-flags.json';
 import { redirigirA } from '@/lib/redirigir';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Carrito: trigger flotante (solo visible con items) + Sheet lateral con el
  * resumen, edición de cantidades y checkout (contacto/entrega). El descuento
@@ -107,11 +109,19 @@ export function CarritoDrawer() {
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
+        const id = body?.data?.id;
+        const initPoint = body?.data?.init_point;
+        const confirmar = flags['pedido-confirmacion-antes-pago'] === true;
+        if (confirmar && (typeof id !== 'string' || !UUID_RE.test(id))) {
+          setErrorEnvio('No se pudo confirmar la reserva del pedido. Intenta de nuevo en unos minutos.');
+          return; // conserva items y contacto; el finally libera el guard
+        }
         setContacto({ nombre: datos.nombre, telefono: datos.telefono, email: datos.email });
         limpiar(); // conserva el contacto para un próximo pedido
         setOpen(false);
-        const initPoint = body?.data?.init_point;
-        if (typeof initPoint === 'string' && initPoint) {
+        if (confirmar) {
+          redirigirA(`/pedido/${id}`); // N01: la reserva se ve antes de pagar
+        } else if (typeof initPoint === 'string' && initPoint) {
           redirigirA(initPoint); // Slice 9d: pago online habilitado
         } else {
           toast.success('Pedido enviado');

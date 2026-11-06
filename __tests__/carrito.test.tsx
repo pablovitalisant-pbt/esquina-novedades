@@ -13,8 +13,12 @@ import { toast } from 'sonner';
 import { CarritoProvider, useCarrito, ItemCarrito } from '@/contexts/CarritoContext';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { CarritoDrawer } from '@/components/CarritoDrawer';
+import flagsJson from '@/config/feature-flags.json';
 
-jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-mayor-online': false }));
+// N01: mutable; es el mismo objeto que importa CarritoDrawer.
+const flags = flagsJson as Record<string, boolean>;
+
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-mayor-online': false, 'pedido-confirmacion-antes-pago': false }));
 
 jest.mock('sonner', () => ({
   toast: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
@@ -404,5 +408,93 @@ describe('Total de la compra en el Drawer', () => {
     // Solo ITEM_A cuenta: 30*1=30
     await waitFor(() => expect(screen.getByTestId('subtotal').textContent).toBe('$30'));
     expect(screen.getByText(/algunos productos sin precio no incluidos/i)).toBeInTheDocument();
+  });
+});
+
+// ─── N01 Confirmación de reserva antes de pagar ───────────────────────
+const UUID = '9f1c2b7e-4a3d-4e8f-9b6a-1c2d3e4f5a6b';
+const RUTA_PEDIDO = `/pedido/${UUID}`;
+
+function respuesta(status: number, body: unknown) {
+  return Promise.resolve({ ok: status < 400, status, json: async () => body });
+}
+
+async function abrirConItems() {
+  render(
+    <CarritoProvider origen="productos">
+      <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} items={[ITEM_A, ITEM_B]} />
+      <CarritoDrawer />
+      <TotalProbe />
+    </CarritoProvider>
+  );
+  await waitFor(() => expect(screen.getByRole('button', { name: /abrir carrito/i })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /abrir carrito/i }));
+  await elegirRetiro();
+}
+
+async function enviar() {
+  fireEvent.click(await screen.findByRole('button', { name: /enviar pedido/i }));
+}
+
+describe('N01 — pedido-confirmacion-antes-pago', () => {
+  beforeEach(() => {
+    flags['pedido-confirmacion-antes-pago'] = true;
+  });
+
+  afterEach(() => {
+    flags['pedido-confirmacion-antes-pago'] = false;
+  });
+
+  it.each([
+    ['sin id', { data: { init_point: 'https://mp.example/checkout' } }],
+    ['id inválido', { data: { id: 'no-es-uuid' } }],
+  ])('201 %s: error visible, sin navegación y carrito intacto', async (_caso, body) => {
+    mockFetch(respuesta(201, body));
+    await abrirConItems();
+    await enviar();
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(mockRedirigir).not.toHaveBeenCalled();
+    expect(screen.getByTestId('total').textContent).toBe('3');
+  });
+
+  it('201 con id válido navega a /pedido/:id aunque exista init_point', async () => {
+    mockFetch(respuesta(201, { data: { id: UUID, init_point: 'https://mp.example/checkout' } }));
+    await abrirConItems();
+    await enviar();
+
+    await waitFor(() => expect(mockRedirigir).toHaveBeenCalledWith(RUTA_PEDIDO));
+    expect(mockRedirigir).not.toHaveBeenCalledWith('https://mp.example/checkout');
+    expect(screen.getByTestId('total').textContent).toBe('0');
+    await waitFor(() => expect(screen.queryByRole('button', { name: /abrir carrito/i })).not.toBeInTheDocument());
+  });
+
+  it('200 con id válido se comporta igual que 201', async () => {
+    mockFetch(respuesta(200, { data: { id: UUID, init_point: 'https://mp.example/checkout' } }));
+    await abrirConItems();
+    await enviar();
+
+    await waitFor(() => expect(mockRedirigir).toHaveBeenCalledWith(RUTA_PEDIDO));
+    expect(screen.getByTestId('total').textContent).toBe('0');
+  });
+
+  it('502 conserva los items y muestra el error', async () => {
+    mockFetch(respuesta(502, { error: 'Falla del proveedor de pago' }));
+    await abrirConItems();
+    await enviar();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falla del proveedor de pago');
+    expect(mockRedirigir).not.toHaveBeenCalled();
+    expect(screen.getByTestId('total').textContent).toBe('3');
+  });
+
+  it('flag apagado: conserva el comportamiento anterior con init_point', async () => {
+    flags['pedido-confirmacion-antes-pago'] = false;
+    mockFetch(respuesta(201, { data: { id: UUID, init_point: 'https://mp.example/checkout' } }));
+    await abrirConItems();
+    await enviar();
+
+    await waitFor(() => expect(mockRedirigir).toHaveBeenCalledWith('https://mp.example/checkout'));
+    expect(screen.getByTestId('total').textContent).toBe('0');
   });
 });

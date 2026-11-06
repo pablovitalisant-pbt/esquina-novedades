@@ -7,6 +7,7 @@ import { formatCLP } from '@/lib/utils';
 import { CatalogFooter } from '@/components/CatalogFooter';
 import { MarcaLogo } from '@/components/MarcaLogo';
 import { ConfettiCompra } from '@/components/ConfettiCompra';
+import { PedidoPagoBoton } from '@/components/PedidoPagoBoton';
 import flags from '@/config/feature-flags.json';
 
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,7 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
 
   const [pedido] = await sql`
     SELECT p.id, p.nombre_contacto, p.estado, p.created_at::text, p.total,
-           p.entrega_codigo, p.entrega_costo, p.mp_init_point, p.expira_en::text,
+           p.entrega_codigo, p.entrega_costo, p.mp_init_point, p.stock_reservado, p.expira_en::text,
            o.nombre AS entrega_nombre
     FROM public.pedidos p
     LEFT JOIN public.opciones_entrega o ON o.codigo = p.entrega_codigo
@@ -104,8 +105,13 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const titulo = exito ? `${estado.titulo}, ${pedido.nombre_contacto}!` : estado.titulo;
   const numero = `#${String(pedido.id).slice(0, 8).toUpperCase()}`;
   const entregaCosto = Number(pedido.entrega_costo) || 0;
-  const vencido = !pedido.expira_en || new Date(pedido.expira_en).getTime() <= Date.now();
-  const puedePagar = pedido.estado === 'pendiente_pago' && !!pedido.mp_init_point && !vencido;
+  const expira = pedido.expira_en ? new Date(pedido.expira_en).getTime() : NaN;
+  const vencido = !Number.isFinite(expira) || expira <= Date.now();
+  const pagoVigente = pedido.estado === 'pendiente_pago' && !vencido;
+  const pagoOpcional = flags['pedido-pago-opcional'] === true;
+  // N02c: con flag, el botón crea la preferencia; sin flag se conserva el link legacy.
+  const botonPago = pagoOpcional && pagoVigente && pedido.stock_reservado === true;
+  const linkLegacy = !pagoOpcional && pagoVigente && !!pedido.mp_init_point;
   const confetti = flags['pedido-confetti'] === true && ['pagado', 'convertido'].includes(pedido.estado);
   const ahorroTotal = (items as ItemPedido[]).reduce((acc, item) => {
     const lista = item.precio_lista == null ? null : Number(item.precio_lista);
@@ -189,7 +195,9 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
         </section>
 
         <div className="pedido-entrada flex flex-col gap-3" style={{ animationDelay: '240ms' }}>
-          {puedePagar ? (
+          {botonPago ? (
+            <PedidoPagoBoton pedidoId={pedido.id} />
+          ) : linkLegacy ? (
             <a
               href={pedido.mp_init_point}
               className="inline-flex h-12 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--primary)] px-6 text-base font-medium text-[var(--primary-foreground)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"

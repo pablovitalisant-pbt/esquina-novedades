@@ -19,7 +19,7 @@ jest.mock('@/lib/pedidos/liberar-reservas', () => ({
   liberarReservasVencidas: (...args: any[]) => mockLiberar(...args),
 }));
 
-jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'pedido-confetti': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'pedido-confetti': true, 'pedido-pago-opcional': false }));
 
 import PedidoPage from '@/app/pedido/[id]/page';
 
@@ -104,6 +104,27 @@ describe('botón de pago y mensajes por estado', () => {
     const out = await html();
     expect(out).toContain('Pagar con Mercado Pago');
     expect(out).toContain('https://mp.example/checkout');
+  });
+
+  test('flag pedido-pago-opcional ON, stock reservado y sin init point → botón de pago', async () => {
+    flagsMock['pedido-pago-opcional'] = true;
+    try {
+      const out = await html({ ...PEDIDO, stock_reservado: true, mp_init_point: null });
+      expect(out).toContain('Pagar con Mercado Pago');
+    } finally {
+      flagsMock['pedido-pago-opcional'] = false;
+    }
+  });
+
+  test.each([
+    ['stock false', { stock_reservado: false }],
+    ['expira inválida', { stock_reservado: true, expira_en: 'x' }],
+    ['convertido', { stock_reservado: true, estado: 'convertido' }],
+  ])('flag ON + init point + %s → sin Pagar', async (_c, extra) => {
+    flagsMock['pedido-pago-opcional'] = true;
+    const out = await html({ ...PEDIDO, mp_init_point: 'https://mp.example/x', ...extra });
+    flagsMock['pedido-pago-opcional'] = false;
+    expect(out).not.toContain('Pagar con Mercado Pago');
   });
 
   test('pendiente_pago vencido → sin enlace de pago', async () => {

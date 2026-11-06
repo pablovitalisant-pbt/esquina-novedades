@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, PackagePlus, RefreshCcw } from 'lucide-react';
@@ -14,11 +14,21 @@ type Producto = {
   umed: string | null;
 };
 
-export function IngresosClient({ empresaId }: { empresaId: number }) {
+interface IngresosClientProps {
+  empresaId: number;
+  /** N11b: producto precargado (cajón de precios). */
+  productoInicial?: Producto;
+  /** N11b: sin buscador ni encabezado; devuelve el resultado por onRegistrado. */
+  compacto?: boolean;
+  onRegistrado?: (r: { saldo_actual: number | null; cantcaja_actual: number | null }) => void;
+}
+
+export function IngresosClient({ empresaId, productoInicial, compacto, onRegistrado }: IngresosClientProps) {
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState<Producto[]>([]);
   const [buscando, setBuscando] = useState(false);
-  const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
+  const [seleccionado, setSeleccionado] = useState<Producto | null>(productoInicial ?? null);
+  const enviandoRef = useRef(false);
 
   const [cambioPacking, setCambioPacking] = useState(false);
   const [cantcajaNuevo, setCantcajaNuevo] = useState('');
@@ -46,7 +56,7 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
   };
 
   const registrar = async () => {
-    if (!seleccionado) return;
+    if (!seleccionado || enviandoRef.current) return;
     const n = Number(cantidad);
     if (!Number.isInteger(n) || n <= 0) {
       toast.error('Cantidad inválida');
@@ -60,6 +70,7 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
       }
     }
     setSaving(true);
+    enviandoRef.current = true;
     try {
       const body: Record<string, unknown> = {
         codigo: seleccionado.codigo,
@@ -78,6 +89,11 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
         return;
       }
       toast.success('Ingreso registrado');
+      // N11b: saldo y packing devueltos por la transacción son la fuente de verdad.
+      onRegistrado?.({
+        saldo_actual: data?.saldo_actual ?? null,
+        cantcaja_actual: data?.cantcaja_actual ?? null,
+      });
       // reset
       setSeleccionado(null);
       setResultados([]);
@@ -89,12 +105,15 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
     } catch {
       toast.error('Error al registrar ingreso');
     } finally {
+      enviandoRef.current = false;
       setSaving(false);
     }
   };
 
   return (
     <div className="flex flex-col gap-6 fade-in zoom-in-95 duration-200 max-w-2xl mx-auto">
+      {!compacto && (
+      <>
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight">Ingreso de Mercadería</h1>
         <p className="text-[var(--body)] mt-1">Registra partidas recibidas y suma stock</p>
@@ -138,6 +157,8 @@ export function IngresosClient({ empresaId }: { empresaId: number }) {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Formulario */}
       {seleccionado && (

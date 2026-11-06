@@ -11,7 +11,9 @@ import { ImageWithFallback } from './ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
 import { calcularMargen } from '@/lib/calcular-precio';
 import { toast } from 'sonner';
-import { ClipboardList, Share2, Pencil, X, Trash2 } from 'lucide-react';
+import { ClipboardList, Share2, Pencil, X, Trash2, PackagePlus } from 'lucide-react';
+import { IngresosClient } from '@/app/(app)/bodega/ingresos/client_page';
+import { RUTAS_POR_ROL } from '@/lib/rutas-por-rol';
 import { useShareImage } from '@/hooks/useShareImage';
 import { Badge } from '@/components/ui/badge';
 import flags from '@/config/feature-flags.json';
@@ -64,6 +66,8 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
   const [showEliminar, setShowEliminar] = useState(false);
   const [codigoConfirmacion, setCodigoConfirmacion] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  // N11b: ingreso de mercadería desde el cajón (flag + empresa única).
+  const [showIngreso, setShowIngreso] = useState(false);
 
   const canEditPrices = ['admin'].includes(session.rol);
   const isAdmin = session.rol === 'admin';
@@ -125,6 +129,7 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
       setEditEsNuevo(producto.es_nuevo);
       setEditStockMinimo(producto.stock_minimo?.toString() ?? '');
       setIsEditing(false);
+      setShowIngreso(false);
     }
     setPreviewUrl(null);
     setSelectedFile(null);
@@ -321,6 +326,25 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
 
   if (!producto) return null;
 
+  const empresaOperacion = session.empresas?.length === 1 ? Number(session.empresas[0]) : 0;
+  const puedeIngresar =
+    (flags as Record<string, boolean>)['precios-ingreso-stock'] === true &&
+    (RUTAS_POR_ROL[session.rol] ?? []).includes('/bodega') &&
+    empresaOperacion > 0 &&
+    producto.empresa_id === empresaOperacion;
+
+  // La respuesta del POST /api/ingresos (saldo_actual/cantcaja_actual) manda:
+  // no se recalcula el stock en el cliente.
+  const productoActual = producto;
+  const handleIngresoRegistrado = (r: { saldo_actual: number | null; cantcaja_actual: number | null }) => {
+    onUpdated({
+      ...productoActual,
+      saldo: r.saldo_actual ?? productoActual.saldo,
+      cantcaja: r.cantcaja_actual ?? productoActual.cantcaja,
+    });
+    setShowIngreso(false);
+  };
+
   // Texto a compartir junto a la imagen: solo el precio CLP. Sin precio/oculto → undefined.
   const armarTextoCompartir = () => {
     if (ocultarPrecios || producto.prcventa <= 0) return undefined;
@@ -465,6 +489,27 @@ export function ProductDrawer({ producto, session, open, onOpenChange, onUpdated
               )}
             </div>
           </div>
+
+          {/* N11b — ingreso de mercadería con el producto precargado */}
+          {puedeIngresar && (
+            showIngreso ? (
+              <IngresosClient
+                key={producto.codigo}
+                empresaId={empresaOperacion}
+                productoInicial={producto}
+                compacto
+                onRegistrado={handleIngresoRegistrado}
+              />
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowIngreso(true)}
+              >
+                <PackagePlus className="w-4 h-4 mr-2" /> Ingresar mercadería
+              </Button>
+            )
+          )}
 
           {/* Pricing Section */}
           {!ocultarPrecios && (

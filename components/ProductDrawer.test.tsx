@@ -2,6 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ProductDrawer } from './ProductDrawer';
 import { Producto, UserSession } from '@/types';
 
+jest.mock('@/config/feature-flags.json', () => ({
+  ...jest.requireActual('@/config/feature-flags.json'),
+  'precios-ingreso-stock': false,
+}));
+const flagsMock = (): Record<string, boolean> => jest.requireMock('@/config/feature-flags.json');
+
 global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(null) });
 
 const mockProducto: Producto = {
@@ -308,6 +314,51 @@ describe('ProductDrawer', () => {
       expect(capturedBody.cantcaja).toBe(12);
       expect(capturedBody.pesocaja).toBeUndefined();
       expect(capturedBody.cubicaja).toBeUndefined();
+    });
+  });
+
+  describe('N11b — ingreso desde el cajon de precios', () => {
+    const renderConAdmin = (producto: Producto, onUpdated = jest.fn()) => render(
+      <ProductDrawer producto={producto} session={mockAdmin} open={true} onOpenChange={() => {}} onUpdated={onUpdated} />
+    );
+
+    beforeEach(() => {
+      (global.fetch as jest.Mock).mockReset();
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, opts?: any) => (
+        String(url).includes('/api/ingresos') && opts?.method === 'POST'
+          ? { ok: true, json: async () => ({ saldo_actual: 210, cantcaja_actual: 12 }) }
+          : { ok: true, json: async () => [] }
+      ));
+    });
+
+    afterEach(() => { flagsMock()['precios-ingreso-stock'] = false; });
+
+    it('flag apagado por defecto: admin no ve Ingresar mercaderia', () => {
+      renderConAdmin(mockProducto);
+      expect(screen.queryByRole('button', { name: /ingresar mercader[ií]a/i })).toBeNull();
+    });
+
+    it('flag encendido: abre formulario precargado y registra POST una vez', async () => {
+      flagsMock()['precios-ingreso-stock'] = true;
+      const onUpdated = jest.fn();
+      renderConAdmin(mockProducto, onUpdated);
+      expect(screen.getByRole('button', { name: /ingresar mercader[ií]a/i })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /ingresar mercader[ií]a/i }));
+      const cantidad = screen.getByPlaceholderText('Ej: 200');
+      fireEvent.change(cantidad, { target: { value: '200' } });
+      fireEvent.click(screen.getByRole('button', { name: /registrar ingreso/i }));
+      await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(1));
+      const posts = (global.fetch as jest.Mock).mock.calls.filter(
+        ([u, o]: any[]) => String(u).includes('/api/ingresos') && o?.method === 'POST'
+      );
+      expect(posts).toHaveLength(1);
+      expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ saldo: 210, cantcaja: 12 }));
+    });
+
+    it('producto de otra empresa: admin no ve Ingresar mercaderia', () => {
+      flagsMock()['precios-ingreso-stock'] = true;
+      renderConAdmin({ ...mockProducto, empresa_id: 2 });
+      expect(screen.queryByRole('button', { name: /ingresar mercader[ií]a/i })).toBeNull();
     });
   });
 });

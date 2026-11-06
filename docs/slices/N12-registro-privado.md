@@ -1,0 +1,13 @@
+# N12 — Registro privado de pagos del desarrollo
+
+DT aprueba por delegación. Dos cuentas verificadas por ID de usuario, Pablo y Paola, acceden a la página Administración. Paola ve historial y comprobantes. Pablo puede adjuntar desde la página una imagen a una transferencia ya registrada. Adjuntar evidencia no crea ni modifica una cuota. Altas de pagos exclusivamente con herramienta técnica local por encargo de Pablo. Sin ruta de creación, edición o borrado de pagos.
+
+Variables servidor: PAGOS_APP_PABLO_ID, PAGOS_APP_PAOLA_ID y PAGOS_APP_TOTAL_CLP. Si son incompletas, no se concede acceso. No incluir datos privados reales en Git. Mostrar monto abonado, saldo restante, porcentaje sobre total y fecha/medio/monto/detalle por asiento. Fecha de pago como DATE en Chile, montos CLP enteros. No inferir número de cuotas ni vencimientos.
+
+N12a: esquema aislado pagos_app y pagos_app_comprobantes, restricciones, idempotencia y append-only. N12b: guard por sesión y cuentas verificadas. N12c: lectura y progreso más página. N12d: comprobante privado de imagen PNG/JPEG/WebP, máximo 2 MiB, validar bytes, insertar uno por transferencia, servir solo al par permitido con no-store y nosniff. N12e: script de registro técnico idempotente, valida y registra el asiento, sin credenciales ni datos reales en el código. N12f: navegación Admin y smoke E2E con IDs ficticios. Dividir cada grupo según límite de 200 líneas.
+
+Adjuntos en tabla separada como bytea para mantener autorización y evitar URLs públicas. Corrección de monto por reversión auditada, no por edición. Los propietarios de infraestructura conservan sus privilegios de mantenimiento. El acceso de aplicación no ofrece operaciones destructivas. Para carga inicial real usar solo el procedimiento técnico, una vez aprobado el entorno de destino y verificados los IDs. Comprobante real pendiente.
+
+N12a1 files-to-touch nueva migrations/051_pagos_app.sql, scripts/migrations-order.ts y nuevo __tests__/integration/pagos-app-schema.test.ts. pagos_app: id UUID, clave UUID única de idempotencia, fecha DATE, medio efectivo/transferencia, monto_clp INT positivo, detalle trim de 1 a 500, creado_en TIMESTAMPTZ, reversa_de UUID nullable FK única. Una reversa exige original no reversa, monto y medio iguales. UPDATE y DELETE abortan por trigger. Pruebas con Pool y transacciones revertidas en TEST para restricciones, duplicados, reversas y mutaciones. Sin datos reales, consumidores ni flag nuevo hasta lectura.
+
+N12a2 agrega tabla de adjuntos en migración siguiente. Comprobante PK pago_id, MIME permitido, bytes 1 a 2 MiB, subido_por usuario FK y creado_en. Solo pago transferencia no reversa. Bloquear actualización y borrado con el mismo trigger. Pruebas DB aisladas. UI y ruta autenticada en cortes posteriores.

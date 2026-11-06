@@ -6,7 +6,7 @@ import flags from '@/config/feature-flags.json';
 
 type PedidoPago = {
   id: string; estado: string; stock_reservado: boolean;
-  expira_en: string | null; mp_init_point: string | null;
+  expira_en: string | null; mp_init_point: string | null; metodo_pago: string | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,11 +35,25 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
   try {
     const [pedido] = (await sql`
-      SELECT id, estado, stock_reservado, expira_en::text, mp_init_point
+      SELECT id, estado, stock_reservado, expira_en::text, mp_init_point, metodo_pago
       FROM public.pedidos WHERE id = ${id}
     `) as PedidoPago[];
     if (!pedido) return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
     if (!vigente(pedido)) return NextResponse.json({ error: 'La reserva no está vigente' }, { status: 409 });
+
+    // Adquisición atómica: null o mercadopago avanzan; otro método gana la carrera.
+    const adquirido = (await sql`
+      UPDATE public.pedidos
+      SET metodo_pago = 'mercadopago'
+      WHERE id = ${id}
+        AND (metodo_pago IS NULL OR metodo_pago = 'mercadopago')
+        AND estado = 'pendiente_pago' AND stock_reservado = true AND expira_en > NOW()
+      RETURNING id
+    `) as { id: string }[];
+    if (adquirido.length === 0) {
+      return NextResponse.json({ error: 'Método de pago no disponible' }, { status: 409 });
+    }
+
     if (pedido.mp_init_point) return NextResponse.json({ init_point: pedido.mp_init_point }, { status: 200 });
     if (!(await pagoConfigurado())) return NextResponse.json({ error: 'Pago online no configurado' }, { status: 503 });
 

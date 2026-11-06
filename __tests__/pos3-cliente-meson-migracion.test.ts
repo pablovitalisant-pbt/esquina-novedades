@@ -19,7 +19,14 @@ describe('pos3 — migración 048', () => {
 
   test('está registrada en el orden de migraciones', () => {
     expect(MIGRATION_ORDER).toContain('048_cliente_meson.sql');
+    expect(MIGRATION_ORDER).toContain('047_pedido_items_precio_lista.sql');
     expect(MIGRATION_ORDER.indexOf('048_cliente_meson.sql'))
+      .toBe(MIGRATION_ORDER.indexOf('047_pedido_items_precio_lista.sql') + 1);
+  });
+
+  test('la migración que la sigue (049) queda al final', () => {
+    expect(MIGRATION_ORDER).toContain('049_pedidos_metodo_pago.sql');
+    expect(MIGRATION_ORDER.indexOf('049_pedidos_metodo_pago.sql'))
       .toBe(MIGRATION_ORDER.length - 1);
   });
 });

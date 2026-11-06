@@ -109,6 +109,14 @@ describe('armarPortada', () => {
     expect(r.porMayor.map((x) => x.id)).toEqual([1]);
   });
 
+  test('por mayor: saldo menor al mínimo no aparece', () => {
+    const r = armarPortada([
+      p({ id: 1, precio_mayor: 800, minimo_mayor: 3, saldo: 2 }),
+      p({ id: 2, precio_mayor: 800, minimo_mayor: 3, saldo: 3 }),
+    ]);
+    expect(r.porMayor.map((x) => x.id)).toEqual([2]);
+  });
+
   test('sin productos por mayor la sección queda vacía (se oculta)', () => {
     const r = armarPortada([p({ id: 1 }), p({ id: 2, es_nuevo: true })]);
     expect(r.porMayor).toEqual([]);

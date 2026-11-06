@@ -1,4 +1,4 @@
-import { puedeVenderMayor } from '@/lib/precio-mayor';
+import { precioLineaTienda } from '@/lib/precio-tienda';
 import type { ProductoTienda } from '@/lib/tienda-productos';
 
 export const TEXTO_BANNER_FIJO = 'Hogar, regalos, juguetes y más · Por mayor y por menor';
@@ -37,9 +37,15 @@ export const ordenNovedades = <T extends { id: number; fecha_ingreso: string | n
   items: T[],
 ): T[] => [...items].sort(compararNovedades);
 
-/** Ahorro por mayor: precio por mayor válido + mínimo entero > 0. */
+/** Ahorro por mayor: la oferta aplica con el saldo real disponible. */
 export const esOfertaMayor = (p: ProductoTienda): boolean =>
-  puedeVenderMayor(p) && Number.isInteger(p.minimo_mayor) && (p.minimo_mayor as number) > 0;
+  precioLineaTienda({
+    base: p.precio,
+    precio_mayor: p.precio_mayor,
+    minimo_mayor: p.minimo_mayor,
+    cantidad: p.saldo,
+    habilitado: true,
+  }).modalidad === 'mayor';
 
 /** Arma todas las secciones de la portada. Recibe productos ya filtrados con stock. */
 export function armarPortada(productos: ProductoTienda[]): PortadaAuto {

@@ -14,5 +14,7 @@
   "pedido-confirmacion-antes-pago": false,
   "pedido-pago-opcional": false,
   "pedido-cobro-manual": false,
-  "precios-paginados": false
+  "precios-paginados": false,
+  "precios-ingreso-stock": false,
+  "pagos-app-privados": false
 }

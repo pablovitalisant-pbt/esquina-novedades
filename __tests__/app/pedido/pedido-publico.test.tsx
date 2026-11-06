@@ -187,3 +187,51 @@ describe('diseño festivo por estado', () => {
     expect(out).toContain('¡Gracias por tu compra');
   });
 });
+
+// ─── N03c2: medios alternativos integrados a la página ───
+describe('medios de pago alternativos', () => {
+  const DATOS = { banco: 'Banco Fake', titular: 'Ana Pérez', rut: '11.111.111-1', tipo_cuenta: 'Cuenta Vista', numero_cuenta: '0001234' };
+  const ENV = ['TRANSFERENCIA_BANCO', 'TRANSFERENCIA_TITULAR', 'TRANSFERENCIA_RUT', 'TRANSFERENCIA_TIPO_CUENTA', 'TRANSFERENCIA_NUMERO_CUENTA'];
+  const envPrevio: Record<string, string | undefined> = {};
+  // Casos alternativos: sin preferencia MP histórica (la elección MP es exclusiva).
+  const base = { ...PEDIDO, stock_reservado: true, mp_init_point: null };
+  const local = (activa: boolean) => ({ ...base, entrega_codigo: 'delivery_iquique', activa, entrega_activa: activa });
+
+  beforeAll(() => {
+    ENV.forEach((clave) => { envPrevio[clave] = process.env[clave]; });
+    Object.assign(process.env, { TRANSFERENCIA_BANCO: DATOS.banco, TRANSFERENCIA_TITULAR: DATOS.titular, TRANSFERENCIA_RUT: DATOS.rut, TRANSFERENCIA_TIPO_CUENTA: DATOS.tipo_cuenta, TRANSFERENCIA_NUMERO_CUENTA: DATOS.numero_cuenta });
+  });
+  afterAll(() => {
+    ENV.forEach((clave) => {
+      if (envPrevio[clave] === undefined) delete process.env[clave];
+      else process.env[clave] = envPrevio[clave];
+    });
+  });
+
+  test('transferencia persistida al recargar → datos y referencia, sin Mercado Pago', async () => {
+    flagsMock['pedido-pago-opcional'] = true;
+    try {
+      const out = await html({ ...base, metodo_pago: 'transferencia' });
+      expect(out).toContain(DATOS.banco);
+      expect(out).toContain(DATOS.numero_cuenta);
+      expect(out).toContain('Transfiere e incluye la referencia');
+      expect(out).not.toContain('Pagar con Mercado Pago');
+    } finally { flagsMock['pedido-pago-opcional'] = false; }
+  });
+
+  test('flag OFF → conserva link legacy y el SQL no menciona metodo_pago', async () => {
+    const out = await html({ ...base, mp_init_point: 'https://mp.example/checkout' });
+    expect(out).toContain('Pagar con Mercado Pago');
+    expect(out).toContain('https://mp.example/checkout');
+    const consultas = mockSql.mock.calls.map((c) => String(c[0])).join(' ');
+    expect(consultas).not.toContain('metodo_pago');
+  });
+
+  test('efectivo solo con delivery local activo', async () => {
+    flagsMock['pedido-pago-opcional'] = true;
+    try {
+      expect(await html(local(true))).toContain('Pagar en efectivo');
+      expect(await html(local(false))).not.toContain('Pagar en efectivo');
+    } finally { flagsMock['pedido-pago-opcional'] = false; }
+  });
+});

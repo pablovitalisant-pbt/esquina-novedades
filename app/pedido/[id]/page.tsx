@@ -8,6 +8,8 @@ import { CatalogFooter } from '@/components/CatalogFooter';
 import { MarcaLogo } from '@/components/MarcaLogo';
 import { ConfettiCompra } from '@/components/ConfettiCompra';
 import { PedidoPagoBoton } from '@/components/PedidoPagoBoton';
+import { PedidoMediosPago } from '@/components/PedidoMediosPago';
+import { esEfectivoDelivery, leerDatosTransferencia } from '@/lib/pedidos/datos-transferencia';
 import flags from '@/config/feature-flags.json';
 
 export const dynamic = 'force-dynamic';
@@ -81,14 +83,27 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
     console.error('liberarReservasVencidas (pedido):', error);
   }
 
-  const [pedido] = await sql`
-    SELECT p.id, p.nombre_contacto, p.estado, p.created_at::text, p.total,
-           p.entrega_codigo, p.entrega_costo, p.mp_init_point, p.stock_reservado, p.expira_en::text,
-           o.nombre AS entrega_nombre
-    FROM public.pedidos p
-    LEFT JOIN public.opciones_entrega o ON o.codigo = p.entrega_codigo
-    WHERE p.id = ${id}
-  `;
+  // N03c2: la columna de la migración 049 solo se consulta con el flag activo.
+  const pagoOpcional = flags['pedido-pago-opcional'] === true;
+  const [pedido] = pagoOpcional
+    ? await sql`
+        SELECT p.id, p.nombre_contacto, p.estado, p.created_at::text, p.total,
+               p.entrega_codigo, p.entrega_costo, p.mp_init_point, p.metodo_pago,
+               p.stock_reservado, p.expira_en::text,
+               o.nombre AS entrega_nombre, o.activa AS entrega_activa
+        FROM public.pedidos p
+        LEFT JOIN public.opciones_entrega o ON o.codigo = p.entrega_codigo
+        WHERE p.id = ${id}
+      `
+    : await sql`
+        SELECT p.id, p.nombre_contacto, p.estado, p.created_at::text, p.total,
+               p.entrega_codigo, p.entrega_costo, p.mp_init_point,
+               p.stock_reservado, p.expira_en::text,
+               o.nombre AS entrega_nombre, o.activa AS entrega_activa
+        FROM public.pedidos p
+        LEFT JOIN public.opciones_entrega o ON o.codigo = p.entrega_codigo
+        WHERE p.id = ${id}
+      `;
   if (!pedido) notFound();
 
   const items = await sql`
@@ -108,9 +123,13 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const expira = pedido.expira_en ? new Date(pedido.expira_en).getTime() : NaN;
   const vencido = !Number.isFinite(expira) || expira <= Date.now();
   const pagoVigente = pedido.estado === 'pendiente_pago' && !vencido;
-  const pagoOpcional = flags['pedido-pago-opcional'] === true;
+  // N03c2: elegir medio solo en reserva vigente con stock; la preferencia MP
+  // histórica o el método mercadopago conservan únicamente el botón de MP.
+  const metodoPago: string | null = pagoOpcional ? (pedido.metodo_pago ?? null) : null;
+  const metodoAlternativo = metodoPago === 'transferencia' || metodoPago === 'efectivo';
+  const puedeElegirMedio = pagoOpcional && pagoVigente && pedido.stock_reservado === true;
+  const soloMercadoPago = metodoPago === 'mercadopago' || (metodoPago == null && !!pedido.mp_init_point);
   // N02c: con flag, el botón crea la preferencia; sin flag se conserva el link legacy.
-  const botonPago = pagoOpcional && pagoVigente && pedido.stock_reservado === true;
   const linkLegacy = !pagoOpcional && pagoVigente && !!pedido.mp_init_point;
   const confetti = flags['pedido-confetti'] === true && ['pagado', 'convertido'].includes(pedido.estado);
   const ahorroTotal = (items as ItemPedido[]).reduce((acc, item) => {
@@ -195,7 +214,16 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
         </section>
 
         <div className="pedido-entrada flex flex-col gap-3" style={{ animationDelay: '240ms' }}>
-          {botonPago ? (
+          {puedeElegirMedio && !soloMercadoPago ? (
+            <PedidoMediosPago
+              pedidoId={pedido.id}
+              referencia={String(pedido.id).slice(0, 8).toUpperCase()}
+              permiteEfectivo={esEfectivoDelivery(pedido.entrega_codigo, pedido.entrega_activa === true)}
+              permiteTransferencia={leerDatosTransferencia() !== null}
+              metodoInicial={metodoAlternativo ? (metodoPago as 'transferencia' | 'efectivo') : null}
+              datosIniciales={metodoPago === 'transferencia' ? leerDatosTransferencia() : null}
+            />
+          ) : puedeElegirMedio ? (
             <PedidoPagoBoton pedidoId={pedido.id} />
           ) : linkLegacy ? (
             <a

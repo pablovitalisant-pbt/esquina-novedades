@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       SET saldo = saldo + ${cantidad},
           cantcaja = CASE WHEN ${cambioPacking} THEN ${cantcajaRegistrado} ELSE cantcaja END
       WHERE codigo = ${codigo} AND empresa_id = ${empresaId}
+      RETURNING saldo, cantcaja
     `,
     sql`
       UPDATE public.ubicaciones_bodega
@@ -87,5 +88,14 @@ export async function POST(request: NextRequest) {
     `,
   ]);
 
-  return NextResponse.json(rows[0][0] ?? { ok: true }, { status: 200 });
+  const ingreso = rows[0][0] ?? { ok: true };
+  const stock = rows[1]?.[0];
+  return NextResponse.json(
+    {
+      ...ingreso,
+      saldo_actual: stock ? Number(stock.saldo) : null,
+      cantcaja_actual: stock ? Number(stock.cantcaja) : null,
+    },
+    { status: 200 }
+  );
 }

@@ -221,6 +221,20 @@ describe('POST /api/ingresos', () => {
     expect(q1).toContain('Naty');
   });
 
+  it('respuesta conserva el ingreso y añade saldo_actual y cantcaja_actual', async () => {
+    mockTransaction.mockResolvedValueOnce([
+      [{ id: 9, codigo: 'Gl81249-1', cantidad: 200 }],
+      [{ saldo: 704, cantcaja: 12 }],
+      [],
+    ]);
+    const res = await POST(makeReq(BASE_BODY));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ id: 9, codigo: 'Gl81249-1', cantidad: 200 });
+    expect(body.saldo_actual).toBe(704);
+    expect(body.cantcaja_actual).toBe(12);
+  });
+
   it('observaciones se inserta', async () => {
     await POST(makeReq({ ...BASE_BODY, observaciones: 'Proveedor cambio la caja a 24u' }));
     const [q1] = mockTransaction.mock.calls[0][0];

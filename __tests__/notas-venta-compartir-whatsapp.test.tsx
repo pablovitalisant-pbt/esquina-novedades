@@ -46,6 +46,7 @@ jest.mock('jspdf', () => {
     line = jest.fn();
     lastAutoTable = { finalY: 100 };
     addPage = jest.fn();
+    splitTextToSize = (t: string) => [t];
   }
   return MockJsPDF;
 });

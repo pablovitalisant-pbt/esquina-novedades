@@ -52,6 +52,8 @@ type PrenotaDetalle = {
   tipo?: string | null;
   nombre_cliente: string | null;
   cliente_nombre: string | null;
+  cliente_direccion?: string | null;
+  cliente_telefono?: string | null;
   cliente_saldo_favor?: number | null;
   cliente_id?: number | null;
   estado?: string | null;
@@ -611,23 +613,52 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
     doc.text('NOTA DE VENTA', pageWidth - 14, 20, { align: 'right' });
 
     // ─── Bloque de info: caja "Nota de venta para:" + caja N°/Fecha ───
-    const clienteNombre = prenota.nombre_cliente || prenota.cliente_nombre || '-';
+    // N07b: nombre y contacto se parten al ancho de la caja; el alto crece con
+    // las líneas y la tabla baja con el recuadro. Un dato ausente se omite.
+    const clienteNombre = prenota.nombre_cliente || prenota.cliente_nombre || '';
+    const clienteDireccion = (prenota.cliente_direccion || '').trim();
+    const clienteTelefono = (prenota.cliente_telefono || '').trim();
     const infoY = 46;
-    const boxH = 22;
+    const rightBoxH = 22;
     const leftBoxW = 96;
     const rightBoxW = 62;
     const rightBoxX = pageWidth - 14 - rightBoxW;
+    const contactoX = 20;
+    const contactoW = leftBoxW - 12;
+    // Mismas settings para medir y dibujar: splitTextToSize usa la fuente y
+    // tamaño vigentes en el doc, así que se aplican antes de partir.
+    const nombreTexto = { fuente: 'helvetica', estilo: 'bold', tamano: 11 } as const;
+    const contactoTexto = { fuente: 'helvetica', estilo: 'normal', tamano: 8 } as const;
+    doc.setFont(nombreTexto.fuente, nombreTexto.estilo);
+    doc.setFontSize(nombreTexto.tamano);
+    const lineasNombre: string[] = clienteNombre ? doc.splitTextToSize(clienteNombre, contactoW) : [];
+    doc.setFont(contactoTexto.fuente, contactoTexto.estilo);
+    doc.setFontSize(contactoTexto.tamano);
+    const lineasContacto: string[] = [];
+    if (clienteDireccion) lineasContacto.push(...doc.splitTextToSize(`Dirección: ${clienteDireccion}`, contactoW));
+    if (clienteTelefono) lineasContacto.push(...doc.splitTextToSize(`Teléfono: ${clienteTelefono}`, contactoW));
+    // Nombre corto y sin contacto conserva el alto original (startY 78).
+    const leftBoxH = Math.max(rightBoxH, 14 + lineasNombre.length * 6 + lineasContacto.length * 5);
     doc.setFillColor(...FONDO_SUAVE); // fondo suave de marca
-    doc.roundedRect(14, infoY, leftBoxW, boxH, 2, 2, 'F');
-    doc.roundedRect(rightBoxX, infoY, rightBoxW, boxH, 2, 2, 'F');
+    doc.roundedRect(14, infoY, leftBoxW, leftBoxH, 2, 2, 'F');
+    doc.roundedRect(rightBoxX, infoY, rightBoxW, rightBoxH, 2, 2, 'F');
     doc.setTextColor(...TINTA);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.text('Nota de venta para:', 20, infoY + 8);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(...TINTA);
-    doc.text(clienteNombre, 20, infoY + 17);
+    doc.text('Nota de venta para:', contactoX, infoY + 8);
+    doc.setFont(nombreTexto.fuente, nombreTexto.estilo);
+    doc.setFontSize(nombreTexto.tamano);
+    let yContacto = infoY + 15;
+    for (const linea of lineasNombre) {
+      doc.text(linea, contactoX, yContacto);
+      yContacto += 6;
+    }
+    doc.setFont(contactoTexto.fuente, contactoTexto.estilo);
+    doc.setFontSize(contactoTexto.tamano);
+    for (const linea of lineasContacto) {
+      doc.text(linea, contactoX, yContacto + 1);
+      yContacto += 5;
+    }
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`N°: ${id}`, rightBoxX + 5, infoY + 10);
@@ -654,7 +685,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
 
     // Tabla con columna Imagen (primera) — sin columna Empresa (deuda PRD §9.3.1).
     // Header dark, texto blanco, zebra striping. Cantidades en unidades.
-    const startY = infoY + boxH + 10;
+    const startY = infoY + leftBoxH + 10;
     const rows = prenota.items.map((i) => {
       return [
         '', // columna Imagen — se dibuja aparte vía didDrawCell (index 0)
@@ -696,7 +727,7 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
         3: { cellWidth: 20, halign: 'right' }, // Unidades
         4: { cellWidth: 26, halign: 'right' }, // Precio
         5: { cellWidth: 28, halign: 'right' }, // Total
-        6: { cellWidth: 20, halign: 'right' }, // Modalidad
+        6: { cellWidth: 24, halign: 'right' }, // Modalidad (24mm para que el encabezado no se parta)
       },
       didDrawCell: (data: CellHookData) => {
         // Columna 0 = Imagen: dibujar si hay base64 cacheado

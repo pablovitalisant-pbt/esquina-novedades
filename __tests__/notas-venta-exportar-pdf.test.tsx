@@ -34,6 +34,8 @@ const setDrawColor = jest.fn();
 const setLineWidth = jest.fn();
 const line = jest.fn();
 const addPage = jest.fn();
+// N07b: dirección larga → varias líneas; textos cortos → una línea.
+const splitTextToSize = jest.fn((t: string) => (t.length > 30 ? t.match(/.{1,30}/g)! : [t]));
 // finalY configurable por test: valor bajo por defecto → el bloque de totales
 // cabe en la misma página. Test de BUG-062 lo sube para forzar el addPage().
 let mockFinalY = 100;
@@ -54,19 +56,20 @@ jest.mock('jspdf', () => {
     line = line;
     lastAutoTable = { get finalY() { return mockFinalY; } };
     addPage = addPage;
+    splitTextToSize = splitTextToSize;
   }
   return MockJsPDF;
 });
 
 // Fábrica de fetch: imagen exitosa, imagen que falla, o sin imagen_url.
-function mockFetchConImagenes(opcion: 'ok' | 'falla' | 'sin-imagen', dolar: string = '1200') {
+function mockFetchConImagenes(opcion: 'ok' | 'falla' | 'sin-imagen', dolar: string = '1200', contacto: any = null) {
   return jest.fn((url: string, opts?: any) => {
     if (url === '/api/notas-venta/1' && (!opts || opts.method === undefined)) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
           id: '1', estado: 'activa', titulo: 'Nota PDF', cliente_nombre: 'Cliente X',
-          saldo_pendiente: 0, total_pagado: 0,
+          saldo_pendiente: 0, total_pagado: 0, ...(contacto || {}),
           items: [{
             id: 1, codigo: 'A', descripcion: 'Item A',
             imagen_url: opcion === 'sin-imagen' ? null : 'https://res.cloudinary.com/x/img.png',
@@ -471,5 +474,44 @@ describe('exportarPDF — BUG-062: bloque de totales desbordado', () => {
     expect(todos.some(t => t.startsWith('Total:'))).toBe(true);
     expect(todos.some(t => t.startsWith('Pagado:'))).toBe(true);
     expect(todos.some(t => t.startsWith('Pendiente:'))).toBe(true);
+  });
+});
+
+describe('exportarPDF — N07b: contacto del comprador', () => {
+  beforeEach(() => { jest.clearAllMocks(); lastAutoTableConfig = null; });
+  const todosText = () =>
+    text.mock.calls.map((c: any[]) => c[0]).flat().filter((t: any) => typeof t === 'string');
+
+  it('N07b: nombre, dirección y teléfono; caja crece y la tabla baja', async () => {
+    await renderNota(mockFetchConImagenes('ok', '1200', {
+      cliente_nombre: 'María de los Ángeles González Pérez',
+      cliente_direccion: 'Pasaje Los Aromos 1234, Depto 56, Villa El Sol, Iquique',
+      cliente_telefono: '+56 9 5555 4444',
+    }));
+    fireEvent.click(screen.getByText('Exportar PDF'));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+
+    expect(splitTextToSize).toHaveBeenCalled();
+    const todos = todosText();
+    expect(todos.some(t => t.includes('María'))).toBe(true);
+    expect(todos.some(t => t.includes('Pasaje Los Aromos'))).toBe(true);
+    expect(todos.some(t => t.includes('+56 9 5555 4444'))).toBe(true);
+    // roundedRect(x, y, w, h, ...) → la altura es el índice 3. Solo los
+    // recuadros de destinatario/fecha (y=46); otros tamaños quedan fuera.
+    const recuadros = roundedRect.mock.calls.filter((c: any[]) => c[1] === 46);
+    expect(recuadros.some((c: any[]) => c[3] > 22)).toBe(true);
+    expect(lastAutoTableConfig.startY).toBeGreaterThan(78);
+  });
+
+  it('N07b: sin contacto no imprime undefined y las cajas no crecen', async () => {
+    await renderNota(mockFetchConImagenes('ok'));
+    fireEvent.click(screen.getByText('Exportar PDF'));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+
+    expect(todosText().some(t => t.includes('undefined'))).toBe(false);
+    const recuadros = roundedRect.mock.calls.filter((c: any[]) => c[1] === 46);
+    expect(recuadros.length).toBe(2);
+    expect(recuadros.every((c: any[]) => c[3] === 22)).toBe(true);
+    expect(lastAutoTableConfig.startY).toBe(78);
   });
 });

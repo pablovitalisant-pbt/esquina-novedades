@@ -43,7 +43,7 @@ jest.mock('jspdf', () => class {
   addImage = jest.fn(); setFont = jest.fn(); text = jest.fn(); save = mockSave;
   setFontSize = jest.fn(); setFillColor = jest.fn(); rect = jest.fn(); roundedRect = jest.fn();
   setTextColor = jest.fn(); setDrawColor = jest.fn(); setLineWidth = jest.fn(); line = jest.fn();
-  lastAutoTable = { finalY: 100 }; addPage = jest.fn();
+  lastAutoTable = { finalY: 100 }; addPage = jest.fn(); splitTextToSize = (t: string) => [t];
 });
 
 const producto: any = {

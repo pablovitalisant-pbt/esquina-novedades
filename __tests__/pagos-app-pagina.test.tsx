@@ -18,7 +18,7 @@ import Pagina from '@/app/(app)/admin/pagos-app/page';
 const sesionMock = getServerSession as jest.Mock;
 const guardMock = rolPagosApp as jest.Mock;
 const leerMock = leerResumenPagosApp as jest.Mock;
-const notFoundMock = notFound as jest.Mock;
+const notFoundMock = jest.mocked(notFound);
 
 const RESUMEN = {
   total: 100000,

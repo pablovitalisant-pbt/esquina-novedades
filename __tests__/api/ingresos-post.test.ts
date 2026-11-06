@@ -25,7 +25,9 @@ import { POST } from '@/app/api/ingresos/route';
 
 const getServerSession = jest.fn();
 const sql = jest.fn();
-const mockTransaction = jest.fn(async (queries: any[]) => queries.map(() => []));
+const mockTransaction = jest.fn(
+  async (queries: any[]): Promise<any[][]> => queries.map(() => [])
+);
 (sql as any).transaction = mockTransaction;
 
 jest.mock('next-auth', () => ({

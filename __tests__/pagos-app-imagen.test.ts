@@ -18,7 +18,7 @@ const pedido = (bytes: Uint8Array, tipo: string) =>
   new Request('http://local/comprobante', {
     method: 'POST',
     headers: { 'content-type': tipo },
-    body: bytes,
+    body: Uint8Array.from(bytes),
   });
 
 const leer = async (bytes: Uint8Array, tipo: string) => {

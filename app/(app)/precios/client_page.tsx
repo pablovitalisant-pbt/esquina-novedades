@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Producto, UserSession } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDrawer } from '@/components/ProductDrawer';
@@ -11,6 +11,7 @@ import { Search, Eye, EyeOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { calcularMargen } from '@/lib/calcular-precio';
 import { reducirImagen, MAX_ENTRADA_BYTES, TIPOS_ACEPTADOS } from '@/lib/imagen-reducir';
+import flags from '@/config/feature-flags.json';
 
 // ponytail: single-tenant (empresa única, migración 018)
 interface PreciosClientProps {
@@ -21,8 +22,16 @@ export function PreciosClient({ session }: PreciosClientProps) {
   const [crearPrecioMayor, setCrearPrecioMayor] = useState('');
   const [crearMinimoMayor, setCrearMinimoMayor] = useState('');
 
+  const paginado = (flags as Record<string, boolean>)['precios-paginados'] === true;
+  const requestId = useRef(0);
+  // guard síncrono: el estado loadingMore no alcanza a reflejarse en doble clic
+  const loadingMoreRef = useRef(false);
+
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [siguienteCursor, setSiguienteCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const hasSearch = debouncedSearch.trim().length >= 2;
@@ -62,36 +71,68 @@ export function PreciosClient({ session }: PreciosClientProps) {
   useEffect(() => { localStorage.setItem('precios_soloNuevo', soloNuevo.toString()); }, [soloNuevo]);
   useEffect(() => { localStorage.setItem('ocultar_precios', ocultarPrecios.toString()); }, [ocultarPrecios]);
 
-  // Fetch logic
-  useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      if (debouncedSearch.trim().length < 2) {
-        setProductos([]);
-        setLoading(false);
-        return;
-      }
-      try {
-        const queryParams = new URLSearchParams({
-          ...(debouncedSearch && { search: debouncedSearch }),
-          ...(soloStock && { soloStock: 'true' }),
-          ...(soloNuevo && { soloNuevo: 'true' }),
-        });
+  const pedir = useCallback(async (cursor?: string) => {
+    setError('');
+    const queryParams = new URLSearchParams({
+      ...(debouncedSearch && { search: debouncedSearch }),
+      ...(soloStock && { soloStock: 'true' }),
+      ...(soloNuevo && { soloNuevo: 'true' }),
+      ...(paginado && { paginado: 'true' }),
+      ...(cursor && { cursor }),
+    });
+    const res = await fetch(`/api/productos?${queryParams}`);
+    if (!res.ok) throw new Error('Error al cargar productos');
+    return res.json();
+  }, [debouncedSearch, soloStock, soloNuevo, paginado]);
 
-        const res = await fetch(`/api/productos?${queryParams.toString()}`);
-        if (res.ok) {
-          const { data } = await res.json();
-          setProductos(data || []);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
+  // Con flag paginado carga la primera página al abrir; legado exige 2+ caracteres.
+  useEffect(() => {
+    const id = ++requestId.current;
+    setSiguienteCursor(null);
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    if (!paginado && !hasSearch) {
+      setProductos([]);
+      setLoading(false);
+      return;
     }
-    
-    fetchProducts();
-  }, [debouncedSearch, soloStock, soloNuevo]);
+    (async () => {
+      setLoading(true);
+      try {
+        const body = await pedir();
+        if (requestId.current !== id) return; // respuesta tardía de otro filtro
+        setProductos(body.data || []);
+        setSiguienteCursor(body.siguienteCursor ?? null);
+      } catch (err) {
+        if (requestId.current !== id) return;
+        console.error(err);
+        setError('No se pudieron cargar los productos.');
+        setProductos([]);
+      } finally {
+        if (requestId.current === id) setLoading(false);
+      }
+    })();
+  }, [pedir, paginado, hasSearch]);
+
+  const cargarMas = async () => {
+    if (!siguienteCursor || loadingMoreRef.current) return;
+    const id = requestId.current;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const body = await pedir(siguienteCursor);
+      if (requestId.current !== id) return; // filtros cambiaron mientras cargaba
+      setProductos(prev => [...prev, ...(body.data || [])]);
+      setSiguienteCursor(body.siguienteCursor ?? null);
+    } catch (err) {
+      if (requestId.current !== id) return; // error de un filtro ya descartado
+      console.error(err);
+      setError('No se pudieron cargar más productos.');
+    } finally {
+      loadingMoreRef.current = false;
+      if (requestId.current === id) setLoadingMore(false);
+    }
+  };
 
   const costoNum = crearCosto ? Number(crearCosto) : null;
   const gananciaDetalle = calcularMargen(costoNum, crearPrcVenta ? Number(crearPrcVenta) : null);
@@ -334,34 +375,47 @@ export function PreciosClient({ session }: PreciosClientProps) {
         </div>
       </div>
 
-      {loading && hasSearch ? (
+      {error && (
+        <div role="alert" className="text-center py-3 text-sm text-[var(--danger)]">{error}</div>
+      )}
+
+      {loading && (hasSearch || paginado) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="h-36 bg-[var(--muted)] rounded-card"></div>
           ))}
         </div>
-      ) : !hasSearch ? (
+      ) : !paginado && !hasSearch ? (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <div className="text-4xl"></div>
           <p className="text-[var(--body)] font-medium">Busca un producto o descripción</p>
           <p className="text-[var(--body-subtle)] text-sm">Ingresa al menos 2 caracteres para ver resultados</p>
         </div>
-      ) : productos.length === 0 ? (
+      ) : !loading && !error && productos.length === 0 ? (
         <div className="text-center py-12 text-[var(--body)]">
           No se encontraron productos.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12">
-          {productos.map(p => (
-            <ProductCard
-              key={p.id}
-              producto={p}
-              onClick={openDrawer}
-              ocultarPrecios={ocultarPrecios}
-              rol={session?.rol}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12">
+            {productos.map(p => (
+              <ProductCard
+                key={p.id}
+                producto={p}
+                onClick={openDrawer}
+                ocultarPrecios={ocultarPrecios}
+                rol={session?.rol}
+              />
+            ))}
+          </div>
+          {paginado && siguienteCursor && (
+            <div className="flex justify-center pb-12">
+              <Button variant="outline" className="rounded-full" onClick={cargarMas} disabled={loadingMore}>
+                {loadingMore ? 'Cargando...' : 'Cargar más'}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <ProductDrawer

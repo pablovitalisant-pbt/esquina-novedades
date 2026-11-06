@@ -37,9 +37,19 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'ID de nota inválido' }, { status: 400 });
   }
   const prenotas = await sql`
-    SELECT p.*, c.nombre AS cliente_nombre
+    SELECT p.*,
+      c.nombre AS cliente_nombre,
+      COALESCE(NULLIF(BTRIM(ped.direccion_entrega), ''), NULLIF(BTRIM(c.direccion), '')) AS cliente_direccion,
+      COALESCE(NULLIF(BTRIM(ped.telefono_contacto), ''), NULLIF(BTRIM(c.telefono), '')) AS cliente_telefono
     FROM public.prenotas p
     LEFT JOIN public.clientes c ON c.id = p.cliente_id
+    LEFT JOIN LATERAL (
+      SELECT pe.direccion_entrega, pe.telefono_contacto
+      FROM public.pedidos pe
+      WHERE pe.prenota_id = p.id
+      ORDER BY pe.created_at DESC, pe.id DESC
+      LIMIT 1
+    ) ped ON true
     WHERE p.id = ${id}
   `;
   const prenota = (prenotas as Record<string, unknown>[])[0];

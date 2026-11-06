@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { rolPagosApp } from '@/lib/pagos-app/acceso';
 import { leerResumenPagosApp } from '@/lib/pagos-app/resumen';
+import { SubirComprobantePago } from '@/components/pagos-app/SubirComprobantePago';
 import { formatCLP } from '@/lib/utils';
 
 /** '2026-10-01' → '01-10-2026', sin pasar por Date (evita corrimiento de zona). */
@@ -13,7 +14,8 @@ function fechaDMY(fecha: string): string {
 
 export default async function PagosAppPage() {
   const session = await getServerSession(authOptions);
-  if (!rolPagosApp(session)) notFound();
+  const rol = rolPagosApp(session);
+  if (!rol) notFound();
 
   const resumen = await leerResumenPagosApp();
   if (!resumen) {
@@ -69,13 +71,16 @@ export default async function PagosAppPage() {
                     {pago.reversa_de && ' · Reversa'}
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <span className="font-semibold text-[var(--heading)]">{formatCLP(pago.monto_clp)}</span>
                   {pago.tiene_comprobante && (
                     <a href={`/api/admin/pagos-app/${pago.id}/comprobante`}
                       className="text-sm font-medium text-[var(--primary)] underline hover:no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]">
                       Ver comprobante
                     </a>
+                  )}
+                  {rol === 'pablo' && pago.medio === 'transferencia' && !pago.reversa_de && !pago.tiene_comprobante && (
+                    <SubirComprobantePago pagoId={pago.id} />
                   )}
                 </div>
               </li>

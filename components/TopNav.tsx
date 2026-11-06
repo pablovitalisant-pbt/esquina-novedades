@@ -27,7 +27,8 @@ import {
   PackagePlus,
   Inbox,
   PieChart,
-  ScanBarcode
+  ScanBarcode,
+  Wallet
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { AlertasBell } from './AlertasBell';
@@ -35,7 +36,7 @@ import { useAlertas } from '@/contexts/AlertasContext';
 import { MarcaLogo } from '@/components/MarcaLogo';
 import flags from '@/config/feature-flags.json';
 
-export function TopNav() {
+export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolean }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.rol === 'admin';
@@ -233,6 +234,13 @@ export function TopNav() {
                       <PieChart className="w-4 h-4" /> Inversión en Mercadería
                     </Link>
                   </DropdownMenuItem>
+                  {puedeVerPagosApp && (
+                    <DropdownMenuItem>
+                      <Link href="/admin/pagos-app" className="flex items-center gap-2 w-full">
+                        <Wallet className="w-4 h-4" /> Pagos del desarrollo
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

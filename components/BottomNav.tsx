@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   ShoppingCart, Users, LayoutList, Tag, Box,
-  Settings, ClipboardList, Landmark, AlertTriangle, FileText,PackagePlus, Inbox, PieChart, ScanBarcode
+  Settings, ClipboardList, Landmark, AlertTriangle, FileText,PackagePlus, Inbox, PieChart, ScanBarcode, Wallet
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { signOut, useSession } from 'next-auth/react';
 import flags from '@/config/feature-flags.json';
 import { RUTAS_POR_ROL } from '@/lib/rutas-por-rol';
 
-export function BottomNav() {
+export function BottomNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolean }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const rol = session?.user?.rol as string;
@@ -194,6 +194,12 @@ export function BottomNav() {
                       className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
                       <PieChart className="w-4 h-4 text-[var(--body)]" /> Inversión en Mercadería
                     </Link>
+                    {puedeVerPagosApp && (
+                      <Link href="/admin/pagos-app" onClick={() => setAdminOpen(false)}
+                        className="flex items-center gap-3 py-3 font-medium border-b border-[var(--border)] dark:border-[var(--border)]">
+                        <Wallet className="w-4 h-4 text-[var(--body)]" /> Pagos del desarrollo
+                      </Link>
+                    )}
                   </div>
                   <Button variant="destructive" onClick={() => signOut({ callbackUrl: '/' })} className="w-full">
                     Cerrar sesión

@@ -19,10 +19,12 @@ jest.mock('next-auth/react', () => ({
 }));
 jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
 
-function abrirAdmin() {
-  render(<BottomNav />);
+function abrirAdmin(puedeVerPagosApp?: boolean) {
+  render(<BottomNav puedeVerPagosApp={puedeVerPagosApp} />);
   fireEvent.click(screen.getByText('Admin'));
 }
+
+const linkPagos = () => screen.queryByRole('link', { name: /Pagos del desarrollo/i });
 
 describe('BottomNav — sheet Administración: Inversión en Mercadería', () => {
   test('rol admin: incluye el link a /admin/inversion-mercaderia', () => {
@@ -30,5 +32,15 @@ describe('BottomNav — sheet Administración: Inversión en Mercadería', () =>
     const link = screen.getByRole('link', { name: /Inversión en Mercadería/i });
     expect(link).toBeInTheDocument();
     expect(link.getAttribute('href')).toBe('/admin/inversion-mercaderia');
+  });
+
+  test('puedeVerPagosApp: muestra Pagos del desarrollo', () => {
+    abrirAdmin(true);
+    expect(linkPagos()).toHaveAttribute('href', '/admin/pagos-app');
+  });
+
+  test('sin prop (default false): oculta Pagos del desarrollo', () => {
+    abrirAdmin();
+    expect(linkPagos()).toBeNull();
   });
 });

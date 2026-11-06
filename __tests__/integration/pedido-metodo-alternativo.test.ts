@@ -76,6 +76,13 @@ test('preferencia MP histórica → 409 sin mutar', async () => {
   expect(await metodoEnDb(id)).toBeNull();
 });
 
+test('mp_payment_id persistido sin init point → 409 sin mutar', async () => {
+  const id = await crear();
+  await sql`UPDATE pedidos SET mp_payment_id = '999' WHERE id = ${id}`;
+  expect((await post(id, 'transferencia')).status).toBe(409);
+  expect(await metodoEnDb(id)).toBeNull();
+});
+
 test('configuración bancaria ausente → 503 sin mutar', async () => {
   const id = await crear();
   const guardado = process.env.TRANSFERENCIA_RUT;

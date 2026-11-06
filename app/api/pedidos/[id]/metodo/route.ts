@@ -32,6 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       SET metodo_pago = ${metodo}
       WHERE p.id = ${id}
         AND p.mp_init_point IS NULL
+        AND p.mp_payment_id IS NULL
         AND (p.metodo_pago IS NULL OR p.metodo_pago = ${metodo})
         AND p.estado = 'pendiente_pago' AND p.stock_reservado = true AND p.expira_en > NOW()
         AND (${metodo} = 'transferencia' OR EXISTS (

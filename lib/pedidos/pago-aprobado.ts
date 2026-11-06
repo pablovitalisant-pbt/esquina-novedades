@@ -7,13 +7,23 @@ import { usuarioSistema } from '@/lib/pedidos/usuario-sistema';
 // transición es un UPDATE condicionado y el cobro no se duplica.
 // expirado/rechazado → pagado_tardio sin tocar stock: es revisión manual.
 
+// Los pedidos elegidos por efectivo/transferencia no admiten efectos de MP.
+// to_jsonb tolera el esquema previo a la migración 049 (sin columna metodo_pago).
+// El predicado va literal en cada consulta: evaluarlo al cargar el módulo
+// rompe el import cuando `sql` aún no está inicializado.
+
 async function marcarRevision(id: string, motivo: string) {
   await sql`
     UPDATE pedidos SET estado = 'revision', mp_revision_motivo = ${motivo}
     WHERE id = ${id} AND estado NOT IN ('revision', 'pagado_tardio', 'convertido')
+      AND COALESCE(to_jsonb(pedidos)->>'metodo_pago', '') NOT IN ('efectivo', 'transferencia')
   `;
   // Un pedido convertido nunca sale de 'convertido': solo se anota el motivo.
-  await sql`UPDATE pedidos SET mp_revision_motivo = ${motivo} WHERE id = ${id} AND estado = 'convertido'`;
+  await sql`
+    UPDATE pedidos SET mp_revision_motivo = ${motivo}
+    WHERE id = ${id} AND estado = 'convertido'
+      AND COALESCE(to_jsonb(pedidos)->>'metodo_pago', '') NOT IN ('efectivo', 'transferencia')
+  `;
 }
 
 async function cobrar(id: string, paymentId: string) {
@@ -34,6 +44,7 @@ export async function pagoAprobado(
   const rows = await sql`
     UPDATE pedidos SET mp_payment_id = ${pid}, mp_fecha_pago = NOW()
     WHERE id = ${pedidoId} AND (mp_payment_id IS NULL OR mp_payment_id = ${pid})
+      AND COALESCE(to_jsonb(pedidos)->>'metodo_pago', '') NOT IN ('efectivo', 'transferencia')
     RETURNING estado, total, caja_movimiento_id
   `;
   if (rows.length === 0) return marcarRevision(pedidoId, 'Segundo pago aprobado para el mismo pedido');

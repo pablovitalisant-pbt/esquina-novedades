@@ -30,9 +30,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // la exclusión, así que una segunda llamada no devuelve el stock dos veces.
     const rows = await sql`
       WITH obj AS (
-        UPDATE public.pedidos
+        UPDATE public.pedidos AS p
         SET estado = 'descartado', stock_reservado = false
         WHERE id = ${id} AND estado IN ('pendiente', 'pendiente_pago', 'pagado', 'revision')
+          -- Un pagado por efectivo/transferencia está confirmado: no se descarta.
+          -- to_jsonb tolera el esquema previo a la migración 049.
+          AND NOT (p.estado = 'pagado'
+            AND COALESCE(to_jsonb(p)->>'metodo_pago', '') IN ('efectivo', 'transferencia'))
         RETURNING id, estado
       ), devoluciones AS (
         -- Se devuelve lo reservado (pi.unidades), no cantcaja actual.

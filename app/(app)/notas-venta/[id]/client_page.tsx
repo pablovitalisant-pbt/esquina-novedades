@@ -202,6 +202,9 @@ function PrenotaItemsTable({
     }
   };
 
+  // Ponytail: una sola clase para los 3 controles; h-11 = 44px (toque móvil).
+  const controlClass = 'w-full h-11 rounded-md border border-[var(--border-default)] bg-[var(--neutral-primary-soft)] px-2 text-sm text-[var(--body)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-60';
+
   return (
     <div className="border rounded-card overflow-hidden bg-[var(--card)] shadow-sm">
       <div className="overflow-x-auto">
@@ -246,39 +249,42 @@ function PrenotaItemsTable({
                   {editingId === item.id ? (
                     <div className="flex flex-col gap-2 items-end min-w-[140px]">
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Unidades</label>
+                        <label htmlFor={`nota-${item.id}-unidades`} className="text-xs text-[var(--body-subtle)]">Unidades</label>
                         <input
+                          id={`nota-${item.id}-unidades`}
                           ref={unidadesInputRef}
                           type="number"
                           min={1}
                           value={editUnidades}
                           onFocus={e => e.target.select()}
                           onChange={e => setEditUnidades(Number(e.target.value))}
-                          className="border rounded px-2 py-1 text-sm w-full"
+                          className={controlClass}
                         />
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Modalidad</label>
+                        <label htmlFor={`nota-${item.id}-modalidad`} className="text-xs text-[var(--body-subtle)]">Modalidad</label>
                         <select
+                          id={`nota-${item.id}-modalidad`}
                           value={editModalidad}
                           disabled={saving}
                           onChange={e => handleModalidad(item, e.target.value as 'detalle' | 'mayor')}
-                          className="border rounded px-2 py-1 text-sm w-full"
+                          className={controlClass}
                         >
                           <option value="detalle">Por menor</option>
                           <option value="mayor">Por mayor</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1 w-full">
-                        <label className="text-xs text-[var(--body-subtle)]">Precio</label>
+                        <label htmlFor={`nota-${item.id}-precio`} className="text-xs text-[var(--body-subtle)]">Precio</label>
                         <input
+                          id={`nota-${item.id}-precio`}
                           type="number"
                           min={0}
                           step={0.01}
                           value={editPrecio}
                           onFocus={e => e.target.select()}
                           onChange={e => { setEditPrecio(Number(e.target.value)); setPrecioEditado(true); }}
-                          className="border rounded px-2 py-1 text-sm w-full"
+                          className={controlClass}
                         />
                       </div>
                       <Button

@@ -90,6 +90,14 @@ describe('edición — PATCH sin cajas', () => {
     expect(body).not.toHaveProperty('cajas');
   });
 
+  it('los controles Unidades, Modalidad y Precio tienen nombre accesible', async () => {
+    await renderNota([DETALLE]);
+    fireEvent.click(screen.getByRole('button', { name: /editar/i }));
+    expect(screen.getByRole('spinbutton', { name: /^unidades$/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /^modalidad$/i })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /^precio$/i })).toBeInTheDocument();
+  });
+
   it('cambiar el selector a Mayor manda {modalidad} sin precio', async () => {
     await renderNota([DETALLE]);
     fireEvent.click(screen.getByRole('button', { name: /editar/i }));

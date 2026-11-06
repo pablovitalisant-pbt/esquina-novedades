@@ -45,4 +45,5 @@ export const MIGRATION_ORDER: string[] = [
   '046_modalidad_detalle_mayor.sql',
   '047_pedido_items_precio_lista.sql',
   '048_cliente_meson.sql',
+  '049_pedidos_metodo_pago.sql',
 ];

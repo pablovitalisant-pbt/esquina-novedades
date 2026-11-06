@@ -37,6 +37,8 @@ export function PreciosClient({ session }: PreciosClientProps) {
   const hasSearch = debouncedSearch.trim().length >= 2;
   const [soloStock, setSoloStock] = useState(false);
   const [soloNuevo, setSoloNuevo] = useState(false);
+  // invalida la primera página tras crear un producto (paginado)
+  const [recarga, setRecarga] = useState(0);
 
   const [ocultarPrecios, setOcultarPrecios] = useState(false);
 
@@ -112,7 +114,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
         if (requestId.current === id) setLoading(false);
       }
     })();
-  }, [pedir, paginado, hasSearch]);
+  }, [pedir, paginado, hasSearch, recarga]);
 
   const cargarMas = async () => {
     if (!siguienteCursor || loadingMoreRef.current) return;
@@ -201,6 +203,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
       setCrearPreview(null);
       setSearch('');
       setDebouncedSearch('');
+      setRecarga(n => n + 1);
     } catch {
       toast.error('Error de red al crear producto');
     } finally {

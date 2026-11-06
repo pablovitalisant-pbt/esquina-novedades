@@ -85,3 +85,30 @@ describe('app/(app)/precios — paginado N09b', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('app/(app)/precios — crear con paginado N09c', () => {
+  it('crear producto sin búsqueda reconsulta la primera página', async () => {
+    fetchMock
+      .mockResolvedValueOnce(pagina([producto('A1')]))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { codigo: 'N1' } }) })
+      .mockResolvedValueOnce(pagina([producto('N1')]));
+
+    render(<PreciosClient session={session} />);
+    expect(await screen.findByText('A1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /agregar producto/i }));
+    fireEvent.change(await screen.findByTestId('crear-codigo'), { target: { value: 'N1' } });
+    fireEvent.change(screen.getByTestId('crear-detalle'), { target: { value: 'Nuevo' } });
+    fireEvent.change(screen.getByTestId('crear-costo'), { target: { value: '100' } });
+    fireEvent.change(screen.getByTestId('crear-prcventa'), { target: { value: '200' } });
+    fireEvent.click(screen.getByRole('button', { name: /crear producto/i }));
+
+    expect(await screen.findByText('N1')).toBeInTheDocument();
+    const gets = fetchMock.mock.calls
+      .filter((c: any[]) => c[1]?.method !== 'POST')
+      .map((c: any[]) => String(c[0]));
+    expect(gets.at(-1)).toContain('paginado=true');
+    expect(gets.at(-1)).not.toContain('cursor=');
+    expect(gets.at(-1)).not.toContain('search=');
+  });
+});

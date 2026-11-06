@@ -12,7 +12,10 @@ const mockCreatePreference = jest.fn();
 const sql = jest.fn();
 const sqlTransaction = jest.fn();
 
-jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': true }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
+  'tienda-pago-online': true,
+  'pedido-pago-opcional': false,
+}));
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
   mockSql.transaction = (...args: any[]) => sqlTransaction(...args);
@@ -25,6 +28,10 @@ jest.mock('mercadopago', () => ({
 }));
 
 import { POST } from '@/app/api/pedidos/route';
+
+// El objeto que devuelve el mock es el mismo que importa la ruta: mutarlo
+// cambia el flag en caliente; cada test lo devuelve a false en beforeEach.
+const flagsTest = () => require('@/config/feature-flags.json') as Record<string, boolean>;
 
 const postReq = (body: any, headers: Record<string, string> = {}) => new NextRequest(
   'http://localhost/api/pedidos',
@@ -72,6 +79,7 @@ function setupSql() {
 let envOriginal: NodeJS.ProcessEnv;
 beforeEach(() => {
   jest.clearAllMocks();
+  flagsTest()['pedido-pago-opcional'] = false;
   envOriginal = { ...process.env };
   process.env.MP_ACCESS_TOKEN = 'TEST-token';
   process.env.NEXT_PUBLIC_SITE_URL = 'https://tienda.example.com';
@@ -187,5 +195,49 @@ describe('replay con Idempotency-Key', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).data.init_point).toBeUndefined();
     expect(mockCreatePreference).not.toHaveBeenCalled();
+  });
+});
+
+describe('N02a — pedido-pago-opcional=true: reserva sin Mercado Pago', () => {
+  beforeEach(() => { flagsTest()['pedido-pago-opcional'] = true; });
+
+  const sinConfigMp = () => {
+    delete process.env.MP_ACCESS_TOKEN;
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    configCuenta = [];
+  };
+
+  test('sin token/siteUrl/cuenta MP → 201 con reserva y sin preferencia', async () => {
+    sinConfigMp();
+    const res = await POST(postReq(BODY));
+    expect(res.status).toBe(201);
+    const { data } = await res.json();
+    expect(data).toMatchObject({ id: 'ped-1', estado: 'pendiente_pago', total: 1500, expira_en: '2026-10-24T12:00:00Z' });
+    expect(data.init_point).toBeUndefined();
+    expect(sqlTransaction).toHaveBeenCalledTimes(1);
+    const llamadas = sql.mock.calls.map((c: any[]) => c[0].join(''));
+    expect(llamadas.some((q: string) => q.includes('saldo = saldo -'))).toBe(true);
+    expect(llamadas.some((q: string) => q.includes('SET mp_preference_id'))).toBe(false);
+    expect(mockCreatePreference).not.toHaveBeenCalled();
+  });
+
+  test('SDK configurado para fallar no se invoca y no se rechaza el pedido', async () => {
+    sinConfigMp();
+    mockCreatePreference.mockRejectedValue(new Error('MP caído'));
+    expect((await POST(postReq(BODY))).status).toBe(201);
+    expect(mockCreatePreference).not.toHaveBeenCalled();
+    expect(llamadaRechazo()).toBeUndefined();
+  });
+
+  test('replay sin init_point → 200 sin SDK ni nueva transacción', async () => {
+    sinConfigMp();
+    pedidoExistente = { id: 'ped-1', estado: 'pendiente_pago', mp_init_point: null };
+    const res = await POST(postReq(BODY, { 'Idempotency-Key': 'k1' }));
+    expect(res.status).toBe(200);
+    const { data } = await res.json();
+    expect(data.id).toBe('ped-1');
+    expect(data.init_point).toBeUndefined();
+    expect(mockCreatePreference).not.toHaveBeenCalled();
+    expect(sqlTransaction).not.toHaveBeenCalled();
   });
 });

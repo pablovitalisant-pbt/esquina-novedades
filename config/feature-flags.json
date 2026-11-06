@@ -10,5 +10,6 @@
   "tienda-mayor-online": true,
   "tienda-portada-v2": true,
   "pos-v1": true,
-  "pedido-confirmacion-antes-pago": false
+  "pedido-confirmacion-antes-pago": false,
+  "pedido-pago-opcional": false
 }

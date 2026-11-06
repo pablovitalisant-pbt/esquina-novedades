@@ -72,8 +72,8 @@ async function pagoOnlineConfigurado(): Promise<boolean> {
 }
 
 /** Replay de Idempotency-Key con pago online: reusa el init point guardado. */
-async function responderReplay(pedido: PedidoReplay, pagoOnline: boolean) {
-  if (!pagoOnline) return NextResponse.json({ data: pedido }, { status: 200 });
+async function responderReplay(pedido: PedidoReplay, pagoOnline: boolean, pagoOpcional: boolean) {
+  if (!pagoOnline || pagoOpcional) return NextResponse.json({ data: pedido }, { status: 200 });
   if (pedido.estado !== 'pendiente_pago') {
     return NextResponse.json({ data: pedido }, { status: 200 });
   }
@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Reserva online (flag) + idempotencia ───────────────────────
     const pagoOnline = flags['tienda-pago-online'] === true;
+    const pagoOpcional = (flags as Record<string, boolean>)['pedido-pago-opcional'] === true;
 
     const idempotencyKey = (
       request.headers.get('idempotency-key')
@@ -159,13 +160,13 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
       if (existentes[0]) {
-        return responderReplay(existentes[0] as PedidoReplay, pagoOnline);
+        return responderReplay(existentes[0] as PedidoReplay, pagoOnline, pagoOpcional);
       }
     }
 
     if (pagoOnline) {
       // Sin config de MP no se reserva nada (ni pedido ni stock).
-      if (!(await pagoOnlineConfigurado())) {
+      if (!pagoOpcional && !(await pagoOnlineConfigurado())) {
         return NextResponse.json(
           { error: 'El pago online no está configurado. Contacta a la tienda.' },
           { status: 503 },
@@ -337,7 +338,7 @@ export async function POST(request: NextRequest) {
           WHERE idempotency_key = ${idempotencyKey}
           LIMIT 1
         `;
-        if (existente) return responderReplay(existente as PedidoReplay, pagoOnline);
+        if (existente) return responderReplay(existente as PedidoReplay, pagoOnline, pagoOpcional);
       }
       if (codigoError(error) === '22012') {
         // Rollback ya deshizo lo nuestro: releemos el saldo real para el detalle.
@@ -371,7 +372,7 @@ export async function POST(request: NextRequest) {
       expira_en: pedido.expira_en,
     };
 
-    if (pagoOnline) {
+    if (pagoOnline && !pagoOpcional) {
       try {
         const { initPoint } = await crearPreferenciaPedido(pedido.id);
         data.init_point = initPoint;

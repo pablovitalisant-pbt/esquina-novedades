@@ -8,6 +8,7 @@
   "pedido-confetti": true,
   "env-validacion-arranque": true,
   "tienda-mayor-online": true,
+  "tienda-medios-compra": false,
   "tienda-portada-v2": true,
   "pos-v1": true,
   "pedido-confirmacion-antes-pago": false,

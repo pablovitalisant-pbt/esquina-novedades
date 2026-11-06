@@ -4,6 +4,8 @@ import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { BotonAgregarPedido } from '@/components/BotonAgregarPedido';
 import { formatCLP } from '@/lib/utils';
 import { ShoppingBag } from 'lucide-react';
+import flags from '@/config/feature-flags.json';
+import { precioLineaTienda } from '@/lib/precio-tienda';
 import type { ProductoTienda } from '@/lib/tienda-productos';
 
 /** Forma mínima que necesitan las tarjetas de la tienda. */
@@ -29,14 +31,16 @@ export function PlaceholderProducto({ codigo }: { codigo: string }) {
 }
 
 /**
- * Tarjeta compartida por la portada y el catálogo público. El precio por mayor
- * nunca se muestra (se descubre en el carrito). Con `mostrarPrecio=false` no
- * hay precio ni botón, igual que el catálogo con precios ocultos.
+ * Tarjeta compartida por la portada y el catálogo público. Con el flag
+ * `tienda-medios-compra` muestra detalle, unitario por mayor y stock; apagado
+ * conserva la tarjeta anterior. `mostrarStock` omitido = tienda (usa el flag);
+ * `false` explícito = catálogo (nunca stock). Con `mostrarPrecio=false` no hay
+ * precio ni botón, igual que el catálogo con precios ocultos.
  */
 export function TarjetaProductoTienda({
   producto,
   mostrarPrecio = true,
-  mostrarStock = false,
+  mostrarStock,
   mostrarNuevo,
   className = '',
 }: {
@@ -47,7 +51,19 @@ export function TarjetaProductoTienda({
   mostrarNuevo?: boolean;
   className?: string;
 }) {
-  const hayStock = mostrarStock && producto.saldo != null && producto.saldo > 0;
+  const mediosCompra = flags['tienda-medios-compra'] === true;
+  const hayStock = producto.saldo != null && producto.saldo > 0
+    && (mediosCompra ? mostrarStock !== false : Boolean(mostrarStock));
+  const lineaMayor = mediosCompra && mostrarPrecio && producto.precio != null
+    ? precioLineaTienda({
+        base: producto.precio,
+        precio_mayor: producto.precio_mayor,
+        minimo_mayor: producto.minimo_mayor,
+        cantidad: producto.saldo ?? 0,
+        habilitado: flags['tienda-mayor-online'] === true,
+      })
+    : null;
+  const ofreceMayor = lineaMayor?.modalidad === 'mayor';
   const mostrarBadge = Boolean(mostrarNuevo);
   return (
     <article
@@ -72,11 +88,29 @@ export function TarjetaProductoTienda({
         {hayStock && (
           <div className="text-xs text-[var(--body)]">Stock disponible: {producto.saldo} unidades</div>
         )}
-        {mostrarPrecio && producto.precio != null && (
+        {mostrarPrecio && producto.precio != null && (mediosCompra ? (
+          <>
+            <div data-testid="precio-menor" className="text-xs sm:text-sm text-[var(--body)]">
+              Precio detalle{' '}
+              <span className="text-lg sm:text-xl font-black text-[var(--primary)] leading-none">
+                {formatCLP(lineaMayor!.precio_lista)}
+              </span>
+            </div>
+            {ofreceMayor && (
+              <div data-testid="precio-mayor" className="text-xs sm:text-sm text-[var(--body)]">
+                Precio mayor{' '}
+                <span className="text-lg sm:text-xl font-black text-[var(--primary)] leading-none">
+                  {formatCLP(lineaMayor!.precio)}
+                </span>
+                <span className="block text-xs">desde {producto.minimo_mayor} unidades</span>
+              </div>
+            )}
+          </>
+        ) : (
           <div data-testid="precio-menor" className="text-lg sm:text-xl font-black text-[var(--primary)] leading-none">
             {formatCLP(producto.precio)}
           </div>
-        )}
+        ))}
         {mostrarPrecio && (
           <BotonAgregarPedido
             item={{

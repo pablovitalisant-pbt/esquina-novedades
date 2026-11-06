@@ -22,8 +22,7 @@ function idValido(valor: string | undefined): number | null {
  * La lista de IDs nunca sale de este módulo.
  */
 export function rolPagosApp(session: Session | null): RolPagosApp | null {
-  // ponytail: Record porque la clave aún no existe en feature-flags.json.
-  if ((flags as Record<string, boolean>)['pagos-app-privados'] !== true) return null;
+  if (flags['pagos-app-privados'] !== true) return null;
 
   const usuario = session?.user;
   if (!usuario?.id || usuario.rol !== 'admin') return null;

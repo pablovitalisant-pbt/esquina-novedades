@@ -20,10 +20,10 @@ export default async function PagosAppPage() {
   const resumen = await leerResumenPagosApp();
   if (!resumen) {
     return (
-      <main className="mx-auto max-w-[1152px] px-6 py-12">
+      <div className="mx-auto max-w-[1152px] px-6 py-12">
         <h1 className="text-2xl font-bold text-[var(--heading)]">Pagos privados</h1>
         <p className="mt-4 text-[var(--body)]">Falta configurar el total del registro (PAGOS_APP_TOTAL_CLP).</p>
-      </main>
+      </div>
     );
   }
 
@@ -34,7 +34,7 @@ export default async function PagosAppPage() {
   ];
 
   return (
-    <main className="mx-auto flex max-w-[1152px] flex-col gap-6 px-6 py-12">
+    <div className="mx-auto flex max-w-[1152px] flex-col gap-6 px-6 py-12">
       <h1 className="text-2xl font-bold text-[var(--heading)] md:text-3xl">Pagos privados</h1>
 
       <section className="rounded-[48px] border border-[var(--border-default)] bg-[var(--card)] p-8">
@@ -88,6 +88,6 @@ export default async function PagosAppPage() {
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }

@@ -53,6 +53,15 @@ it('tercero: 404 sin consultar pagos', async () => {
   expect(leerMock).not.toHaveBeenCalled();
 });
 
+it('smoke DOM: dentro de un main externo queda exactamente un landmark main', async () => {
+  guardMock.mockReturnValue('pablo');
+  leerMock.mockResolvedValue(RESUMEN);
+
+  render(<main>{await Pagina()}</main>);
+
+  expect(screen.getAllByRole('main')).toHaveLength(1);
+});
+
 it('admin autorizado: montos, progreso, historial y link de comprobante', async () => {
   guardMock.mockReturnValue('pablo');
   leerMock.mockResolvedValue(RESUMEN);

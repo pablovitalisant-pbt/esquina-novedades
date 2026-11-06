@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { calcularMargen } from "@/lib/calcular-precio";
 import { esPrecioMayorValido, esMinimoMayorValido } from "@/lib/precio-mayor";
 import { mensajeError } from '@/lib/errores';
+import flags from '@/config/feature-flags.json';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -104,6 +105,10 @@ export async function GET(request: Request) {
   const search = searchParams.get('search')?.toLowerCase() || '';
   const soloStock = searchParams.get('soloStock') === 'true';
   const soloNuevo = searchParams.get('soloNuevo') === 'true';
+  const cursor = searchParams.get('cursor') || '';
+  // ponytail: el flag aun no existe en el JSON; se lee como Record hasta N09b.
+  const pagina = (flags as Record<string, boolean>)['precios-paginados'] === true
+    && searchParams.get('paginado') === 'true';
 
   try {
     // Sin término de búsqueda devuelve el listado completo (máx. 200, orden
@@ -138,16 +143,21 @@ export async function GET(request: Request) {
       JOIN empresas e ON e.id = p.empresa_id
       WHERE p.empresa_id = ANY(${empresaIds})
         AND p.activo = true
+        AND (${cursor} = '' OR p.codigo > ${cursor})
         AND (${search} = '' OR LOWER(p.codigo) LIKE ${searchPattern} OR LOWER(p.detalle) LIKE ${searchPattern})
       GROUP BY p.codigo
       HAVING
         (${soloStock} = false OR SUM(saldo) > 0)
         AND (${soloNuevo} = false OR BOOL_OR(p.es_nuevo) = true)
       ORDER BY p.codigo ASC
-      LIMIT 200
+      LIMIT ${pagina ? 51 : 200}
     `;
 
-    return NextResponse.json({ data: rows });
+    if (!pagina) return NextResponse.json({ data: rows });
+    return NextResponse.json({
+      data: rows.slice(0, 50),
+      siguienteCursor: rows.length > 50 ? rows[49].codigo : null,
+    });
   } catch (error) {
     console.error("GET /api/productos error:", error);
     const message = mensajeError(error);

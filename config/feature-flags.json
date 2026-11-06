@@ -13,5 +13,6 @@
   "pos-v1": true,
   "pedido-confirmacion-antes-pago": false,
   "pedido-pago-opcional": false,
-  "pedido-cobro-manual": false
+  "pedido-cobro-manual": false,
+  "precios-paginados": false
 }

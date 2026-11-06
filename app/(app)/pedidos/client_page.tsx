@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
+import flags from '@/config/feature-flags.json';
 import type { SessionProp } from '@/types';
 
 interface PedidoItem {
@@ -31,6 +33,10 @@ interface Pedido {
   mp_payment_id?: string | null;
   mp_fecha_pago?: string | null;
   mp_revision_motivo?: string | null;
+  // N04d1: solo presentes para admin con el flag pedido-cobro-manual activo.
+  metodo_pago?: string | null;
+  caja_movimiento_id?: number | null;
+  confirmacion?: { cuenta_id: number; referencia?: string | null } | null;
   items: PedidoItem[];
 }
 
@@ -80,8 +86,15 @@ function formatFecha(value: string): string {
   });
 }
 
-export function PedidosPage({}: { session: SessionProp }) {
+function puedeConfirmarCobro(p: Pedido): boolean {
+  return (p.metodo_pago === 'efectivo' || p.metodo_pago === 'transferencia')
+    && p.caja_movimiento_id == null
+    && (p.estado === 'pendiente_pago' || p.estado === 'pagado' || p.estado === 'convertido');
+}
+
+export function PedidosPage({ session }: { session: SessionProp }) {
   const router = useRouter();
+  const cobroManual = flags['pedido-cobro-manual'] === true && session?.user?.rol === 'admin';
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -227,6 +240,9 @@ export function PedidosPage({}: { session: SessionProp }) {
                       {p.direccion_entrega ? ` · ${p.direccion_entrega}` : ''}
                     </span>
                     <span>Origen: {ORIGEN_LABEL[p.origen] ?? p.origen}</span>
+                    {p.metodo_pago && (
+                      <span>Medio de pago: {p.metodo_pago === 'efectivo' ? 'Efectivo' : 'Transferencia'}</span>
+                    )}
                   </div>
                   {(p.mp_payment_id || p.mp_revision_motivo) && (
                     <div className="text-sm text-[var(--body)] flex flex-col gap-0.5">
@@ -261,6 +277,22 @@ export function PedidosPage({}: { session: SessionProp }) {
                     <span className="text-[var(--body)]">Entrega: {formatCLP(p.entrega_costo)}</span>
                     <span className="font-semibold">Total: {formatCLP(p.total)}</span>
                   </div>
+                  {cobroManual && puedeConfirmarCobro(p) && (
+                    <div className="self-end">
+                      <ConfirmarCobroPedido
+                        pedidoId={p.id}
+                        monto={p.total}
+                        metodo={p.metodo_pago as 'efectivo' | 'transferencia'}
+                        confirmacion={p.confirmacion
+                          ? { ...p.confirmacion, referencia: p.confirmacion.referencia ?? undefined }
+                          : undefined}
+                        onConfirmado={() => {
+                          toast.success('Cobro confirmado');
+                          cargar();
+                        }}
+                      />
+                    </div>
+                  )}
                   {p.estado === 'pendiente' && (
                     <div className="flex gap-2 self-end">
                       <Button variant="outline" size="sm" onClick={() => descartar(p.id)}>

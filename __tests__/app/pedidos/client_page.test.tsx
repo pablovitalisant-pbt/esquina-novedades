@@ -17,6 +17,14 @@ jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
+jest.mock('@/config/feature-flags.json', () =>
+  require('@/__tests__/helpers/mockFlags').mockFlags({ 'pedido-cobro-manual': true }),
+);
+// ponytail: virtual — el componente real llega en Fase C.
+jest.mock('@/components/ConfirmarCobroPedido', () => ({
+  ConfirmarCobroPedido: () => <button type="button">Confirmar cobro</button>,
+}), { virtual: true });
+
 const PEDIDO = {
   id: 'p1',
   cliente: { id: 'c1', nombre: 'Pablo', telefono: '+56920948874' },
@@ -34,12 +42,12 @@ const PEDIDO = {
   ],
 };
 
-function renderPage(data: any[] = [PEDIDO]) {
+function renderPage(data: any[] = [PEDIDO], session: any = {}) {
   (global.fetch as jest.Mock) = jest.fn(async () => ({
     ok: true,
     json: async () => ({ data }),
   }));
-  render(<PedidosPage session={{}} />);
+  render(<PedidosPage session={session} />);
 }
 
 describe('PedidosPage — detalle del pedido (7f)', () => {
@@ -89,5 +97,28 @@ describe('PedidosPage — detalle del pedido (7f)', () => {
     expect(screen.getByText('$8')).toBeInTheDocument();
     expect(screen.getByText('$1.992')).toBeInTheDocument();
     expect(screen.getByText('Entrega: $3.000')).toBeInTheDocument();
+  });
+});
+
+describe('PedidosPage — cobro manual (N04d2b)', () => {
+  const manual = { ...PEDIDO, metodo_pago: 'transferencia', caja_movimiento_id: null };
+  const admin = { user: { rol: 'admin' } };
+  const verAccion = async (pedido: any, session: any) => {
+    renderPage([pedido], session);
+    await screen.findByText(pedido.cliente.nombre);
+    fireEvent.click(screen.getByText(pedido.cliente.nombre));
+    return screen.queryAllByText(/Confirmar cobro/);
+  };
+
+  it('admin con flag ve la acción en pendiente y convertido sin caja', async () => {
+    expect((await verAccion(manual, admin)).length).toBeGreaterThan(0);
+    const conv = { ...manual, id: 'm2', estado: 'convertido', cliente: { id: 'c2', nombre: 'PedConv', telefono: null } };
+    expect((await verAccion(conv, admin)).length).toBeGreaterThan(0);
+  });
+
+  it('vendedor o caja ya registrada no muestran la acción', async () => {
+    expect(await verAccion({ ...manual, cliente: { id: 'c3', nombre: 'Vend', telefono: null } }, { user: { rol: 'vendedor' } })).toHaveLength(0);
+    const caja = { ...manual, caja_movimiento_id: 55, cliente: { id: 'c4', nombre: 'Caj', telefono: null } };
+    expect(await verAccion(caja, admin)).toHaveLength(0);
   });
 });

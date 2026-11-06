@@ -113,6 +113,8 @@ export function TarjetaProductoTienda({
         ))}
         {mostrarPrecio && (
           <BotonAgregarPedido
+            modoExplicito={mediosCompra}
+            minimoMayorDisponible={ofreceMayor ? producto.minimo_mayor ?? null : null}
             item={{
               producto_id: producto.id,
               codigo: producto.codigo,

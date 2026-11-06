@@ -498,3 +498,47 @@ describe('N01 — pedido-confirmacion-antes-pago', () => {
     expect(screen.getByTestId('total').textContent).toBe('0');
   });
 });
+
+// ─── N08b — Botones detalle/mayor ─────────────────────────────────────
+const ITEM_MAYOR: ItemCarrito = { producto_id: 9, codigo: 'M', detalle: 'Mayor', cantidad: 1, precio: 100, precio_mayor: 80, minimo_mayor: 6 };
+
+describe('N08b — Botones detalle/mayor (modo explícito)', () => {
+  const total = () => screen.getByTestId('total').textContent;
+
+  it('detalle suma 1; mayor completa hasta 6 y desde el mínimo suma 1 más', () => {
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={{ nombre: 'Juana', telefono: '1', email: 'juana@mail.com' }} />
+        <BotonAgregarPedido item={ITEM_MAYOR} modoExplicito minimoMayorDisponible={6} />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /detalle/i }));
+    expect(total()).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: /mayor/i }));
+    expect(total()).toBe('6');
+    fireEvent.click(screen.getByRole('button', { name: /mayor/i }));
+    expect(total()).toBe('7');
+  });
+
+  it('sin contacto: el gate conserva la elección y al confirmar agrega seis', async () => {
+    render(
+      <CarritoProvider origen="productos">
+        <BotonAgregarPedido item={ITEM_MAYOR} modoExplicito minimoMayorDisponible={6} />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /mayor/i }));
+    await waitFor(() => expect(screen.getByText(/a qué nombre armamos el pedido/i)).toBeInTheDocument());
+    expect(total()).toBe('0');
+
+    fireEvent.change(screen.getByPlaceholderText('Tu nombre'), { target: { value: 'Juana Pérez' } });
+    fireEvent.change(screen.getByPlaceholderText('+56 9 1234 5678'), { target: { value: '+56 9 1234 5678' } });
+    fireEvent.change(screen.getByPlaceholderText('tu@email.com'), { target: { value: 'juana@mail.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
+
+    await waitFor(() => expect(total()).toBe('6'));
+  });
+});

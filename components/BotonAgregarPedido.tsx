@@ -18,11 +18,24 @@ export type ProductoPedido = {
  * "Agregar al pedido": suma 1 unidad con precio detalle. El descuento por mayor
  * lo decide el servidor y se revela en el checkout. Sin contacto guardado abre
  * el gate y agrega recién tras confirmar nombre+teléfono+email.
+ *
+ * Con `modoExplicito` (flag `tienda-medios-compra`) ofrece dos botones:
+ * detalle suma 1; mayor completa hasta `minimoMayorDisponible` y desde el
+ * mínimo suma 1 más. La elección pendiente sobrevive al gate.
  */
-export function BotonAgregarPedido({ item }: { item: ProductoPedido }) {
+export function BotonAgregarPedido({
+  item,
+  modoExplicito = false,
+  minimoMayorDisponible = null,
+}: {
+  item: ProductoPedido;
+  modoExplicito?: boolean;
+  minimoMayorDisponible?: number | null;
+}) {
   const { contacto, agregarItem, setContacto } = useCarrito();
-  const [pendiente, setPendiente] = useState<ItemCarrito | null>(null);
+  const [pendiente, setPendiente] = useState<{ item: ItemCarrito; minimo: number | null } | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
+  const ofreceMayor = modoExplicito && minimoMayorDisponible != null && minimoMayorDisponible > 0;
 
   function itemCarrito(): ItemCarrito {
     return {
@@ -36,28 +49,41 @@ export function BotonAgregarPedido({ item }: { item: ProductoPedido }) {
     };
   }
 
-  function handleClick() {
+  function handleClick(minimo: number | null) {
     const nuevo = itemCarrito();
     if (contacto) {
-      agregarItem(nuevo);
+      agregarItem(nuevo, minimo);
       return;
     }
-    setPendiente(nuevo);
+    setPendiente({ item: nuevo, minimo });
     setGateOpen(true);
   }
 
   function handleConfirm(c: ContactoCarrito) {
     setContacto(c);
-    if (pendiente) agregarItem(pendiente);
+    if (pendiente) agregarItem(pendiente.item, pendiente.minimo);
     setPendiente(null);
     setGateOpen(false);
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <Button variant="secondary" className="w-full" onClick={handleClick}>
-        Agregar al pedido
-      </Button>
+      {modoExplicito ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" className="w-full" onClick={() => handleClick(null)}>
+            Comprar al detalle
+          </Button>
+          {ofreceMayor && (
+            <Button variant="secondary" className="w-full" onClick={() => handleClick(minimoMayorDisponible ?? null)}>
+              Comprar por mayor
+            </Button>
+          )}
+        </div>
+      ) : (
+        <Button variant="secondary" className="w-full" onClick={() => handleClick(null)}>
+          Agregar al pedido
+        </Button>
+      )}
       <CarritoGateModal open={gateOpen} onOpenChange={setGateOpen} onConfirm={handleConfirm} />
     </div>
   );

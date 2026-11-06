@@ -26,7 +26,8 @@ type CarritoContextValue = {
   origen_slug: string | null;
   totalItems: number;
   setContacto: (c: ContactoCarrito) => void;
-  agregarItem: (item: ItemCarrito) => void;
+  /** `minimoMayor` eleva la cantidad resultante al mínimo (compra por mayor). */
+  agregarItem: (item: ItemCarrito, minimoMayor?: number | null) => void;
   quitarItem: (producto_id: number) => void;
   actualizarCantidad: (producto_id: number, cantidad: number) => void;
   limpiar: () => void;
@@ -123,8 +124,14 @@ export function CarritoProvider({
 
   const setContacto = useCallback((c: ContactoCarrito) => setContactoState(c), []);
 
-  const agregarItem = useCallback((item: ItemCarrito) => {
+  const agregarItem = useCallback((item: ItemCarrito, minimoMayor?: number | null) => {
     setItems((prev) => {
+      // Mayor: completa hasta el mínimo sin quitar unidades y suma 1 más
+      // cuando ya llegó al mínimo. Detalle (sin mínimo) suma directo.
+      const conMinimo = (cantidad: number) =>
+        minimoMayor != null && Number.isFinite(minimoMayor)
+          ? Math.max(cantidad, minimoMayor)
+          : cantidad;
       // Una línea por producto: agregar el mismo producto suma cantidad y
       // refresca los datos de precio (pueden faltar en carritos viejos).
       const existente = prev.find((i) => i.producto_id === item.producto_id);
@@ -138,12 +145,12 @@ export function CarritoProvider({
                 precio: item.precio,
                 precio_mayor: item.precio_mayor,
                 minimo_mayor: item.minimo_mayor,
-                cantidad: i.cantidad + item.cantidad,
+                cantidad: conMinimo(i.cantidad + item.cantidad),
               }
             : i
         );
       }
-      return [...prev, item];
+      return [...prev, { ...item, cantidad: conMinimo(item.cantidad) }];
     });
   }, []);
 

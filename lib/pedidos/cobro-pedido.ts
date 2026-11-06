@@ -2,19 +2,18 @@ import { sql } from '@/lib/db';
 import { EMPRESA } from '@/lib/empresa';
 import { usuarioSistema } from '@/lib/pedidos/usuario-sistema';
 
-// Cobro en Caja Mayor del pedido online pagado con Mercado Pago. Idempotente:
-// el CTE bloquea el pedido y solo inserta si caja_movimiento_id sigue NULL.
-// Monto del movimiento = pedido.total (incluye envío); a la nota se imputa solo
-// la suma de ítems.
-export async function registrarCobroPedido(
+type Actor = { id: number; nombre: string };
+
+// CTE compartido: bloquea el pedido y solo inserta si caja_movimiento_id sigue
+// NULL. Monto = pedido.total (incluye envío); a la nota se imputa solo la suma
+// de ítems.
+async function cobrarPedido(
   pedidoId: string,
-  paymentId: string
-): Promise<'registrado' | 'ya' | 'sin_cuenta'> {
-  const cfg = await sql`SELECT valor FROM caja_config WHERE clave = 'mp_cuenta_id'`;
-  if (cfg.length === 0) return 'sin_cuenta';
-  const cuentaId = Number(cfg[0].valor);
-  const u = await usuarioSistema();
-  const obs = `Pedido online ${pedidoId} · Mercado Pago ${paymentId}`;
+  cuentaId: number,
+  actor: Actor,
+  formaPago: string,
+  obs: string
+): Promise<boolean> {
   const rows = await sql`
     WITH p AS (
       SELECT id, total, nombre_contacto, prenota_id FROM pedidos
@@ -25,7 +24,7 @@ export async function registrarCobroPedido(
       INSERT INTO caja_movimientos (fecha, tipo, kcodcli2, nombre_cliente, cuenta_id, moneda, monto,
                                     forma_pago, observaciones, empresa, es_credito, usuario_id, usuario_nombre)
       SELECT CURRENT_DATE, 'cobro', NULL, p.nombre_contacto, ${cuentaId}, 'CLP', p.total,
-             'mercadopago', ${obs}, ${EMPRESA.slug}, false, ${u.id}, ${u.nombre}
+             ${formaPago}, ${obs}, ${EMPRESA.slug}, false, ${actor.id}, ${actor.nombre}
       FROM p RETURNING id
     ), upd AS (
       UPDATE pedidos SET caja_movimiento_id = (SELECT id FROM mov)
@@ -40,5 +39,41 @@ export async function registrarCobroPedido(
     )
     SELECT id FROM mov
   `;
-  return rows.length > 0 ? 'registrado' : 'ya';
+  return rows.length > 0;
+}
+
+// Cobro MP en Caja Mayor (firma y comportamiento originales).
+export async function registrarCobroPedido(
+  pedidoId: string,
+  paymentId: string
+): Promise<'registrado' | 'ya' | 'sin_cuenta'> {
+  const cfg = await sql`SELECT valor FROM caja_config WHERE clave = 'mp_cuenta_id'`;
+  if (cfg.length === 0) return 'sin_cuenta';
+  const cuentaId = Number(cfg[0].valor);
+  const obs = `Pedido online ${pedidoId} · Mercado Pago ${paymentId}`;
+  const ok = await cobrarPedido(pedidoId, cuentaId, await usuarioSistema(), 'mercadopago', obs);
+  return ok ? 'registrado' : 'ya';
+}
+
+// N04c — Cobro de un pago manual (efectivo/transferencia) ya confirmado en
+// pedido_pagos_manuales. Sin invocar en runtime hasta N04c2.
+export async function registrarCobroManualPedido(
+  pedidoId: string
+): Promise<'registrado' | 'ya' | 'sin_confirmacion'> {
+  const [pago] = await sql`
+    SELECT p.cuenta_id, p.usuario_id, p.metodo, p.referencia, u.nombre AS usuario_nombre
+    FROM pedido_pagos_manuales p JOIN usuarios u ON u.id = p.usuario_id
+    WHERE p.pedido_id = ${pedidoId}::uuid
+  `;
+  if (!pago) return 'sin_confirmacion';
+  const obs = `Pedido online ${pedidoId} · ${pago.metodo}` +
+    (pago.referencia ? ` ${pago.referencia}` : '');
+  const ok = await cobrarPedido(
+    pedidoId,
+    Number(pago.cuenta_id),
+    { id: Number(pago.usuario_id), nombre: pago.usuario_nombre },
+    pago.metodo,
+    obs
+  );
+  return ok ? 'registrado' : 'ya';
 }

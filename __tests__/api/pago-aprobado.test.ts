@@ -49,8 +49,7 @@ describe('registrarCobroPedido', () => {
     expect(t).toContain('LEAST');
     expect(t).toContain('caja_movimiento_notas');
     expect(t).toContain('caja_movimiento_id IS NULL');
-    expect(t).toContain("'mercadopago'");
-    expect(c.slice(1)).toEqual(expect.arrayContaining([3, 9]));
+    expect(c.slice(1)).toEqual(expect.arrayContaining([3, 9, 'mercadopago']));
   });
   test('0 filas (ya registrado) → "ya", idempotente', async () => {
     sql.mockImplementation(async (...c: any[]) => (q(c).includes('FROM caja_config') ? [{ valor: '3' }] : []));

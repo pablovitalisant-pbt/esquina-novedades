@@ -34,6 +34,7 @@ import { Badge } from './ui/badge';
 import { AlertasBell } from './AlertasBell';
 import { useAlertas } from '@/contexts/AlertasContext';
 import { MarcaLogo } from '@/components/MarcaLogo';
+import { rutaInicio } from '@/lib/ruta-inicio';
 import flags from '@/config/feature-flags.json';
 
 export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolean }) {
@@ -42,7 +43,9 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
   const isAdmin = session?.user?.rol === 'admin';
   const rol = session?.user?.rol as string;
 
-  const logoHref = rol === 'bodeguero' ? '/bodega' : '/precios';
+  const logoHref = rol === 'bodeguero'
+    ? '/bodega'
+    : rutaInicio(rol, flags as Record<string, boolean>);
   const { stockBajoCount } = useAlertas();
 
   const [saludo, setSaludo] = useState('Hola');

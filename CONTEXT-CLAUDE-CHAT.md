@@ -124,5 +124,7 @@ Posterior BUG-012: contraste de campos de AgregarANotaVentaModal corregido con t
 
 Posterior M07: POS antes de Ventas en TopNav, sin alterar permisos ni flag; móvil ya tenía ese orden. Contrato y pruebas en `docs/slices/M07-pos-primero.md`. Contador vigente, 4 desde la auditoría de mantenimiento. Mantener BUG-009 del saludo estable.
 
+Posterior M08: logos internos de escritorio/móvil abren POS según rutaInicio para admin/vendedor con pos-v1 activo; bodeguero conserva /bodega y flag apagado conserva /precios para ventas. Contrato `docs/slices/M08-logo-pos.md`. Contador vigente, 5 desde la auditoría de mantenimiento. La tienda pública no cambia.
+
 La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 3 (enlaces, BUG-009 y BUG-010). La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas. BUG-009 exige un primer render del saludo estable entre servidor y navegador. BUG-010 exige avisos visibles y foco en el campo pendiente del checkout móvil; evidencia en `docs/slices/BUG010-checkout-validacion-movil.md`.
 

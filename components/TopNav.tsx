@@ -45,12 +45,20 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
   const logoHref = rol === 'bodeguero' ? '/bodega' : '/precios';
   const { stockBajoCount } = useAlertas();
 
-  const getSaludo = () => {
-    const hora = new Date().getHours();
-    if (hora >= 5 && hora < 12) return 'Buenos días';
-    if (hora >= 12 && hora < 20) return 'Buenas tardes';
-    return 'Buenas noches';
-  };
+  const [saludo, setSaludo] = useState('Hola');
+
+  React.useEffect(() => {
+    const hora = Number(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        hourCycle: 'h23'
+      }).format(new Date())
+    );
+    if (hora >= 5 && hora < 12) setSaludo('Buenos días');
+    else if (hora >= 12 && hora < 20) setSaludo('Buenas tardes');
+    else setSaludo('Buenas noches');
+  }, []);
 
   const primerNombre = session?.user?.nombre?.split(' ')[0] ?? '';
 
@@ -250,7 +258,7 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
         <div className="flex items-center gap-2">
           {primerNombre && (
             <span className="text-sm text-[var(--primary)] dark:text-[var(--primary)] hidden lg:block">
-              {getSaludo()}, <span className="font-semibold text-[var(--body)] dark:text-[var(--body)]">{primerNombre}</span>
+              {saludo}, <span className="font-semibold text-[var(--body)] dark:text-[var(--body)]">{primerNombre}</span>
             </span>
           )}
           <AlertasBell />

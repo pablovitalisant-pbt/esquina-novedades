@@ -1,5 +1,16 @@
 # BUGS
+
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
+
+## BUG-009 — Saludo con hora local rompe la hidratación del menú (2026-11-07)
+
+- Base de diagnóstico con árbol limpio, `91ec9a7`.
+- Clasificación, renderizado SSR/cliente y rendimiento.
+- Evidencia en producción, React #418 al abrir y recargar notas. En una recarga también falló la inserción del contenido con `Cannot read properties of null (reading 'parentNode')`.
+- Causa reproducida, `components/TopNav.tsx` calculaba el saludo con `new Date().getHours()` durante el render. Para el mismo instante 12:45 UTC / 09:45 Santiago, servidor y cliente producían textos distintos.
+- Corrección mínima, primer saludo estable y actualización después de hidratar, con zona `America/Santiago` explícita.
+- Regresión, `__tests__/topnav-hidratacion.test.tsx` compara los dos renderizados y ejecuta `hydrateRoot` con captura de errores recuperables.
+- Verificación de producción registrada en `docs/slices/N13-medicion.md`.
 
 ## BUG-001 — Jest corría contra la base de PRODUCCIÓN
 - **Causa raíz:** `jest.env-setup.ts` carga `.env.test` con override, pero el proyecto no tenía `.env.test`; jest usó `DATABASE_URL` de `.env.local` (prod, host `ep-proud-hall-b6nxrz4m`). `PROD_HOSTS` solo bloqueaba hosts de Bazar Naty.

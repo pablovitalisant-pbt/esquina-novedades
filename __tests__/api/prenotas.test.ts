@@ -141,6 +141,15 @@ describe('GET /api/notas-venta/[id]', () => {
       saldo_pendiente: 1800,
       cliente_saldo_favor: 0,
     });
+    for (const v of [
+      body.total,
+      body.total_pagado,
+      body.saldo_favor_aplicado,
+      body.saldo_pendiente,
+      body.cliente_saldo_favor,
+    ]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
   });
 
   // A12: un pedido solo-caja con Despacho sigue siendo 'mayor' y el total
@@ -166,6 +175,13 @@ describe('GET /api/notas-venta/[id]', () => {
     expect(body.tipo).toBe('mayor');
     expect(body.total).toBe(3500);
     expect(body.saldo_pendiente).toBe(3500);
+    for (const v of [
+      body.total_pagado,
+      body.saldo_favor_aplicado,
+      body.cliente_saldo_favor,
+    ]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
   });
 
   // N13: items, pagos, saldo a favor y saldo disponible se despachan en
@@ -173,7 +189,7 @@ describe('GET /api/notas-venta/[id]', () => {
   test('despacha items, pagos, saldo a favor y saldo disponible en paralelo', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
 
-    let liberarItems!: (filas: unknown[]) => void;
+    let liberarItems: ((filas: unknown[]) => void) | undefined;
     sql
       .mockResolvedValueOnce([{ id: 10, cliente_id: 5, nombre_cliente: 'JUAN' }]) // prenota
       .mockImplementationOnce(() => new Promise<unknown[]>((resolve) => { liberarItems = resolve; })) // items
@@ -194,7 +210,7 @@ describe('GET /api/notas-venta/[id]', () => {
     } catch (e) {
       fallo = e;
     } finally {
-      liberarItems([{ id: 1, codigo: 'A', modalidad: 'detalle', subtotal: '1000.00' }]);
+      liberarItems?.([{ id: 1, codigo: 'A', modalidad: 'detalle', subtotal: '1000.00' }]);
     }
 
     const res = await pendiente;
@@ -204,6 +220,7 @@ describe('GET /api/notas-venta/[id]', () => {
     expect(body.total).toBe(1000);
     expect(body.cliente_saldo_favor).toBe(500);
   });
+
 });
 
 describe('PATCH /api/notas-venta/[id]', () => {
@@ -422,12 +439,22 @@ describe('FASE B — GET /api/notas-venta/[id] con cliente_nombre', () => {
     ]);
     sql.mockResolvedValueOnce([]); // items
     sql.mockResolvedValueOnce([{ total: 0 }]); // total_pagado
+    sql.mockResolvedValueOnce([{ total: 0 }]); // saldo a favor aplicado
+    sql.mockResolvedValueOnce([{ disponible: '0' }]); // saldo disponible
 
     const req = new NextRequest('http://localhost/api/notas-venta/10');
     const res = await GET_DETAIL(req, { params: Promise.resolve({ id: '10' }) });
     const body = await res.json();
 
     expect(res.status).toBe(200);
+    for (const v of [
+      body.total,
+      body.total_pagado,
+      body.saldo_pendiente,
+      body.cliente_saldo_favor,
+    ]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
     // Después del fix: la query SQL debe incluir LEFT JOIN public.clientes
     const sqlCalls = sql.mock.calls;
     const getQueryTemplates = sqlCalls[0][0]; // template strings array del primer sql``
@@ -451,14 +478,22 @@ describe('FASE B — GET /api/notas-venta/[id] con cliente_nombre', () => {
         cliente_nombre: null,
       },
     ]);
-    sql.mockResolvedValueOnce([]);
-    sql.mockResolvedValueOnce([{ total: 0 }]);
+    sql.mockResolvedValueOnce([]); // items
+    sql.mockResolvedValueOnce([{ total: 0 }]); // total_pagado
+    sql.mockResolvedValueOnce([{ total: 0 }]); // saldo a favor aplicado
 
     const req = new NextRequest('http://localhost/api/notas-venta/11');
     const res = await GET_DETAIL(req, { params: Promise.resolve({ id: '11' }) });
     const body = await res.json();
 
     expect(res.status).toBe(200);
+    for (const v of [
+      body.total,
+      body.saldo_pendiente,
+      body.cliente_saldo_favor,
+    ]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
     expect(body.cliente_nombre).toBeNull();
     expect(body.cliente_id).toBeNull();
   });
@@ -542,11 +577,20 @@ describe('FASE B — smoke E2E: crear → asignar cliente → verificar JOIN →
     ]);
     sql.mockResolvedValueOnce([]); // items
     sql.mockResolvedValueOnce([{ total: 0 }]); // total_pagado
+    sql.mockResolvedValueOnce([{ total: 0 }]); // saldo a favor aplicado
+    sql.mockResolvedValueOnce([{ disponible: '0' }]); // saldo disponible
 
     const getReq = new NextRequest('http://localhost/api/notas-venta/20');
     const getRes = await GET_DETAIL(getReq, { params: Promise.resolve({ id: '20' }) });
     const getBody = await getRes.json();
     expect(getRes.status).toBe(200);
+    for (const v of [
+      getBody.total,
+      getBody.saldo_pendiente,
+      getBody.cliente_saldo_favor,
+    ]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
     expect(getBody).toHaveProperty('cliente_nombre', 'Juan Pérez');
 
     // ─── Paso 3: Quitar cliente (cliente_id: null) ───

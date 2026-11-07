@@ -96,7 +96,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+      <div className="bg-card text-card-foreground rounded-xl p-6 max-w-sm w-full mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
         <h2 className="font-bold text-lg">Agregar a Nota de Venta</h2>
 
         {/* ─── Cliente (nuevo: Slice 18b) ─── */}
@@ -106,7 +106,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
             placeholder="Buscar cliente..."
             value={clienteQuery}
             onChange={e => { setClienteQuery(e.target.value); setClienteId(null); }}
-            className="w-full mt-1 border rounded-lg px-3 py-2 text-sm"
+            className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white text-[#21002F] placeholder:text-[#6B5A75]"
           />
           {clientesLoading && <p className="text-xs text-[var(--body)] mt-1">Buscando...</p>}
           {clientes.length > 0 && (
@@ -127,7 +127,7 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
 
         <div>
           <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Nota de Venta</label>
-          <select value={prenotaId} onChange={e => setPrenotaId(e.target.value)} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm">
+          <select value={prenotaId} onChange={e => setPrenotaId(e.target.value)} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white text-[#21002F]">
             <option value="nueva">+ Nueva nota de venta</option>
             {prenotas.map(p => <option key={p.id} value={String(p.id)}>{p.titulo}</option>)}
           </select>
@@ -152,12 +152,12 @@ export function AgregarANotaVentaModal({ open, onClose, producto }: Props) {
         )}
         <div>
           <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Cantidad</label>
-          <input type="number" min={1} value={unidades} onChange={e => setUnidades(Number(e.target.value))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
+          <input type="number" min={1} value={unidades} onChange={e => setUnidades(Number(e.target.value))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white text-[#21002F]" />
           <p className="text-xs text-[var(--body)] mt-1">{unidades === 1 ? '1 unidad' : `${unidades} unidades`}</p>
         </div>
         <div>
           <label className="text-xs font-medium text-[var(--body)] uppercase tracking-wide">Precio</label>
-          <input type="number" min={0} step={0.01} value={precio} onChange={e => setPrecio(Number(e.target.value))} onFocus={e => e.target.select()} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
+          <input type="number" min={0} step={0.01} value={precio} onChange={e => setPrecio(Number(e.target.value))} onFocus={e => e.target.select()} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white text-[#21002F]" />
         </div>
         <div className="flex gap-3 mt-2">
           <button onClick={onClose} className="flex-1 border rounded-lg px-4 py-2 text-sm hover:bg-[var(--muted)]">Cancelar</button>

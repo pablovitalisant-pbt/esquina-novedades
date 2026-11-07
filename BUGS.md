@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-012 — Campos casi invisibles al agregar a nota en tema oscuro (2026-11-07)
+
+- Causa reproducida: inputs/select sin color explícito heredaban texto claro sobre fondo blanco nativo, contraste 1.29:1; placeholder 2.54:1.
+- Fix mínimo: tinta de marca #21002F y fondo blanco en cliente, nota, cantidad y precio; placeholder más oscuro y texto del contenedor acorde a su superficie. Cinco líneas de estilos; lógica de BUG-007/BUG-011 intacta.
+- DT: cuatro casos de navegador rojos antes y verdes después (claro/oscuro, escritorio/móvil); contraste final 18.99:1, placeholder 6.28:1. 21 pruebas de modal/helpers y smoke de error/reintento M01 verdes. Capturas revisadas, sin escrituras reales.
+- Contrato: `docs/slices/BUG012-contraste-modal-nota.md`.
+
 ## BUG-011 — El modal continuaba con una nota undefined tras fallar su creación (2026-11-07)
 
 - Causa: `crearNota` verificaba HTTP solo para el POS; el modal convertía un ID ausente a string y llamaba a `/undefined/items`.

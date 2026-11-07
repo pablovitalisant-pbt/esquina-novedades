@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import flags from '@/config/feature-flags.json';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, PlusCircle, Trash2, ExternalLink, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
@@ -183,14 +184,12 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
                     <DollarSign className="w-3 h-3 mr-1" /> Pagar
                   </Button>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs"
-                  onClick={() => router.push(`/notas-venta/${prenota.id}`)}
+                <Link
+                  href={`/notas-venta/${prenota.id}`}
+                  className={buttonVariants({ size: 'sm', variant: 'outline', className: 'text-xs' })}
                 >
                   <ExternalLink className="w-3 h-3 mr-1" /> Abrir
-                </Button>
+                </Link>
                 {rol === 'admin' && (
                   <Button
                     variant="destructive" size="sm"

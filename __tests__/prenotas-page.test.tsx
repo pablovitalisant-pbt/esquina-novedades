@@ -99,6 +99,30 @@ describe('PrenotasPage', () => {
     });
   });
 
+  // ─── Test NAV: Abrir como enlace (Fase B, N13) ──────────────────────
+  test('[NAV] "Abrir" es un enlace accesible con href /notas-venta/1, no un botón con router.push', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 1,
+            titulo: 'Nota de Venta #1 — 23 Apr 2026',
+            created_at: '2026-04-23',
+            nombre_cliente: null,
+          },
+        ],
+      }),
+    } as any);
+
+    render(<PrenotasPage session={{ user: { rol: 'vendedor' } }} />);
+
+    const link = await screen.findByRole('link', { name: /abrir/i });
+    expect(link).toHaveAttribute('href', '/notas-venta/1');
+    expect(screen.queryByRole('button', { name: /abrir/i })).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalledWith('/notas-venta/1');
+  });
+
   // ─── Test 5a: Texto renombrado ──────────────────────────────────────
   test('[TEXTO] no aparece "Pre-Nota" ni "pre-nota" en ningún texto visible de la página', async () => {
     global.fetch = jest.fn().mockResolvedValue({

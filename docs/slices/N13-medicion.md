@@ -52,3 +52,7 @@ El cambio se divide en lector reutilizable, integración API, consumo en cliente
 Se corrigió el criterio de la medición visible. El botón PDF existe antes de cargar datos y puede quedar deshabilitado en notas vacías, por lo que su presencia no acredita que la nota esté lista. Antes de publicar los datos iniciales se midió desde Abrir hasta que el encabezado contiene el título real de la nota seleccionada. Con la región São Paulo activa y el doble viaje aún presente se obtuvieron 1483, 1303 y 1439 ms, mediana 1439 ms.
 
 El smoke de la nueva carga verifica cero GET iniciales del navegador al detalle, el primer clic de edición, la persistencia de seis unidades al cambiar modalidad y la exportación real de PDF. Pasó tras corregir que la tabla solo se habilite después de hidratar.
+
+La primera tanda de producción con datos iniciales midió 1522, 1635, 1262, 1175 y 1476 ms hasta el título real, mediana 1476 ms. El HTML directo confirmó los datos iniciales. Esta tanda no demuestra reducción de latencia visible frente a los 1439 ms anteriores.
+
+El siguiente corte cambia Abrir de navegación imperativa a `Link` con prefetch automático de Next y la frontera `loading.tsx` existente. Esto permite preparar la estructura de navegación de las notas visibles. Se mantiene el prefetch parcial predeterminado de rutas dinámicas. Fuente de comportamiento de Next, https://nextjs.org/docs/app/getting-started/linking-and-navigating .

@@ -65,6 +65,11 @@ export function TarjetaProductoTienda({
     : null;
   const ofreceMayor = lineaMayor?.modalidad === 'mayor';
   const mostrarBadge = Boolean(mostrarNuevo);
+  const itemPedido = {
+    producto_id: producto.id, codigo: producto.codigo, detalle: producto.detalle,
+    precio: producto.precio, precio_mayor: producto.precio_mayor ?? null,
+    minimo_mayor: producto.minimo_mayor ?? null,
+  };
   return (
     <article
       className={`h-full flex flex-col bg-[var(--card)] border border-[var(--border-default)] rounded-2xl overflow-hidden ${className}`}
@@ -90,19 +95,26 @@ export function TarjetaProductoTienda({
         )}
         {mostrarPrecio && producto.precio != null && (mediosCompra ? (
           <>
-            <div data-testid="precio-menor" className="text-xs sm:text-sm text-[var(--body)]">
+            <div data-testid="precio-menor" className="space-y-2 text-xs sm:text-sm text-[var(--body)]">
               Precio detalle{' '}
               <span className="text-lg sm:text-xl font-black text-[var(--primary)] leading-none">
                 {formatCLP(lineaMayor!.precio_lista)}
               </span>
+              <BotonAgregarPedido item={itemPedido} modoExplicito modalidadVisible="detalle" />
             </div>
             {ofreceMayor && (
-              <div data-testid="precio-mayor" className="text-xs sm:text-sm text-[var(--body)]">
+              <div data-testid="precio-mayor" className="space-y-2 text-xs sm:text-sm text-[var(--body)]">
                 Precio mayor{' '}
                 <span className="text-lg sm:text-xl font-black text-[var(--primary)] leading-none">
                   {formatCLP(lineaMayor!.precio)}
                 </span>
                 <span className="block text-xs">desde {producto.minimo_mayor} unidades</span>
+                <BotonAgregarPedido
+                  item={itemPedido}
+                  modoExplicito
+                  minimoMayorDisponible={producto.minimo_mayor ?? null}
+                  modalidadVisible="mayor"
+                />
               </div>
             )}
           </>
@@ -111,18 +123,11 @@ export function TarjetaProductoTienda({
             {formatCLP(producto.precio)}
           </div>
         ))}
-        {mostrarPrecio && (
+        {mostrarPrecio && (!mediosCompra || producto.precio == null) && (
           <BotonAgregarPedido
+            item={itemPedido}
             modoExplicito={mediosCompra}
             minimoMayorDisponible={ofreceMayor ? producto.minimo_mayor ?? null : null}
-            item={{
-              producto_id: producto.id,
-              codigo: producto.codigo,
-              detalle: producto.detalle,
-              precio: producto.precio,
-              precio_mayor: producto.precio_mayor ?? null,
-              minimo_mayor: producto.minimo_mayor ?? null,
-            }}
           />
         )}
       </div>

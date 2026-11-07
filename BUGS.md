@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-013 — Botones detalle/mayor superpuestos en tarjetas móviles (2026-11-07)
+
+- Causa: dos columnas dentro de tarjetas de 150px y texto sin ajuste; ambas acciones agrupadas bajo el mínimo mayorista.
+- Fix en dos cortes: botón de modalidad única con texto ajustable y alto mínimo44; cada acción junto a su precio, solo mayor debajo de «desde N unidades». Detalle, mínimo, gate y cálculo de precios conservados.
+- DT verificó rojos antes de cada corte y luego 6 suites/45 pruebas verdes. Smoke geométrico 320/390 en claro/oscuro sin textos fuera del botón, solapamiento ni desborde; compra mayor6 + detalle1 verde. Fixture TEST limpiado; capturas revisadas.
+- Contrato y comandos: `docs/slices/BUG013-botones-compra-movil.md`. Sin flags, schema ni variables nuevas.
+
 ## BUG-012 — Campos casi invisibles al agregar a nota en tema oscuro (2026-11-07)
 
 - Causa reproducida: inputs/select sin color explícito heredaban texto claro sobre fondo blanco nativo, contraste 1.29:1; placeholder 2.54:1.

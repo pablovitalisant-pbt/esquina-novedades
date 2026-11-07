@@ -16,3 +16,10 @@ Revisión lateral: portada (nuevos, categorías, ahorro mayor y grilla), catálo
 V01: DT obtuvo 2 rojos de acción extra antes de implementar; después las 23 pruebas de carrito pasan. El smoke N08 real TEST pasó con mayor 6 + detalle 1 y limpieza propia. V02: 2 pruebas de ubicación rojas y 2 controles verdes, además smoke de ubicación rojo antes de mover acciones a los precios. La auditoría previa consta en `../audits/ponytail-audit-2026-11-07-tienda-botones.md`.
 
 Controles finales compartidos: `npx tsc --noEmit` y `npm run lint` verdes, sin errores ni advertencias ESLint. V01 se entrega separado de V02; la publicación conjunta evita exponer una transición de ubicación incompleta.
+
+## Cierre V02
+
+- Jest dirigido: carrito, tarjeta-tienda-acciones, tarjeta-tienda-precios, tienda-modalidad, slice4c-tienda-ui y hotfix-tienda-mayor-ui; 6 suites y 45 pruebas verdes.
+- `node node_modules/playwright/cli.js test --config tienda.config.cjs`, arnés privado: 2 smokes verdes. Geometría de ambos botones y bloque único por modalidad a 320/390, claro/oscuro; N08 conserva gate y cantidad 6+1. Fixture exclusivo TEST eliminado, manifest ausente al terminar.
+- Capturas `bug013-movil-320-dark.png` y `bug013-movil-390-light.png` revisadas por el DT, texto completo y precio/acción correspondientes. No hay pedidos ni cobros ficticios en producción.
+- Ambos parches de implementación por debajo de50 líneas; sin cambios a Button compartido ni backend. Verificar estado Vercel del commit final antes de declarar publicado.

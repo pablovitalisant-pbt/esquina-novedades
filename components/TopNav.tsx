@@ -94,6 +94,13 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
           </Link>
           <nav className="flex items-center space-x-1">
 
+            {/* Punto de Venta — admin y vendedor, tras flag pos-v1 */}
+            {(isAdmin || rol === 'vendedor') && (flags as Record<string, boolean>)['pos-v1'] && (
+              <Link href="/pos" className={dropdownTrigger(pathname.startsWith('/pos'))}>
+                <ScanBarcode className="w-4 h-4" /> POS
+              </Link>
+            )}
+
             {/* Ventas — admin y vendedor */}
             {(isAdmin || rol === 'vendedor') && (
               <DropdownMenu open={ventasOpen} onOpenChange={setVentasOpen}>
@@ -138,13 +145,6 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
-
-            {/* Punto de Venta — admin y vendedor, tras flag pos-v1 */}
-            {(isAdmin || rol === 'vendedor') && (flags as Record<string, boolean>)['pos-v1'] && (
-              <Link href="/pos" className={dropdownTrigger(pathname.startsWith('/pos'))}>
-                <ScanBarcode className="w-4 h-4" /> POS
-              </Link>
             )}
 
             {/* Catálogo — admin y vendedor, link directo */}

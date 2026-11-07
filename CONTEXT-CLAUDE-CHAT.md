@@ -122,5 +122,7 @@ Cierre de mantenimiento M01–M06: puntos 8–13 resueltos. Contador vigente, 2 
 
 Posterior BUG-012: contraste de campos de AgregarANotaVentaModal corregido con tinta de marca sobre blanco; contrato y reproducción en `docs/slices/BUG012-contraste-modal-nota.md`. Contador vigente, 3 desde la auditoría de mantenimiento. Preservar texto explícito en los cuatro controles y las protecciones BUG-007/BUG-011.
 
+Posterior M07: POS antes de Ventas en TopNav, sin alterar permisos ni flag; móvil ya tenía ese orden. Contrato y pruebas en `docs/slices/M07-pos-primero.md`. Contador vigente, 4 desde la auditoría de mantenimiento. Mantener BUG-009 del saludo estable.
+
 La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 3 (enlaces, BUG-009 y BUG-010). La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas. BUG-009 exige un primer render del saludo estable entre servidor y navegador. BUG-010 exige avisos visibles y foco en el campo pendiente del checkout móvil; evidencia en `docs/slices/BUG010-checkout-validacion-movil.md`.
 

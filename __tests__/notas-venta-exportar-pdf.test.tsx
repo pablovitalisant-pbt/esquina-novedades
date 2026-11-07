@@ -17,7 +17,14 @@ jest.mock('sonner', () => ({
 }));
 // Captura el config de autoTable para inspeccionar head/body/columnStyles.
 let lastAutoTableConfig: any = null;
-jest.mock('jspdf-autotable', () => (_doc: any, options: any) => { lastAutoTableConfig = options; });
+// N13: contadores de evaluación de módulo. `var` sin inicializador (seguro ante
+// el hoisting de jest.mock): undefined = módulo nunca requerido.
+var mockJsPdfCargas: number | undefined;
+var mockAutoTableCargas: number | undefined;
+jest.mock('jspdf-autotable', () => {
+  mockAutoTableCargas = (mockAutoTableCargas ?? 0) + 1;
+  return (_doc: any, options: any) => { lastAutoTableConfig = options; };
+});
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useParams: () => ({ id: '1' }) }));
 
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));
@@ -40,6 +47,7 @@ const splitTextToSize = jest.fn((t: string) => (t.length > 30 ? t.match(/.{1,30}
 // cabe en la misma página. Test de BUG-062 lo sube para forzar el addPage().
 let mockFinalY = 100;
 jest.mock('jspdf', () => {
+  mockJsPdfCargas = (mockJsPdfCargas ?? 0) + 1;
   class MockJsPDF {
     internal = { pageSize: { getWidth: () => 200, getHeight: () => 280 } };
     addImage = addImage;
@@ -98,6 +106,24 @@ async function renderNota(fetchMock: any) {
   render(<PrenotaDetallePage session={{}} params={{ id: '1' }} />);
   await screen.findByText('Nota PDF');
 }
+
+// N13 (Fase B): jspdf y jspdf-autotable deben cargarse solo al exportar.
+// Va primero: cualquier exportación previa evaluaría los módulos y ocultaría
+// la regresión. Sin reset de contadores — undefined significa "nunca requerido".
+describe('N13 — carga diferida de jspdf', () => {
+  it('abrir la nota NO evalúa jspdf ni jspdf-autotable; exportar sí', async () => {
+    await renderNota(mockFetchConImagenes('ok'));
+
+    expect(mockJsPdfCargas).toBeUndefined();
+    expect(mockAutoTableCargas).toBeUndefined();
+
+    fireEvent.click(screen.getByText('Exportar PDF'));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+
+    expect(mockJsPdfCargas).toBe(1);
+    expect(mockAutoTableCargas).toBe(1);
+  });
+});
 
 describe('exportarPDF — logo, dirección e imágenes', () => {
   beforeEach(() => {

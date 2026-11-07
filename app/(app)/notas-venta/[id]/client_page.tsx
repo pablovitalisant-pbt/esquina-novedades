@@ -3,8 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import flags from '@/config/feature-flags.json';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import type { SessionProp } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -568,6 +567,19 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   // por exportarPDF (descarga) y compartirWhatsApp (Web Share API).
   const construirDocPDF = async (): Promise<jsPDF | null> => {
     if (!prenota?.items?.length) return null;
+    // Carga diferida: jsPDF + autotable solo pesan cuando se genera un PDF.
+    // `default` explícito para compatibilidad con Jest (CJS interop).
+    let jsPDF: typeof import('jspdf').default;
+    let autoTable: typeof import('jspdf-autotable').default;
+    try {
+      [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+    } catch {
+      toast.error('No se pudo cargar el generador de PDF');
+      return null;
+    }
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();

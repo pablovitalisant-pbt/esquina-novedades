@@ -219,7 +219,7 @@ describe('tipo de nota y etiqueta de cliente', () => {
     expect(s).not.toMatch(/modalidad = 'caja'|modalidad = 'unidad'/);
   });
   it('detalle de nota usa mayor/detalle', () => {
-    const s = read('app/api/notas-venta/[id]/route.ts');
+    const s = read('lib/notas-venta/detalle.ts');
     expect(s).toMatch(/modalidad === 'mayor'/);
     expect(s).toMatch(/modalidad === 'detalle'/);
     expect(s).not.toMatch(/modalidad === 'caja'|modalidad !== 'caja'/);

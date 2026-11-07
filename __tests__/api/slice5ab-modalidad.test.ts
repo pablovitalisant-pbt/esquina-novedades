@@ -45,7 +45,7 @@ describe('5a — subtotal', () => {
   });
 
   it('detalle de nota usa subtotal (string numeric) y no unidades*precio', () => {
-    const s = read('app/api/notas-venta/[id]/route.ts');
+    const s = read('lib/notas-venta/detalle.ts');
     expect(s).toContain('i.subtotal');
     expect(s).not.toMatch(/unidades\)?\s*\*\s*(Number\()?[\w.]*precio/);
   });

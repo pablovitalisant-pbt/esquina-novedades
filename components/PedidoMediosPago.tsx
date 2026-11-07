@@ -16,7 +16,8 @@ const CAJA = 'rounded-[var(--radius-overlay)] border p-4 text-sm';
 
 const pares = (d: DatosTransferencia, ref: string): [string, string][] => [
   ['Titular', d.titular], ['RUT', d.rut], ['Banco', d.banco],
-  ['Tipo de cuenta', d.tipo_cuenta], ['Número de cuenta', d.numero_cuenta], ['Referencia', ref],
+  ['Tipo de cuenta', d.tipo_cuenta], ['Número de cuenta', d.numero_cuenta],
+  ...(d.correo ? [['Correo', d.correo] as [string, string]] : []), ['Referencia', ref],
 ];
 
 export function PedidoMediosPago({
@@ -60,9 +61,9 @@ export function PedidoMediosPago({
           <h3 className="text-base font-medium text-[var(--heading)]">Datos para transferir</h3>
           <dl className="mt-3 grid gap-2">
             {pares(datos, referencia).map(([etiqueta, valor]) => (
-              <div key={etiqueta} className="flex justify-between gap-4">
+              <div key={etiqueta} className="flex flex-wrap justify-between gap-x-4 gap-y-1">
                 <dt className="text-[var(--muted-foreground)]">{etiqueta}</dt>
-                <dd className="text-right font-medium text-[var(--body)]">{valor}</dd>
+                <dd className="text-right font-medium break-all text-[var(--body)]">{valor}</dd>
               </div>
             ))}
           </dl>

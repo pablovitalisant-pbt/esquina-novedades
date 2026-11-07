@@ -8,7 +8,7 @@ jest.mock('@/components/PedidoPagoBoton', () => ({
 
 const ID = '6c1f0a2e-8b3d-4a5f-9c7e-1d2b3a4c5d6e';
 const REF = '6C1F0A2E';
-const DATOS = { banco: 'Banco Test', titular: 'Ana Pérez', rut: '11.111.111-1', tipo_cuenta: 'Cuenta Vista', numero_cuenta: '0000001' };
+const DATOS = { banco: 'Banco Test', titular: 'Ana Pérez', rut: '11.111.111-1', tipo_cuenta: 'Cuenta Vista', numero_cuenta: '0000001', correo: 'pagostienda@example.com' };
 const fetchMock = () => (global as any).fetch as jest.Mock;
 const mock = (r: () => any) => { (global as any).fetch = jest.fn(r); };
 const props = { pedidoId: ID, referencia: REF, permiteEfectivo: true, permiteTransferencia: true };
@@ -29,7 +29,7 @@ describe('PedidoMediosPago', () => {
     expect(url).toBe(`/api/pedidos/${ID}/metodo`);
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ metodo: 'transferencia' });
-    [DATOS.titular, DATOS.rut, DATOS.tipo_cuenta, DATOS.numero_cuenta].forEach((d) => expect(screen.getByText(d)).toBeInTheDocument());
+    [DATOS.titular, DATOS.rut, DATOS.tipo_cuenta, DATOS.numero_cuenta, DATOS.correo].forEach((d) => expect(screen.getByText(d)).toBeInTheDocument());
     expect(screen.getAllByText(new RegExp(REF, 'i')).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /efectivo/i })).not.toBeInTheDocument();
     expect(mp()).not.toBeInTheDocument();
@@ -68,6 +68,7 @@ describe('PedidoMediosPago', () => {
     render(<PedidoMediosPago {...props} metodoInicial="transferencia" datosIniciales={DATOS} />);
     expect(screen.getByText(DATOS.banco)).toBeInTheDocument();
     expect(screen.getByText(DATOS.numero_cuenta)).toBeInTheDocument();
+    expect(screen.getByText(DATOS.correo)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /efectivo/i })).not.toBeInTheDocument();
     expect(fetchMock()).not.toHaveBeenCalled();
   });

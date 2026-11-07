@@ -190,8 +190,8 @@ describe('diseño festivo por estado', () => {
 
 // ─── N03c2: medios alternativos integrados a la página ───
 describe('medios de pago alternativos', () => {
-  const DATOS = { banco: 'Banco Fake', titular: 'Ana Pérez', rut: '11.111.111-1', tipo_cuenta: 'Cuenta Vista', numero_cuenta: '0001234' };
-  const ENV = ['TRANSFERENCIA_BANCO', 'TRANSFERENCIA_TITULAR', 'TRANSFERENCIA_RUT', 'TRANSFERENCIA_TIPO_CUENTA', 'TRANSFERENCIA_NUMERO_CUENTA'];
+  const DATOS = { banco: 'Banco Fake', titular: 'Ana Pérez', rut: '11.111.111-1', tipo_cuenta: 'Cuenta Vista', numero_cuenta: '0001234', correo: 'pagostienda@example.com' };
+  const ENV = ['TRANSFERENCIA_BANCO', 'TRANSFERENCIA_TITULAR', 'TRANSFERENCIA_RUT', 'TRANSFERENCIA_TIPO_CUENTA', 'TRANSFERENCIA_NUMERO_CUENTA', 'TRANSFERENCIA_EMAIL'];
   const envPrevio: Record<string, string | undefined> = {};
   // Casos alternativos: sin preferencia MP histórica (la elección MP es exclusiva).
   const base = { ...PEDIDO, stock_reservado: true, mp_init_point: null };
@@ -199,7 +199,7 @@ describe('medios de pago alternativos', () => {
 
   beforeAll(() => {
     ENV.forEach((clave) => { envPrevio[clave] = process.env[clave]; });
-    Object.assign(process.env, { TRANSFERENCIA_BANCO: DATOS.banco, TRANSFERENCIA_TITULAR: DATOS.titular, TRANSFERENCIA_RUT: DATOS.rut, TRANSFERENCIA_TIPO_CUENTA: DATOS.tipo_cuenta, TRANSFERENCIA_NUMERO_CUENTA: DATOS.numero_cuenta });
+    Object.assign(process.env, { TRANSFERENCIA_BANCO: DATOS.banco, TRANSFERENCIA_TITULAR: DATOS.titular, TRANSFERENCIA_RUT: DATOS.rut, TRANSFERENCIA_TIPO_CUENTA: DATOS.tipo_cuenta, TRANSFERENCIA_NUMERO_CUENTA: DATOS.numero_cuenta, TRANSFERENCIA_EMAIL: DATOS.correo });
   });
   afterAll(() => {
     ENV.forEach((clave) => {
@@ -214,9 +214,23 @@ describe('medios de pago alternativos', () => {
       const out = await html({ ...base, metodo_pago: 'transferencia' });
       expect(out).toContain(DATOS.banco);
       expect(out).toContain(DATOS.numero_cuenta);
+      expect(out).toContain(DATOS.correo);
       expect(out).toContain('Transfiere e incluye la referencia');
       expect(out).not.toContain('Pagar con Mercado Pago');
     } finally { flagsMock['pedido-pago-opcional'] = false; }
+  });
+
+  test('sin TRANSFERENCIA_EMAIL → correo opcional, no rompe ni se muestra', async () => {
+    flagsMock['pedido-pago-opcional'] = true;
+    delete process.env.TRANSFERENCIA_EMAIL;
+    try {
+      const out = await html({ ...base, metodo_pago: 'transferencia' });
+      expect(out).toContain(DATOS.banco);
+      expect(out).not.toContain(DATOS.correo);
+    } finally {
+      process.env.TRANSFERENCIA_EMAIL = DATOS.correo;
+      flagsMock['pedido-pago-opcional'] = false;
+    }
   });
 
   test('flag OFF → conserva link legacy y el SQL no menciona metodo_pago', async () => {

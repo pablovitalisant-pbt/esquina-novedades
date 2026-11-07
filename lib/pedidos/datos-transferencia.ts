@@ -6,6 +6,7 @@ export interface DatosTransferencia {
   rut: string;
   tipo_cuenta: string;
   numero_cuenta: string;
+  correo?: string;
 }
 
 const CLAVES = [
@@ -18,7 +19,11 @@ export function leerDatosTransferencia(): DatosTransferencia | null {
   const [banco, titular, rut, tipoCuenta, numeroCuenta] =
     CLAVES.map((clave) => process.env[clave]?.trim());
   if (!banco || !titular || !rut || !tipoCuenta || !numeroCuenta) return null;
-  return { banco, titular, rut, tipo_cuenta: tipoCuenta, numero_cuenta: numeroCuenta };
+  const correo = process.env.TRANSFERENCIA_EMAIL?.trim();
+  return {
+    banco, titular, rut, tipo_cuenta: tipoCuenta, numero_cuenta: numeroCuenta,
+    ...(correo ? { correo } : {}),
+  };
 }
 
 /** UI: efectivo solo si la opción de entrega es delivery local y está activa. */

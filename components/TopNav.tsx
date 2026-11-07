@@ -104,9 +104,6 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
                   Ventas <ChevronDown className="w-4 h-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52" onMouseLeave={() => setVentasOpen(false)}>
-                  {/* Kardex Cliente (/ventas/kardex) oculto: la pagina y la ruta siguen
-                      existiendo. Para reactivarlo, agregar aqui un DropdownMenuItem con
-                      <Link href="/ventas/kardex">Kardex Cliente</Link>. */}
                   <DropdownMenuItem>
                     <Link href="/precios" className="flex items-center gap-2 w-full">
                       <ShoppingCart className="w-4 h-4" /> Sala de Venta

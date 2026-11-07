@@ -20,7 +20,7 @@ Files-to-touch: `lib/api-error.ts`, `lib/api-notas.ts`, `lib/api-pagos.ts`, `__t
 
 Quitar únicamente los bloques comentados de reactivación de Kardex en `components/TopNav.tsx` y `components/BottomNav.tsx`. Conservar navegación, ruta, permisos y saludo estable de BUG-009. Riesgo: ninguno nuevo, no tocar JSX ejecutable; pruebas existentes `slice-textos-kardex` y `topnav-hidratacion`, más smoke de navegación sin enlace Kardex. No agregar tests que espejen comentarios.
 
-Verificación M04 del DT: diff limitado a seis líneas de comentarios; suites slice-textos-kardex y topnav-hidratacion verdes, cuatro pruebas. Se conserva el saludo estable de BUG-009 y la ausencia de enlace Kardex. Smoke de navegación pendiente del cierre conjunto.
+Verificación M04 del DT: diff limitado a seis líneas de comentarios; suites slice-textos-kardex y topnav-hidratacion verdes, cuatro pruebas. Se conserva el saludo estable de BUG-009 y la ausencia de enlace Kardex. Smoke final de navegación desktop/mobile verde.
 
 ## M05 — Flags en pruebas de precios
 
@@ -33,3 +33,5 @@ Verificación M05 del DT: ambas suites de precios verdes, 11 pruebas. Eliminaci�
 ## Verificación y cierre
 
 Jest por archivos tocados y consumidores; `npx tsc --noEmit`, `npm run lint`. Revisión independiente del DT y auditoría al superar cinco cortes desde la última revisión. Build y despliegue verificados antes de declarar producción actualizada. M06 reconcilia documentos y registra evidencia sin eliminar historial.
+
+Cierre DT: 11 suites/72 pruebas dirigidas, tipos, lint y build estricto (49 páginas) verdes. Arnés de mantenimiento: 3 smokes verdes tras M03/M04/M05, con APIs interceptadas, cero escrituras reales. Auditoría de mantenimiento sin hallazgos bloqueantes.

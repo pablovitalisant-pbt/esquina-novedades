@@ -118,5 +118,7 @@ Estado de los cambios y secuencia de activación en `docs/BACKLOG-2026-11-06.md`
 
 Actualización posterior: auditoría vigente de mantenimiento en `docs/audits/ponytail-audit-2026-11-07-mantenimiento.md`, tras M03. Backlog actual `docs/BACKLOG-2026-11-07-MANTENIMIENTO.md`. Contador reiniciado antes de M04; la cifra del párrafo siguiente describe el cierre previo de rendimiento.
 
+Cierre de mantenimiento M01–M06: puntos 8–13 resueltos. Contador vigente, 2 (M04/M05) desde la auditoría de mantenimiento. DT verificó 72 pruebas dirigidas, 3 smokes en navegador, tipos, lint y build estricto verdes. Usuarios sin cupo de cuatro; datos/precios a cargo de Paola, redes en espera, boleta pendiente y devolución de prueba recibida. No crear pagos ni pedidos ficticios en producción para validar estos cambios.
+
 La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 3 (enlaces, BUG-009 y BUG-010). La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas. BUG-009 exige un primer render del saludo estable entre servidor y navegador. BUG-010 exige avisos visibles y foco en el campo pendiente del checkout móvil; evidencia en `docs/slices/BUG010-checkout-validacion-movil.md`.
 

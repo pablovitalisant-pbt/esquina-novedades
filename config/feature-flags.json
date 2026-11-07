@@ -16,5 +16,5 @@
   "pedido-cobro-manual": false,
   "precios-paginados": false,
   "precios-ingreso-stock": false,
-  "pagos-app-privados": false
+  "pagos-app-privados": true
 }

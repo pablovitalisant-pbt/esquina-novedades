@@ -542,3 +542,37 @@ describe('N08b — Botones detalle/mayor (modo explícito)', () => {
     await waitFor(() => expect(total()).toBe('6'));
   });
 });
+
+// ─── BUG-013 V01 — una sola acción según modalidadVisible ─────────────
+describe('BUG-013 V01 — acción única por modalidad visible', () => {
+  const total = () => screen.getByTestId('total').textContent;
+  const contacto = { nombre: 'Juana', telefono: '1', email: 'juana@mail.com' };
+
+  it('modalidadVisible="mayor": solo el botón mayor y completa el mínimo 6', () => {
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={contacto} />
+        <BotonAgregarPedido item={ITEM_MAYOR} modoExplicito minimoMayorDisponible={6} modalidadVisible="mayor" />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    expect(screen.queryByRole('button', { name: /detalle/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /mayor/i }));
+    expect(total()).toBe('6');
+  });
+
+  it('modalidadVisible="detalle": solo el botón detalle y agrega una unidad', () => {
+    render(
+      <CarritoProvider origen="productos">
+        <Seed contacto={contacto} />
+        <BotonAgregarPedido item={ITEM_MAYOR} modoExplicito minimoMayorDisponible={6} modalidadVisible="detalle" />
+        <TotalProbe />
+      </CarritoProvider>
+    );
+
+    expect(screen.queryByRole('button', { name: /mayor/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /detalle/i }));
+    expect(total()).toBe('1');
+  });
+});

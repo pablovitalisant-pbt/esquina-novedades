@@ -14,6 +14,9 @@ export type ProductoPedido = {
   minimo_mayor?: number | null;
 };
 
+// Override de cva vía twMerge: una columna, alto tocable y texto que envuelve.
+const claseBoton = 'w-full min-w-0 whitespace-normal h-auto min-h-11 px-2 py-2 leading-snug';
+
 /**
  * "Agregar al pedido": suma 1 unidad con precio detalle. El descuento por mayor
  * lo decide el servidor y se revela en el checkout. Sin contacto guardado abre
@@ -27,10 +30,13 @@ export function BotonAgregarPedido({
   item,
   modoExplicito = false,
   minimoMayorDisponible = null,
+  modalidadVisible,
 }: {
   item: ProductoPedido;
   modoExplicito?: boolean;
   minimoMayorDisponible?: number | null;
+  /** Si se indica, limita las acciones a esa modalidad. Omitida = ambas. */
+  modalidadVisible?: 'detalle' | 'mayor';
 }) {
   const { contacto, agregarItem, setContacto } = useCarrito();
   const [pendiente, setPendiente] = useState<{ item: ItemCarrito; minimo: number | null } | null>(null);
@@ -69,18 +75,20 @@ export function BotonAgregarPedido({
   return (
     <div className="flex flex-col gap-2">
       {modoExplicito ? (
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" className="w-full" onClick={() => handleClick(null)}>
-            Comprar al detalle
-          </Button>
-          {ofreceMayor && (
-            <Button variant="secondary" className="w-full" onClick={() => handleClick(minimoMayorDisponible ?? null)}>
+        <div className="grid grid-cols-1 gap-2">
+          {modalidadVisible !== 'mayor' && (
+            <Button variant="secondary" className={claseBoton} onClick={() => handleClick(null)}>
+              Comprar al detalle
+            </Button>
+          )}
+          {ofreceMayor && modalidadVisible !== 'detalle' && (
+            <Button variant="secondary" className={claseBoton} onClick={() => handleClick(minimoMayorDisponible ?? null)}>
               Comprar por mayor
             </Button>
           )}
         </div>
       ) : (
-        <Button variant="secondary" className="w-full" onClick={() => handleClick(null)}>
+        <Button variant="secondary" className={claseBoton} onClick={() => handleClick(null)}>
           Agregar al pedido
         </Button>
       )}

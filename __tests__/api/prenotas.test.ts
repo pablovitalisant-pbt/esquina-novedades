@@ -167,6 +167,43 @@ describe('GET /api/notas-venta/[id]', () => {
     expect(body.total).toBe(3500);
     expect(body.saldo_pendiente).toBe(3500);
   });
+
+  // N13: items, pagos, saldo a favor y saldo disponible se despachan en
+  // paralelo — las 4 consultas ya salieron antes de que items resuelva.
+  test('despacha items, pagos, saldo a favor y saldo disponible en paralelo', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+
+    let liberarItems!: (filas: unknown[]) => void;
+    sql
+      .mockResolvedValueOnce([{ id: 10, cliente_id: 5, nombre_cliente: 'JUAN' }]) // prenota
+      .mockImplementationOnce(() => new Promise<unknown[]>((resolve) => { liberarItems = resolve; })) // items
+      .mockResolvedValueOnce([{ total: '0' }])          // pagos
+      .mockResolvedValueOnce([{ total: '0' }])          // saldo a favor aplicado
+      .mockResolvedValueOnce([{ disponible: '500' }]);  // saldo disponible
+
+    const pendiente = GET_DETAIL(
+      new NextRequest('http://localhost/api/notas-venta/10'),
+      { params: Promise.resolve({ id: '10' }) },
+    );
+
+    let fallo: unknown;
+    try {
+      // Solo microtasks: items sigue pendiente mientras se cuentan las llamadas.
+      for (let i = 0; i < 50; i++) await Promise.resolve();
+      expect(sql).toHaveBeenCalledTimes(5); // secuencial: solo 2
+    } catch (e) {
+      fallo = e;
+    } finally {
+      liberarItems([{ id: 1, codigo: 'A', modalidad: 'detalle', subtotal: '1000.00' }]);
+    }
+
+    const res = await pendiente;
+    if (fallo) throw fallo;
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.total).toBe(1000);
+    expect(body.cliente_saldo_favor).toBe(500);
+  });
 });
 
 describe('PATCH /api/notas-venta/[id]', () => {

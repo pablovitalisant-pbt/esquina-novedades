@@ -58,11 +58,42 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'No encontrada' }, { status: 404 });
   }
 
-  const items = await sql`
-    SELECT * FROM public.prenota_items WHERE prenota_id = ${id} ORDER BY created_at ASC
-  `;
-
   type ItemNota = { subtotal?: number | string | null; codigo?: unknown; modalidad?: unknown };
+  type TotalRow = { total: string };
+  type DisponibleRow = { disponible: string };
+
+  // Las cuatro consultas son independientes: se despachan juntas, mismo orden
+  // que antes (items, pagado, aplicado, disponible).
+  const clienteId = prenota.cliente_id;
+  const [items, pagadoRows, sfRows, sfDisponible] = await Promise.all([
+    sql`
+      SELECT * FROM public.prenota_items WHERE prenota_id = ${id} ORDER BY created_at ASC
+    `,
+    sql`
+      SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
+      FROM caja_movimiento_notas cmn
+      JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
+      WHERE cmn.prenota_id = ${id}
+    `,
+    // Slice 3a — saldo a favor aplicado (débitos) a esta nota. Resta del saldo
+    // igual que total_pagado. Hoy 0 (los débitos se generan en 3b); se deja ya
+    // escrito para no volver a tocar este archivo en 3b.
+    sql`
+      SELECT COALESCE(SUM(monto), 0) AS total
+      FROM public.clientes_saldo_favor_movimientos
+      WHERE aplicado_prenota_id = ${id} AND tipo = 'debito'
+    `,
+    // Slice 3b — saldo a favor disponible del cliente (créditos - débitos).
+    // 0 si la nota no tiene cliente asignado. El frontend lo usa para decidir
+    // si mostrar el botón "Aplicar saldo a favor".
+    clienteId != null
+      ? sql`
+          SELECT COALESCE(SUM(CASE WHEN tipo='credito' THEN monto ELSE -monto END), 0) AS disponible
+          FROM public.clientes_saldo_favor_movimientos
+          WHERE cliente_id = ${clienteId}
+        `
+      : Promise.resolve([] as DisponibleRow[]),
+  ]);
 
   // Calcular total, total_pagado y saldo_pendiente (para UI de pago)
   const total = (items as ItemNota[]).reduce(
@@ -79,35 +110,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       : itemsTipo.every((i) => i.modalidad === 'detalle')
         ? 'menor'
         : 'mixta';
-  const pagadoRows = await sql`
-    SELECT COALESCE(SUM(CASE WHEN cm.tipo = 'reembolso' THEN -cmn.monto_aplicado ELSE cmn.monto_aplicado END), 0) AS total
-    FROM caja_movimiento_notas cmn
-    JOIN caja_movimientos cm ON cm.id = cmn.movimiento_id
-    WHERE cmn.prenota_id = ${id}
-  `;
-  const totalPagado = parseFloat((pagadoRows as { total: string }[])[0].total);
-  // Slice 3a — saldo a favor aplicado (débitos) a esta nota. Resta del saldo
-  // igual que total_pagado. Hoy 0 (los débitos se generan en 3b); se deja ya
-  // escrito para no volver a tocar este archivo en 3b.
-  const sfRows = await sql`
-    SELECT COALESCE(SUM(monto), 0) AS total
-    FROM public.clientes_saldo_favor_movimientos
-    WHERE aplicado_prenota_id = ${id} AND tipo = 'debito'
-  `;
-  const saldoFavorAplicado = parseFloat((sfRows as { total: string }[])[0].total);
-
-  // Slice 3b — saldo a favor disponible del cliente (créditos - débitos).
-  // 0 si la nota no tiene cliente asignado. El frontend lo usa para decidir
-  // si mostrar el botón "Aplicar saldo a favor".
-  let clienteSaldoFavor = 0;
-  if (prenota.cliente_id != null) {
-    const sfDisponible = await sql`
-      SELECT COALESCE(SUM(CASE WHEN tipo='credito' THEN monto ELSE -monto END), 0) AS disponible
-      FROM public.clientes_saldo_favor_movimientos
-      WHERE cliente_id = ${prenota.cliente_id}
-    `;
-    clienteSaldoFavor = parseFloat((sfDisponible as { disponible: string }[])[0].disponible);
-  }
+  const totalPagado = parseFloat((pagadoRows as TotalRow[])[0].total);
+  const saldoFavorAplicado = parseFloat((sfRows as TotalRow[])[0].total);
+  const clienteSaldoFavor = parseFloat((sfDisponible as DisponibleRow[])[0]?.disponible ?? '0');
 
   return NextResponse.json({
     ...prenota,

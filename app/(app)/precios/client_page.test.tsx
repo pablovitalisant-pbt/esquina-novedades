@@ -3,6 +3,7 @@
  */
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { PreciosClient } from './client_page';
+import flags from '@/config/feature-flags.json';
 
 jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'precios-paginados': true }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
@@ -13,9 +14,12 @@ jest.mock('@/components/ProductDrawer', () => ({ ProductDrawer: () => null }));
 
 const fetchMock = jest.fn();
 global.fetch = fetchMock as any;
+const flagsMock = flags as Record<string, boolean>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // M05: cada prueba fija el flag; se restaura ON para aislar del caso OFF.
+  flagsMock['precios-paginados'] = true;
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
 });
 
@@ -41,6 +45,23 @@ const pagina = (data: any[], siguienteCursor: string | null = null) => ({
   json: async () => ({ data, siguienteCursor }),
 });
 const session = { rol: 'admin', user: { id: '1', rol: 'admin' } } as any;
+
+describe('app/(app)/precios — flag inactivo N09b', () => {
+  it('no consulta al abrir y busca sin paginado', async () => {
+    flagsMock['precios-paginados'] = false;
+    render(<PreciosClient session={session} />);
+    const input = await screen.findByPlaceholderText('Buscar por código o descripción...');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'GL8' } });
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(call => String(call[0]).includes('/api/productos?search=GL8'))).toBe(true);
+    }, { timeout: 2000 });
+
+    const url = String(fetchMock.mock.calls.find(call => String(call[0]).includes('/api/productos'))?.[0]);
+    expect(url).not.toContain('paginado=true');
+  });
+});
 
 describe('app/(app)/precios — paginado N09b', () => {
   it('con flag activo carga la primera página sin búsqueda', async () => {

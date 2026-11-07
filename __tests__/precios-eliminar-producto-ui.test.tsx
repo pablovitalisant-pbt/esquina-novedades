@@ -7,16 +7,16 @@
  * entre la grilla y el drawer. handleProductUpdate lo reemplazaba con .map(),
  * dejando el producto eliminado (activo=false) visible hasta la proxima busqueda.
  *
- * Test 1 (E2E): buscar → abrir producto → eliminar → desaparece de la grilla.
- * Test 2 (regresion del branch): una actualizacion normal (PUT sin `activo`)
- * NO debe sacar el producto de la lista.
+ * M05: `precios-paginados` se fija de forma explicita en ON y OFF (BUG-004):
+ * ON carga la grilla al abrir; OFF exige 2 caracteres antes de consultar.
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PreciosClient } from '@/app/(app)/precios/client_page';
 import { Producto } from '@/types';
+import flags from '@/config/feature-flags.json';
 
-jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({}));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'precios-paginados': false }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 jest.mock('@/hooks/useShareImage', () => ({ useShareImage: () => ({ shareImage: jest.fn() }) }));
 
@@ -29,6 +29,8 @@ jest.mock('@/components/ProductCard', () => ({
     </button>
   ),
 }));
+
+const flagsMock = flags as Record<string, boolean>;
 
 const base = {
   empresa_id: 1, umed: 'U', cif: 0, costo: 50, margen_pct: 25, prcminimo: 80,
@@ -44,6 +46,9 @@ const json = (body: any) => Promise.resolve({ ok: true, status: 200, json: async
 
 const fetchMock = jest.fn();
 global.fetch = fetchMock as any;
+
+const getsProductos = () =>
+  fetchMock.mock.calls.map(c => String(c[0])).filter(u => u.startsWith('/api/productos?'));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -63,16 +68,28 @@ beforeEach(() => {
 
 const session = { rol: 'admin', user: { id: '1', rol: 'admin' } } as any;
 
-async function buscar(term: string) {
+async function abrirGrilla(paginado: boolean) {
   render(<PreciosClient session={session} />);
-  const input = await screen.findByPlaceholderText('Buscar por código o descripción...');
-  fireEvent.change(input, { target: { value: term } });
-  await waitFor(() => expect(screen.getByTestId('card-AAA-01')).toBeInTheDocument(), { timeout: 3000 });
+  if (paginado) {
+    // ON: la primera pagina se carga sola, sin tipear.
+    await screen.findByTestId('card-AAA-01', {}, { timeout: 3000 });
+  } else {
+    // OFF: sin consulta inicial; recien 2 caracteres disparan la busqueda.
+    const input = await screen.findByPlaceholderText('Buscar por código o descripción...');
+    expect(getsProductos()).toHaveLength(0);
+    fireEvent.change(input, { target: { value: 'PR' } });
+    await screen.findByTestId('card-AAA-01', {}, { timeout: 3000 });
+  }
+  const gets = getsProductos();
+  expect(gets).toHaveLength(1);
+  expect(gets[0].includes('paginado=true')).toBe(paginado);
 }
 
-describe('Precios — eliminar producto (fix UI)', () => {
+describe.each([true, false])('Precios — eliminar producto (paginado %s)', (paginado) => {
+  beforeEach(() => { flagsMock['precios-paginados'] = paginado; });
+
   test('E2E: buscar → abrir → eliminar → el producto desaparece de la grilla y B queda', async () => {
-    await buscar('PR');
+    await abrirGrilla(paginado);
     expect(screen.getByTestId('card-BBB-02')).toBeInTheDocument();
 
     // abrir el drawer del producto A
@@ -88,11 +105,11 @@ describe('Precios — eliminar producto (fix UI)', () => {
     // el eliminado sale de la lista sin refetch ni nueva busqueda
     await waitFor(() => expect(screen.queryByTestId('card-AAA-01')).toBeNull());
     expect(screen.getByTestId('card-BBB-02')).toBeInTheDocument();
-    expect(fetchMock.mock.calls.filter(c => String(c[0]).startsWith('/api/productos?'))).toHaveLength(1);
+    expect(getsProductos()).toHaveLength(1);
   });
 
   test('una actualizacion normal (PUT sin `activo`) NO saca el producto de la lista', async () => {
-    await buscar('PR');
+    await abrirGrilla(paginado);
     fireEvent.click(screen.getByTestId('card-AAA-01'));
 
     fireEvent.click(await screen.findByTitle('Editar producto'));
@@ -104,5 +121,6 @@ describe('Precios — eliminar producto (fix UI)', () => {
 
     expect(screen.getByTestId('card-AAA-01')).toBeInTheDocument();
     expect(screen.getByTestId('card-BBB-02')).toBeInTheDocument();
+    expect(getsProductos()).toHaveLength(1);
   });
 });

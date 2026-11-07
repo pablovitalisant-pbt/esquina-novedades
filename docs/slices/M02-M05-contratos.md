@@ -20,13 +20,15 @@ Files-to-touch: `lib/api-error.ts`, `lib/api-notas.ts`, `lib/api-pagos.ts`, `__t
 
 Quitar únicamente los bloques comentados de reactivación de Kardex en `components/TopNav.tsx` y `components/BottomNav.tsx`. Conservar navegación, ruta, permisos y saludo estable de BUG-009. Riesgo: ninguno nuevo, no tocar JSX ejecutable; pruebas existentes `slice-textos-kardex` y `topnav-hidratacion`, más smoke de navegación sin enlace Kardex. No agregar tests que espejen comentarios.
 
-## M05 — Flags en pruebas de precios
-
 Verificación M04 del DT: diff limitado a seis líneas de comentarios; suites slice-textos-kardex y topnav-hidratacion verdes, cuatro pruebas. Se conserva el saludo estable de BUG-009 y la ausencia de enlace Kardex. Smoke de navegación pendiente del cierre conjunto.
+
+## M05 — Flags en pruebas de precios
 
 Files-to-touch: `__tests__/precios-eliminar-producto-ui.test.tsx`, `app/(app)/precios/client_page.test.tsx`. Fijar precios-paginados de forma explícita para ambas suites. La eliminación debe probarse con ON y OFF; en OFF no consultar catálogo sin búsqueda, en ON cargar automáticamente. Mantener pruebas de paginación, descarte de respuestas viejas y debounce. No cambiar código de aplicación ni mockFlags compartido.
 
 Riesgo conocido BUG-004: herencia de flags globales altera ramas ejecutadas. Documentar la rama antes/después y agregar comprobaciones de URL/ausencia de consulta; no considerar rojo una corrección a lógica que ya funciona. Smoke de precios con navegación y grilla para integración real.
+
+Verificación M05 del DT: ambas suites de precios verdes, 11 pruebas. Eliminación y edición se ejercitan con ON/OFF, verificando una sola consulta y URL paginada únicamente en ON. El caso OFF confirma cero consultas iniciales. Descarte de respuestas y debounce conservados. `npx tsc --noEmit` código0; `npm run lint` sin errores ni advertencias ESLint. No cambió comportamiento de aplicación; no se fabricó un rojo de implementación para ampliar cobertura.
 
 ## Verificación y cierre
 

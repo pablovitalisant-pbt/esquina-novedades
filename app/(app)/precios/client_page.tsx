@@ -59,7 +59,7 @@ export function PreciosClient({ session }: PreciosClientProps) {
 
   // Debounce search input
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    const timer = setTimeout(() => setDebouncedSearch(search), 160);
     return () => clearTimeout(timer);
   }, [search]);
 

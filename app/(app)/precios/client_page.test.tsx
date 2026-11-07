@@ -86,6 +86,34 @@ describe('app/(app)/precios — paginado N09b', () => {
   });
 });
 
+describe('app/(app)/precios — debounce N13', () => {
+  it('tipear COL y luego COLCHON rápido no consulta COL y despacha COLCHON a los 160 ms de la última tecla', async () => {
+    jest.useFakeTimers();
+    try {
+      render(<PreciosClient session={session} />);
+      await act(async () => {}); // primera página al montar
+      fetchMock.mockClear();
+
+      const input = screen.getByPlaceholderText('Buscar por código o descripción...');
+      for (const value of ['C', 'CO', 'COL', 'COLC', 'COLCH', 'COLCHO', 'COLCHON']) {
+        fireEvent.change(input, { target: { value } });
+      }
+
+      const busquedas = () => fetchMock.mock.calls
+        .map((c: any[]) => String(c[0]))
+        .filter((u: string) => u.includes('search='));
+
+      await act(async () => { jest.advanceTimersByTime(159); });
+      expect(busquedas()).toEqual([]);
+
+      await act(async () => { jest.advanceTimersByTime(1); });
+      expect(busquedas()).toEqual(['/api/productos?search=COLCHON&paginado=true']);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe('app/(app)/precios — crear con paginado N09c', () => {
   it('crear producto sin búsqueda reconsulta la primera página', async () => {
     fetchMock

@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-010 — Validación del pedido oculta en el carrito móvil (2026-11-07)
+
+- Causa reproducida, los errores de contacto y entrega se dibujaban al fondo del formulario desplazable, detrás del resumen fijo. La validación nativa de correo podía bloquear el envío antes de ejecutar el submit de React.
+- Fix mínimo, compartir el aviso con el pie del carrito, capturar el correo inválido y dirigir el foco al campo pendiente. Se desplaza el campo tras actualizar el layout.
+- Alcance, `CarritoCheckoutForm`, `CarritoDrawer` y sus pruebas. La captura no permite atribuir un campo faltante concreto a la clienta.
+- Contrato y evidencia, `docs/slices/BUG010-checkout-validacion-movil.md`.
+
 ## BUG-009 — Saludo con hora local rompe la hidratación del menú (2026-11-07)
 
 - Base de diagnóstico con árbol limpio, `91ec9a7`.

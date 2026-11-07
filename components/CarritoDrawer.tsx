@@ -231,6 +231,7 @@ export function CarritoDrawer() {
               opciones={opciones}
               onCambio={setCheckout}
               onSubmit={enviarPedido}
+              onError={setErrorEnvio}
             />
           </div>
 

@@ -14,6 +14,14 @@ jest.mock('sonner', () => ({
   toast: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }));
 
+// BUG010: aísla las pruebas de los gates que hoy están encendidos.
+jest.mock('@/config/feature-flags.json', () =>
+  require('@/__tests__/helpers/mockFlags').mockFlags({
+    'tienda-medios-compra': false,
+    'pedido-confirmacion-antes-pago': false,
+  })
+);
+
 const OPCIONES = {
   data: [
     { codigo: 'retiro', nombre: 'Retiro en tienda', costo: 0, requiere_direccion: false, nota: null },
@@ -150,5 +158,60 @@ describe('Checkout en el drawer', () => {
 
     fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'envio_arica' } });
     expect(screen.getByText(/se paga al chofer/i)).toBeInTheDocument();
+  });
+});
+
+describe('BUG010 — validación visible en el footer, con foco', () => {
+  it('sin entrega: alerta footer, foco en el select, 0 POST y conserva items', async () => {
+    const fetchMock = mockFetch();
+    await abrirDrawer();
+
+    fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveAttribute('data-testid', 'error-envio');
+    await waitFor(() => expect(screen.getByLabelText(/opción de entrega/i)).toHaveFocus());
+    expect(postCalls(fetchMock)).toBe(0);
+    expect(screen.getByText('Producto A')).toBeInTheDocument();
+    expect(screen.getByText('Producto B')).toBeInTheDocument();
+  });
+
+  it('sin teléfono: alerta footer, foco en el teléfono y 0 POST', async () => {
+    const fetchMock = mockFetch();
+    await abrirDrawer();
+    fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'retiro' } });
+    fireEvent.change(screen.getByLabelText(/^teléfono$/i), { target: { value: '' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
+
+    expect(await screen.findByRole('alert')).toHaveAttribute('data-testid', 'error-envio');
+    await waitFor(() => expect(screen.getByLabelText(/^teléfono$/i)).toHaveFocus());
+    expect(postCalls(fetchMock)).toBe(0);
+  });
+
+  it('email inválido nativo: alerta footer, foco en el email y 0 POST', async () => {
+    const fetchMock = mockFetch();
+    await abrirDrawer();
+    fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'retiro' } });
+
+    const email = screen.getByLabelText(/^email$/i);
+    fireEvent.change(email, { target: { value: 'noesemail' } });
+    fireEvent.invalid(email);
+
+    expect(await screen.findByRole('alert')).toHaveAttribute('data-testid', 'error-envio');
+    await waitFor(() => expect(email).toHaveFocus());
+    expect(postCalls(fetchMock)).toBe(0);
+  });
+
+  it('delivery sin dirección: alerta footer, foco en la dirección y 0 POST', async () => {
+    const fetchMock = mockFetch();
+    await abrirDrawer();
+    fireEvent.change(screen.getByLabelText(/opción de entrega/i), { target: { value: 'delivery_iquique' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
+
+    expect(await screen.findByRole('alert')).toHaveAttribute('data-testid', 'error-envio');
+    await waitFor(() => expect(screen.getByLabelText(/dirección/i)).toHaveFocus());
+    expect(postCalls(fetchMock)).toBe(0);
   });
 });

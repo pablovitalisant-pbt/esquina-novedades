@@ -116,5 +116,5 @@ Estado de los cambios y secuencia de activación en `docs/BACKLOG-2026-11-06.md`
 
 ## Rendimiento — 2026-11-07
 
-La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 2 (enlaces y BUG-009). La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas. BUG-009 exige un primer render del saludo estable entre servidor y navegador.
+La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 3 (enlaces, BUG-009 y BUG-010). La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas. BUG-009 exige un primer render del saludo estable entre servidor y navegador. BUG-010 exige avisos visibles y foco en el campo pendiente del checkout móvil; evidencia en `docs/slices/BUG010-checkout-validacion-movil.md`.
 

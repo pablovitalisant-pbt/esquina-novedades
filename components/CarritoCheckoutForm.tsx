@@ -27,12 +27,13 @@ export type DatosCheckout = {
  * el cliente; el servidor vuelve a validar y calcula el total real (7e).
  */
 export function CarritoCheckoutForm({
-  contacto, opciones, onCambio, onSubmit,
+  contacto, opciones, onCambio, onSubmit, onError,
 }: {
   contacto: ContactoCarrito | null;
   opciones: OpcionEntrega[];
   onCambio: (datos: DatosCheckout) => void;
   onSubmit: (datos: DatosCheckout) => void;
+  onError?: (mensaje: string | null) => void;
 }) {
   const [nombre, setNombre] = useState(contacto?.nombre ?? '');
   const [telefono, setTelefono] = useState(contacto?.telefono ?? '');
@@ -50,18 +51,41 @@ export function CarritoCheckoutForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nombre, telefono, email, entregaCodigo, direccion, opciones]);
 
+  // El padre con callback muestra el aviso en su footer (no duplicar); sin
+  // callback el propio form lo muestra con role="alert".
+  function reportar(mensaje: string, campoId: string) {
+    if (onError) onError(mensaje);
+    else setError(mensaje);
+    const campo = document.getElementById(campoId);
+    campo?.focus();
+    // BUG010: el aviso del pie crece y recorta el campo; centrarlo tras el render.
+    window.requestAnimationFrame?.(() => campo?.scrollIntoView?.({ block: 'center' }));
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!datos.nombre || !datos.telefono) return setError('Completa tu nombre y teléfono.');
-    if (!datos.email.includes('@')) return setError('Ingresa un email válido.');
-    if (!opcion) return setError('Elige una opción de entrega.');
-    if (opcion.requiere_direccion && !datos.direccion_entrega) return setError('Ingresa la dirección de entrega.');
+    if (!datos.nombre) return reportar('Completa tu nombre y teléfono.', 'checkout-nombre');
+    if (!datos.telefono) return reportar('Completa tu nombre y teléfono.', 'checkout-telefono');
+    if (!datos.email.includes('@')) return reportar('Ingresa un email válido.', 'checkout-email');
+    if (!opcion) return reportar('Elige una opción de entrega.', 'checkout-entrega');
+    if (opcion.requiere_direccion && !datos.direccion_entrega) return reportar('Ingresa la dirección de entrega.', 'checkout-direccion');
     setError(null);
+    onError?.(null);
     onSubmit(datos);
   }
 
   return (
-    <form id="checkout-form" onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-[var(--border-default)] pt-4">
+    <form
+      id="checkout-form"
+      onSubmit={handleSubmit}
+      onInvalid={(e) => {
+        // Mantiene la validación nativa del email, pero avisa en el footer.
+        if ((e.target as HTMLInputElement).type !== 'email') return;
+        e.preventDefault();
+        reportar('Ingresa un email válido.', 'checkout-email');
+      }}
+      className="flex flex-col gap-4 border-t border-[var(--border-default)] pt-4"
+    >
       <h3 className="text-sm font-bold text-[var(--heading)]">Datos de contacto y entrega</h3>
       <div className="grid gap-2">
         <Label htmlFor="checkout-nombre">Nombre</Label>
@@ -96,7 +120,7 @@ export function CarritoCheckoutForm({
           <Input id="checkout-direccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} autoComplete="street-address" />
         </div>
       )}
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+      {!onError && error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
     </form>
   );
 }

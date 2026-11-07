@@ -5,6 +5,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AgregarANotaVentaModal } from '@/components/AgregarANotaVentaModal';
+import { toast } from 'sonner';
 
 jest.mock('next-auth/react', () => ({
   useSession: () => ({ data: { user: { rol: 'vendedor' } } }),
@@ -14,6 +15,10 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/precios',
+}));
+
+jest.mock('sonner', () => ({
+  toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
 const producto = {
@@ -189,6 +194,66 @@ describe('AgregarANotaVentaModal', () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  test('fallo al crear nota: no agrega items, sigue abierto, rehabilita boton y avisa por toast', async () => {
+    const onClose = jest.fn();
+    const fetchMock = jest.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/notas-venta' && options?.method === 'POST') {
+        return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'boom' }) });
+      }
+      if (url === '/api/notas-venta') {
+        return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ id: 55 }) });
+    });
+    global.fetch = fetchMock as any;
+
+    render(<AgregarANotaVentaModal open={true} onClose={onClose} producto={producto} />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notas-venta'));
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some(c => String(c[0]).includes('/items'))).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Agregar' })).not.toBeDisabled();
+    });
+  });
+
+  test('reintento tras fallo crea nota valida y agrega el item una sola vez', async () => {
+    const onClose = jest.fn();
+    let posts = 0;
+    const fetchMock = jest.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/notas-venta' && options?.method === 'POST') {
+        posts += 1;
+        return posts === 1
+          ? Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'boom' }) })
+          : Promise.resolve({ ok: true, status: 201, json: async () => ({ id: 42 }) });
+      }
+      if (url === '/api/notas-venta') {
+        return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ id: 'it-1' }) });
+    });
+    global.fetch = fetchMock as any;
+
+    render(<AgregarANotaVentaModal open={true} onClose={onClose} producto={producto} />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notas-venta'));
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Agregar' })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.filter(c => c[0] === '/api/notas-venta/42/items')).toHaveLength(1);
+    expect(toast.success).toHaveBeenCalled();
   });
 
   // ─── Test 5c: Texto renombrado ──────────────────────────────────────

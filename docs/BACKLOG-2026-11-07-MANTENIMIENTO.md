@@ -16,7 +16,7 @@ Autorizado por Pablo: resolver los puntos 8–13 del listado histórico, con Cla
 
 | Corte | Origen | Contrato | Estado |
 |---|---|---|---|
-| M01 | 8 + parte de 9 | Crear nota rechaza HTTP fallido e ID inválido antes de agregar ítems; eliminar verificarOk y conservar payloads | Pendiente |
+| M01 | 8 + parte de 9 | Crear nota rechaza HTTP fallido e ID inválido antes de agregar ítems; eliminar verificarOk y conservar payloads | Implementado, tests y smoke verificados; controles finales en curso |
 | M02 | resto de 9 | Cuentas de caja rechazan HTTP fallido antes de consumir data; eliminar soloSiOk y conservar manejo de error de ambos diálogos | Pendiente |
 | M03 | 10 | ErrorApi compartido con subclases ErrorNota/ErrorPago compatibles; conservar instanceof, name y mensajes | Pendiente |
 | M04 | 11 | Retirar comentarios de reactivación de Kardex; conservar ruta y ausencia de enlaces | Pendiente |

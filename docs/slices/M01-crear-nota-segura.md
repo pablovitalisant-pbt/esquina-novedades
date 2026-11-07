@@ -24,3 +24,7 @@ Impacto lateral: se revisaron imports, ambas llamadas, catch ErrorNota, API de c
 - Smoke E2E obligatorio: precios → agregar a nueva nota, fallo controlado y recuperación, en entorno TEST con red interceptada para errores, sin escrituras en producción.
 
 Comandos: `npx jest --runInBand --runTestsByPath __tests__/lib/api-notas.test.ts __tests__/AgregarAPrenotaModal.test.tsx`, suites POS relacionadas, `npx tsc --noEmit`, `npm run lint`. El DT ejecuta y registra rojo/verde.
+
+## Evidencia DT
+
+Rojo: 4 fallos específicos y 17 verdes antes de implementación. Verde: suites api-notas, AgregarAPrenotaModal, pos4-ui y pos3-cobrar, 35 tests. Smoke privado `node node_modules/playwright/cli.js test --config mantenimiento.config.cjs`: 1 verde, error HTTP500 con HTML no provoca /items; reintento manual envía una sola línea con precio numérico y cierra modal. Sin escrituras DB ni producción.

@@ -228,7 +228,7 @@ export function PosPage({ session }: { session: SessionProp }) {
       // Sin cliente elegido → Cliente de mesón. Si no existe, nota sin cliente.
       const clienteId = cliente?.id ?? await obtenerClienteMeson();
       try {
-        id = await crearNota(clienteId, { verificarOk: true });
+        id = await crearNota(clienteId);
       } catch (e) {
         if (!(e instanceof ErrorNota)) throw e;
         toast.error('No se pudo crear la nota de venta');

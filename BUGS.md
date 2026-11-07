@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-011 — El modal continuaba con una nota undefined tras fallar su creación (2026-11-07)
+
+- Causa: `crearNota` verificaba HTTP solo para el POS; el modal convertía un ID ausente a string y llamaba a `/undefined/items`.
+- Fix: rechazo uniforme antes de parsear errores y validación de ID; quitar opción verificarOk del POS. BUG-007 y payloads intactos.
+- Evidencia DT: 4 regresiones rojas antes del fix; 4 suites y 35 tests verdes después. Smoke navegador TEST: HTTP500 conserva modal, cero ítems; reintento manual crea ID42 y agrega una sola vez. API interceptada, sin escrituras reales.
+- Contrato: `docs/slices/M01-crear-nota-segura.md`.
+
 ## BUG-010 — Validación del pedido oculta en el carrito móvil (2026-11-07)
 
 - Causa reproducida, los errores de contacto y entrega se dibujaban al fondo del formulario desplazable, detrás del resumen fijo. La validación nativa de correo podía bloquear el envío antes de ejecutar el submit de React.

@@ -10,20 +10,29 @@ export class ErrorNota extends Error {
 
 /**
  * POST /api/notas-venta. Crea la nota (con cliente o sin el) y devuelve su id
- * como string. `verificarOk` reproduce el chequeo del POS; el modal no lo hace.
+ * como string. Un HTTP no-ok se rechaza antes de parsear el body; una
+ * respuesta sin id valido nunca se convierte en "undefined"/"null".
  */
-export async function crearNota(
-  clienteId?: number | string | null,
-  { verificarOk = false }: { verificarOk?: boolean } = {}
-): Promise<string> {
+export async function crearNota(clienteId?: number | string | null): Promise<string> {
   const res = await fetch('/api/notas-venta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(clienteId ? { cliente_id: clienteId } : {}),
   });
-  if (verificarOk && !res.ok) throw new ErrorNota('');
-  const data = await res.json();
-  return String(data.id);
+  if (!res.ok) throw new ErrorNota('');
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    throw new ErrorNota('');
+  }
+  const id = (data as { id?: unknown } | null)?.id;
+  if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) return String(id);
+  if (typeof id === 'string') {
+    const limpio = id.trim();
+    if (limpio !== '' && limpio !== 'undefined' && limpio !== 'null') return limpio;
+  }
+  throw new ErrorNota('');
 }
 
 /**

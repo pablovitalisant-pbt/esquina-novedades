@@ -38,17 +38,48 @@ describe('crearNota', () => {
     expect((fetchMock.mock.calls[0][1] as { body: string }).body).toBe('{"cliente_id":"u-meson"}');
   });
 
-  it('con verificarOk: lanza ErrorNota en respuesta no-ok (POS)', async () => {
+  it('respuesta no-ok lanza ErrorNota (POS y modal)', async () => {
     setFetch(async () => json({ error: 'No autorizado' }, 401));
 
-    const err = await crearNota(7, { verificarOk: true }).catch(e => e);
+    const err = await crearNota(7).catch(e => e);
     expect(err).toBeInstanceOf(ErrorNota);
   });
 
-  it('sin verificarOk no corta en no-ok (comportamiento heredado del modal)', async () => {
-    setFetch(async () => json({}, 500));
+  it('500 con body no parseable rechaza ErrorNota sin parsear', async () => {
+    const jsonMock = jest.fn(async () => {
+      throw new SyntaxError('Unexpected token');
+    });
+    setFetch(async () => ({ ok: false, status: 500, json: jsonMock }));
 
-    await expect(crearNota()).resolves.toBe('undefined');
+    const err = await crearNota().catch(e => e);
+    expect(err).toBeInstanceOf(ErrorNota);
+    expect(jsonMock).not.toHaveBeenCalled();
+  });
+
+  it('200 sin id valido rechaza ErrorNota (nunca "undefined"/"null"/[object Object])', async () => {
+    for (const body of [
+      {},
+      null,
+      { id: null },
+      { id: { valor: 1 } },
+      { id: '' },
+      { id: '  ' },
+      { id: 'undefined' },
+      { id: 'null' },
+      { id: 0 },
+      { id: -1 },
+    ]) {
+      setFetch(async () => json(body));
+
+      const err = await crearNota().catch(e => e);
+      expect(err).toBeInstanceOf(ErrorNota);
+    }
+  });
+
+  it('200 con id string no vacio devuelve ese string', async () => {
+    setFetch(async () => json({ id: 'abc-123' }));
+
+    await expect(crearNota()).resolves.toBe('abc-123');
   });
 
   it('propaga el error de red', async () => {

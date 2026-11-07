@@ -1,10 +1,11 @@
 /** Llamadas HTTP compartidas para armar notas de venta (A18). */
 
+import { ErrorApi } from './api-error';
+
 /** Error HTTP con el mensaje que devolvio el servidor ('' si no traia uno). */
-export class ErrorNota extends Error {
+export class ErrorNota extends ErrorApi {
   constructor(message: string) {
-    super(message);
-    this.name = 'ErrorNota';
+    super(message, 'ErrorNota');
   }
 }
 

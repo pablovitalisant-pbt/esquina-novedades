@@ -1,12 +1,12 @@
 /** Llamadas HTTP compartidas por los dialogos de cobro (A17). */
 
 import type { Cuenta } from '@/types';
+import { ErrorApi } from './api-error';
 
 /** Error HTTP con el mensaje que devolvio el servidor ('' si no traia uno). */
-export class ErrorPago extends Error {
+export class ErrorPago extends ErrorApi {
   constructor(message: string) {
-    super(message);
-    this.name = 'ErrorPago';
+    super(message, 'ErrorPago');
   }
 }
 

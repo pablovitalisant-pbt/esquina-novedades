@@ -16,9 +16,9 @@ Autorizado por Pablo: resolver los puntos 8–13 del listado histórico, con Cla
 
 | Corte | Origen | Contrato | Estado |
 |---|---|---|---|
-| M01 | 8 + parte de 9 | Crear nota rechaza HTTP fallido e ID inválido antes de agregar ítems; eliminar verificarOk y conservar payloads | Implementado, tests y smoke verificados; controles finales en curso |
-| M02 | resto de 9 | Cuentas de caja rechazan HTTP fallido antes de consumir data; eliminar soloSiOk y conservar manejo de error de ambos diálogos | Implementado y smoke verificado; controles finales junto con M03 |
-| M03 | 10 | ErrorApi compartido con subclases ErrorNota/ErrorPago compatibles; conservar instanceof, name y mensajes | Pendiente |
+| M01 | 8 + parte de 9 | Crear nota rechaza HTTP fallido e ID inválido antes de agregar ítems; eliminar verificarOk y conservar payloads | Verificado, 9694bf7 |
+| M02 | resto de 9 | Cuentas de caja rechazan HTTP fallido antes de consumir data; eliminar soloSiOk y conservar manejo de error de ambos diálogos | Verificado, e418a88 |
+| M03 | 10 | ErrorApi compartido con subclases ErrorNota/ErrorPago compatibles; conservar instanceof, name y mensajes | Implementado, pruebas/tipos/lint verdes; smoke final junto con M04/M05 |
 | M04 | 11 | Retirar comentarios de reactivación de Kardex; conservar ruta y ausencia de enlaces | Pendiente |
 | M05 | 12 | Fijar estados de flags en las dos suites de precios y comprobar ramas ON/OFF relevantes | Pendiente |
 | M06 | 13 | Reconciliar BACKLOG histórico, PRD, CLAUDE y traspasos con decisiones y evidencia actuales, sin reescribir el historial | Cerrado en 65b253d |

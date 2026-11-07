@@ -11,14 +11,12 @@ export class ErrorPago extends Error {
 }
 
 /**
- * GET /api/caja/cuentas?activas=true.
- * `soloSiOk` descarta el body de una respuesta no-ok (comportamiento del POS).
+ * GET /api/caja/cuentas?activas=true. Un HTTP no-ok lanza ErrorPago antes de
+ * parsear el body: nunca se expone data de una respuesta fallida.
  */
-export async function cargarCuentasActivas(
-  { soloSiOk = false }: { soloSiOk?: boolean } = {}
-): Promise<Cuenta[]> {
+export async function cargarCuentasActivas(): Promise<Cuenta[]> {
   const res = await fetch('/api/caja/cuentas?activas=true');
-  if (soloSiOk && !res.ok) return [];
+  if (!res.ok) throw new ErrorPago('');
   const data = await res.json();
   return data.data ?? [];
 }

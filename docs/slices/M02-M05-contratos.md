@@ -8,6 +8,8 @@ Autorización delegada vigente de Pablo. Sin funciones nuevas, sin flags nuevos,
 
 Files-to-touch: `lib/api-pagos.ts`, `components/PosCobrarDialog.tsx`, `__tests__/lib/api-pagos.test.ts`; pruebas de diálogos existentes. Revisión lateral: PagarNotaDialog, cuenta predeterminada/manual del POS, montos, vuelto y doble envío. Riesgo asíncrono: no exponer cuentas de una respuesta HTTP fallida. Test rojo con 401/500 que contengan data y JSON que no debe leerse; éxito/red conservados. Smoke de apertura/cobro con API interceptada en TEST; no cobrar en producción.
 
+Evidencia DT M02: 4 rojos y 8 verdes antes del cambio; después api-pagos, pos3-cobrar y notas-venta-pagar-lista pasan 28 pruebas. Smoke navegador M02 verde: un HTTP500 no muestra la cuenta del body ni envía pagos; cancelar/reabrir permite un solo pago simulado de 1000 a cuenta2. API interceptada; sin escrituras reales.
+
 ## M03 — Error compartido compatible
 
 Crear ErrorApi extends Error con mensaje y nombre parametrizable. ErrorNota y ErrorPago siguen exportados como clases distintas que heredan ErrorApi: conservar name, message, instanceof propio y separación entre ambas. Evitar alias que vuelva indistinguibles sus catch.

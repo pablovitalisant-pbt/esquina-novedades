@@ -80,7 +80,7 @@ export function PosCobrarDialog({
 
     (async () => {
       try {
-        const lista = await cargarCuentasActivas({ soloSiOk: true });
+        const lista = await cargarCuentasActivas();
         const prefValida = lista.some(c => c.id === pref) ? pref : 0;
         setCuentas(lista);
         setPredeterminada(prefValida);

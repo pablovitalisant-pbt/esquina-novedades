@@ -32,9 +32,24 @@ describe('cargarCuentasActivas', () => {
     await expect(cargarCuentasActivas()).resolves.toEqual([]);
   });
 
-  it('con soloSiOk descarta el body de una respuesta no-ok', async () => {
-    setFetch(async () => json({ data: [{ id: 9 }] }, 500));
-    await expect(cargarCuentasActivas({ soloSiOk: true })).resolves.toEqual([]);
+  it.each([401, 500])('HTTP %i: lanza ErrorPago sin leer data engañosa', async status => {
+    const jsonMock = jest.fn(async () => ({ data: [{ id: 9 }] }));
+    setFetch(async () => ({ ok: false, status, json: jsonMock }));
+
+    const err = await cargarCuentasActivas().catch(e => e);
+    expect(err).toBeInstanceOf(ErrorPago);
+    expect(jsonMock).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 500])('HTTP %i: lanza ErrorPago aunque el body no sea JSON', async status => {
+    const jsonMock = jest.fn(async () => {
+      throw new SyntaxError('Unexpected token <');
+    });
+    setFetch(async () => ({ ok: false, status, json: jsonMock }));
+
+    const err = await cargarCuentasActivas().catch(e => e);
+    expect(err).toBeInstanceOf(ErrorPago);
+    expect(jsonMock).not.toHaveBeenCalled();
   });
 
   it('propaga el error de red', async () => {

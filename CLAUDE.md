@@ -1,10 +1,10 @@
-> **Al retomar el proyecto: lee primero `docs/TRASPASO-2026-10-28.md`.**
+> **Al retomar: lee `docs/BACKLOG-2026-11-07-MANTENIMIENTO.md`, `docs/BACKLOG-2026-11-06.md` y el último estado de `CONTEXT-CLAUDE-CHAT.md`. El traspaso del 28/10 es histórico.**
 
 # CLAUDE.md — La Esquina de las Novedades
 
 ERP + e-commerce para LA ESQUINA DE LAS NOVEDADES SPA (Iquique, Chile).
-Copia de `bazar-naty` adaptada: CLP, venta mayorista (caja) y detalle (unidad)
-sobre un solo inventario, tienda online con pago Mercado Pago Checkout Pro.
+Copia de `bazar-naty` adaptada: CLP, venta mayorista y detalle por unidad
+sobre un inventario; reserva antes de elegir Mercado Pago, transferencia o efectivo.
 Todo el alcance y las reglas de negocio están en `PRD.md`.
 
 ## Stack
@@ -77,15 +77,15 @@ docs/
 
 ## Reglas específicas del proyecto
 
-- Mayorista = caja completa (`modalidad='caja'`, descuenta `cantcaja` unidades).
-  Detalle = `modalidad='unidad'`. Un solo `saldo` en unidades.
+- Modalidades vigentes: `detalle` y `mayor`, siempre unidades. En notas el vendedor elige; en tienda el servidor aplica `minimo_mayor`. `cantcaja` es solo información de bodega. No reintroducir venta por caja.
+- No hay cupo de cuatro usuarios: un administrador crea cuentas con RUT único según necesidad.
 - Descuento de stock siempre atómico: `UPDATE ... SET saldo = saldo - x WHERE ... AND saldo >= x`.
 - Pedido online reserva stock al crearse; expira a las 36 h (liberación
   perezosa + cron diario). Ver PRD §8.4.
 - Webhook de Mercado Pago: validar `x-signature` (HMAC-SHA256) antes de
   todo, consultar el pago a la API, procesar de forma idempotente.
 - Nunca loguear ni commitear `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` ni
-  `DATABASE_URL`. Usar credenciales de prueba hasta el slice de deploy.
+  `DATABASE_URL`. Producción ya usa credenciales reales; tests y smokes deben usar TEST y proveedor simulado, nunca producir ventas o cobros ficticios en producción.
 - `docs/referencia-bazar-naty/` es solo referencia: sus BUGS describen
   zonas frágiles del código heredado (Señal 1 aplica también a esos archivos).
 
@@ -95,7 +95,7 @@ Antes de escribir JSX, leer `design-skill/SKILL.md` y los módulos que
 apliquen (mínimo `layout.md`, `typography.md`, `colors.md`, `buttons.md`,
 `cards.md`, `shadows.md`, `radius.md`, `borders.md`). Mapear los tokens a la
 config de Tailwind/CSS antes de usarlos. Colores de marca: los de la clienta
-(pendiente recibir).
+(ya incorporados en `lib/empresa.ts` y `public/marca/`).
 
 ## Referencia al PRD
 

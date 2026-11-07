@@ -4,7 +4,7 @@
 
 ERP de ventas, inventario y caja para LA ESQUINA DE LAS NOVEDADES SPA
 (Iquique, Chile), con tienda online donde el cliente arma su pedido y lo
-paga con Mercado Pago en el mismo momento.
+reserva antes de elegir Mercado Pago, transferencia o efectivo.
 
 Origen técnico: copia del repositorio `bazar-naty`
 (https://github.com/pablovitalisant-pbt/bazar-naty), sin su historial de git.
@@ -18,6 +18,8 @@ gana la solución más simple.
 ## 2. Usuarios y roles
 
 Una sola empresa (sin multitenant).
+
+Los usuarios iniciales son una estimación, no un cupo. Administración puede crear más cuentas, con RUT único (confirmado por Pablo y revisión de API/UI el 2026-11-07). La página privada de pagos de la aplicación constituye una excepción al acceso administrativo general: solo Pablo y Paola.
 
 | Rol | Acceso | Usuarios iniciales |
 |---|---|---|
@@ -98,7 +100,7 @@ Stack confirmado por Pablo (2026-10-22), igual a bazar-naty:
 
 ## 7. Escala esperada
 
-4 usuarios internos. Tienda pública con tráfico bajo-medio de clientes de
+Estimación inicial de 4 usuarios internos, sin límite funcional de cuatro. Tienda pública con tráfico bajo-medio de clientes de
 Iquique, Alto Hospicio y Arica.
 
 ## 8. Reglas de negocio confirmadas
@@ -131,13 +133,10 @@ Iquique, Alto Hospicio y Arica.
 - **Notas de venta:** el vendedor elige detalle o mayor en cada línea, con
   cualquier cantidad, y puede cambiarlo; el precio por defecto es el de la
   modalidad y se puede ajustar a mano.
-- **Tienda online y catálogos:** se muestra solo el precio detalle. El servidor
-  aplica el precio mayor ("Descuento especial") cuando la cantidad total del
-  producto llega a `minimo_mayor` (flag `tienda-mayor-online`). El cliente no
-  elige modalidad.
+- **Tienda online y catálogos:** se muestran precio detalle, mayor, mínimo y stock; el comprador puede agregar al detalle o por mayor (N08). La opción mayor alcanza como mínimo las unidades requeridas. El servidor sigue calculando el precio según cantidad total y `minimo_mayor`; la elección visual no evita esa validación.
 
 ### 8.4 Pedido online y pago
-- El cliente paga **al hacer el pedido**.
+- Primero se reserva el pedido y se muestra la confirmación. Mercado Pago se inicia solo al pedirlo; también se puede elegir transferencia o efectivo (N01–N04). Elegir un medio no equivale a recibir el pago. Transferencia muestra datos bancarios y correo; transferencia/efectivo requieren confirmación manual autorizada, con nota y caja idempotentes.
 - Datos obligatorios del pedido: nombre, teléfono, email (Mercado Pago lo
   pide), modalidad de entrega y dirección si es delivery.
 - Todo pedido crea o reutiliza un **cliente registrado** (match por teléfono
@@ -193,9 +192,9 @@ que se necesiten). Iniciales sugeridas: 3 cuentas bancarias, "Caja diaria
 | 6 | ✅ COMPLETADO — Etiqueta de cliente | derivada del historial (vista o query), visible en `/clientes` |
 | 7 | ✅ COMPLETADO — Tienda: carrito con modalidad + entrega + email | reusa `pedidos-publicos` / `carrito-pedidos-ui` |
 | 8 | ✅ COMPLETADO — Reserva de stock + expiración 36 h | §8.4 |
-| 9 | ✅ COMPLETADO (verificado con pago real de prueba 2026-10-23; faltan credenciales de producción) — Mercado Pago: preferencia + redirect + back_urls | credenciales de prueba |
-| 10 | ✅ COMPLETADO (verificado con pago real de prueba 2026-10-23, BUG-005; faltan credenciales de producción) — Webhook firmado + conversión a nota + cobro en caja | idempotente |
-| 11 | Deploy producción | dominio Namecheap → Vercel, credenciales de producción, Señal 3. Desglosado en `docs/BACKLOG.md` |
+| 9 | ✅ COMPLETADO — Mercado Pago: preferencia + redirect + back_urls | Producción validada con pago real el 2026-10-26; creación bajo petición desde N02 |
+| 10 | ✅ COMPLETADO — Webhook firmado + conversión a nota + cobro en caja | Producción, idempotente, BUG-005 |
+| 11 | ✅ COMPLETADO — Deploy producción | Dominio, credenciales reales y go-live el 2026-10-26; mantenimiento posterior desplegado |
 
 ## 10. Riesgos y notas técnicas
 
@@ -224,16 +223,14 @@ genera Neon y mapearla. El driver existente es `@neondatabase/serverless`
 `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`.
 Eliminar `POWERSYNC_*`. Validar al arrancar las requeridas.
 
-### 10.4 Pendientes de la clienta
-- Logo (PNG) y colores. Falta el logo real: los PNG actuales de `public/`
-  (`logo-*.png`) son de Bazar Naty y no se usan; la UI y el PDF de notas
-  muestran un wordmark de texto con `EMPRESA.nombre` hasta recibirlo.
-- Redes (Facebook, Instagram, TikTok "La Esquina de las Novedades"): faltan URLs verificadas; hoy solo texto.
-- Excel de productos (código, nombre, categoría, precio detalle, precio
-  mayorista por caja, unidades por caja, stock, stock mínimo) y fotos
-- Nombres y emails de los 4 usuarios
-- Aplicación en Mercado Pago + credenciales de prueba + clave secreta webhook
-- Confirmar si la boleta electrónica de MP cubre ventas online
+### 10.4 Responsabilidades y pendientes vigentes (2026-11-07)
+- Paola completa manualmente datos de productos y revisa precios, incluido MBC.
+- Redes: en espera de enlaces de Paola; valores vacíos no muestran enlaces.
+- Boleta electrónica: decisión pendiente, fuera del MVP.
+- Logo, colores e iconos oficiales ya incorporados; Mercado Pago productivo y dominio ya operativos.
+- Los administradores crean usuarios según necesidad, sin cupo de cuatro.
+- Conciliación bancaria automática postergada; transferencia operativa con confirmación manual.
+- Fuente vigente de mantenimiento: `docs/BACKLOG-2026-11-07-MANTENIMIENTO.md`. Traspasos fechados son históricos.
 
 ## POS v1
 

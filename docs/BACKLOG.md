@@ -1,12 +1,16 @@
 # BACKLOG — La Esquina de las Novedades
 
+> Conciliación 2026-11-07: mantenimiento histórico en `BACKLOG-2026-11-07-MANTENIMIENTO.md`; N01–N13 cerrados en `BACKLOG-2026-11-06.md`. Las descripciones de octubre son historial, no el estado actual.
+>
+> Decisiones de Pablo: productos y precio MBC a cargo de Paola; redes en espera; boleta pendiente; devolución de prueba recibida. Texto de Mercado Pago informado como correcto, sin bug reproducido abierto. Marca y despliegue completados. Usuarios sin cupo de cuatro.
+
 Actualizado: 2026-10-23 (tarde, modo autónomo; detalle por slice en `AUTO-LOG.md`). Orden = orden de ejecución sugerido. Lo que depende de Paola va al final.
 Fuentes: `PRD.md` (§9 slice 11, §10), `CONTEXT-CLAUDE-CHAT.md`, `docs/TRASPASO-2026-10-23.md`, `BUGS.md`.
 Cada ítem de código se ejecuta como ciclo PBT-IA (o protocolo de debugging si es bug). Estado: ⬜ pendiente · 🟨 en curso · ✅ hecho.
 
 ## Estado general
-MVP funcional completo (slices 0–10) y en producción con credenciales de PRUEBA. Flujo de pago verificado de punta a punta el 2026-10-23.
-Falta el **slice 11 — Deploy producción**, que se descompone abajo.
+MVP funcional completo y en producción con credenciales reales desde el 2026-10-26. Pago real validado (C4); posteriores reservas y medios alternativos en N01–N04.
+El slice 11 quedó completado el 2026-10-26. Las filas siguientes preservan el historial; manda la conciliación de estado del 2026-11-07.
 
 ---
 
@@ -38,7 +42,7 @@ Ver `docs/TRASPASO-2026-10-28.md` §0: `cantcaja` DEFAULT 1 + `precio_mayor` car
 | A17 | Ponytail 2026-10-30 #2 — `lib/api-pagos.ts` | `GET /api/caja/cuentas?activas=true` y `POST .../pagar` duplicados entre `PagarNotaDialog` y `PosCobrarDialog`. Unificar **llamadas**, no fusionar diálogos (el POS tiene vuelto/parcial) | Helpers compartidos usados por ambos; tests de ambos diálogos verdes | ✅ 2026-10-31 |
 | A18 | Ponytail 2026-10-30 #5 — `lib/api-notas.ts` | Crear nota + alta de ítem duplicadas entre el POS y `AgregarANotaVentaModal`. Helpers `crearNota(clienteId?)` + `agregarItem(notaId, producto, extra)` | Ambos flujos usan los helpers; tests verdes | ✅ 2026-10-31 |
 | A19 | Ponytail 2026-10-31 #4 — helper `mockFlags` | 45 suites mockean `@/config/feature-flags.json` con un objeto literal completo; un flag nuevo deja la suite en `undefined` y puede pasar por la rama equivocada. Propuesta: `mockFlags(overrides)` con spread del JSON real, migrando por tandas POS/tienda | Helper en `__tests__/helpers/` usado por las suites migradas; suite verde | ✅ 2026-10-31 |
-| A14 | Completar datos de productos | Stock inicial, costo (precio de compra: lo usan precio de catálogo e inversión en mercadería), categoría, stock mínimo y fotos (Cloudinary). Sin stock no aparecen en la tienda | Datos completos para los 68 productos | ⬜ |
+| A14 | Datos de productos | Paola completa stock, costo, categoría, stock mínimo y fotos manualmente | Responsabilidad operativa de Paola, confirmada 2026-11-07 | A cargo de Paola |
 
 ## Bloque B — Infraestructura (no depende de Paola, sí de accesos)
 
@@ -51,9 +55,9 @@ Ver `docs/TRASPASO-2026-10-28.md` §0: `cantcaja` DEFAULT 1 + `precio_mayor` car
 
 | # | Ítem | Qué falta de Paola | Criterio de hecho | Estado |
 |---|------|--------------------|-------------------|--------|
-| C1 | Rebranding final | Logo (PNG), colores, URLs de Facebook/Instagram/TikTok | Logo real en UI y PDF de notas (hoy wordmark de texto); tokens de color; redes enlazadas | 🟨 preparado: reemplazar `public/marca/*` y valores en `lib/empresa.ts` |
-| C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | 🟨 2026-10-26: 68 productos importados desde "VENTAS AL DETALLE.xlsx" (Hoja2): código, nombre, precio detalle y precio mayor POR UNIDAD (64; 4 venían en | C2 | Carga de productos reales | Excel (código, nombre, categoría, precio detalle, precio mayorista por caja, unidades por caja, stock, stock mínimo) + fotos | Productos importados; `CLOUDINARY_*` en Vercel; fotos visibles | ⬜ |). 7 no importados (marcados en rojo en OneDrive). Faltan: stock, costo, categoría, stock mínimo, fotos |
-| C3 | Usuarios | Nombres y emails de los 4 usuarios (2 Administración, 2 Ventas) | Usuarios creados; Paola entra con el suyo | ⬜ |
+| C1 | Marca y redes | Logo, colores, PDF e iconos oficiales incorporados (AUTO-LOG 29/10 y 31/10). Redes esperan enlaces de Paola | Marca cerrada; redes en espera | Parcial operativo |
+| C2 | Carga de productos reales | Importación histórica completada; Paola continúa completando datos y fotos manualmente | Mismo trabajo operativo que A14, sin duplicar desarrollo | A cargo de Paola |
+| C3 | Usuarios | Administración crea las cuentas que se necesiten, RUT único; cuatro era estimación inicial | Sin cupo de cuatro, verificado API/UI y confirmado 2026-11-07 | Cerrado como requisito de desarrollo |
 | C4 | Mercado Pago producción | Su propia app de MP (trabada en la verificación de su celular) y luego "Solicitar acceso a las credenciales" para Pablo | `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` de **la misma app, Modo productivo**; URL del webhook en Modo productivo; redeploy; **pago real de bajo monto** procesado (único criterio válido, ver BUG-005). Revisar ahí el texto de MP "te llevaremos a ." | ✅ 2026-10-26: app "La Esquina de las Novedades - Tienda" (8021659669573211) en la cuenta de La Esquina; webhook Modo productivo; pago real $2.490 (op. 185184493641) convertido con nota y cobro |
 | C5 | Boleta electrónica | Confirmar si la boleta de MP cubre las ventas online | Respuesta documentada (fuera del MVP) | ⬜ |
 | C6 | Go-live | Todo lo anterior | Borrar datos de prueba en prod (3 pedidos de prueba, sus notas de venta y cobros en caja, productos `DEMO-*`), revisión final de la Señal 3 | ✅ 2026-10-26: ejecutado en producción (4 pedidos, 5 notas, 4 cobros, 2 clientes, 5 productos DEMO); respaldo previo en ~/.pbt-runner/respaldo-golive-2026-10-26.json. Se conservan usuarios, cuentas de caja, opciones de entrega y el catálogo NAVIDAD |

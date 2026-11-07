@@ -9,3 +9,4 @@ Claude-Deep revisó el paralelismo de lecturas, el debounce de precios, la carga
 - La revisión de carga inicial identificó una segunda petición del navegador. La página y la API comparten ahora el lector de detalle. La sesión y el rol se comprueban antes de leer los datos.
 - Los datos iniciales solo se consumen si el ID coincide con la URL. Ausencia o error de lectura conserva la consulta de respaldo. La tabla se habilita después de hidratar para evitar perder el primer clic.
 - Se conservaron las dos tareas cron al configurar la región `gru1`. Se confirmó la región mediante el encabezado HTTP de producción.
+- La comprobación posterior en navegador interno identificó BUG-009, saludo distinto durante SSR e hidratación. Su prueba roja y la hidratación real verde aislaron la causa. Tras publicar la corrección se verificaron recargas y navegaciones sin errores React #418 ni de inserción de contenido.

@@ -56,3 +56,19 @@ El smoke de la nueva carga verifica cero GET iniciales del navegador al detalle,
 La primera tanda de producción con datos iniciales midió 1522, 1635, 1262, 1175 y 1476 ms hasta el título real, mediana 1476 ms. El HTML directo confirmó los datos iniciales. Esta tanda no demuestra reducción de latencia visible frente a los 1439 ms anteriores.
 
 El siguiente corte cambia Abrir de navegación imperativa a `Link` con prefetch automático de Next y la frontera `loading.tsx` existente. Esto permite preparar la estructura de navegación de las notas visibles. Se mantiene el prefetch parcial predeterminado de rutas dinámicas. Fuente de comportamiento de Next, https://nextjs.org/docs/app/getting-started/linking-and-navigating .
+
+## Cierre verificado — 2026-11-07
+
+El navegador interno reprodujo React #418 en recargas, junto con un fallo de inserción de contenido por `parentNode` nulo. Se aisló el saludo de TopNav, que se calculaba durante el render con una hora local distinta en servidor y navegador. BUG-009 registra la causa y la corrección. La regresión compara HTML con las horas 12/09 para un mismo instante y ejecuta hidratación real con cero errores recuperables.
+
+Después del despliegue de BUG-009 se comprobó en producción, con sesión autorizada y una misma nota con productos.
+
+| Flujo en navegador interno | Muestras en ms | Mediana |
+|---|---|---:|
+| Nota completa antes de BUG-009 | 1162, 731, 666 | 731 ms |
+| Nota completa después de BUG-009 | 748, 533, 427, 563, 479 | 533 ms |
+| Búsqueda de precios después de BUG-009 | 464, 424, 405 | 424 ms |
+
+No hubo nuevos errores de hidratación ni de inserción de contenido durante las recargas y navegaciones de comprobación. El primer clic en Editar habilitó el control de unidades. Se regresó al listado sin guardar cambios en producción.
+
+Estas muestras corresponden a la sesión y al dispositivo de prueba. Los 1,4 segundos medidos antes en Chrome incluyen otra vía de automatización y no se usan como base para calcular una mejora porcentual.

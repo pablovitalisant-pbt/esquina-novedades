@@ -174,6 +174,60 @@ describe('PrenotaDetallePage', () => {
     });
   });
 
+  // ─── N13: datos iniciales del servidor ─────────────────────────────
+  test('[N13] initialData con id coincidente pinta título/items sin GET', () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as any);
+    const nota = {
+      titulo: 'Nota de Venta #1 — INICIAL',
+      nombre_cliente: null,
+      cliente_nombre: null,
+      total_pagado: 0,
+      saldo_pendiente: 100,
+      items: [{
+        id: 'i-1', codigo: 'ITEM-INICIAL', descripcion: 'Sintético', imagen_url: null,
+        modalidad: 'detalle', unidades: 1, precio: 100, subtotal: 100,
+      }],
+    };
+
+    render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} initialData={{ id: '1', nota }} />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Nota de Venta #1 — INICIAL');
+    expect(screen.getAllByText('ITEM-INICIAL').length).toBeGreaterThan(0);
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/notas-venta/1');
+  });
+
+  test('[N13] initialData de otra nota se ignora y consulta la URL real', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        titulo: 'Nota de Venta #1 — SERVIDOR',
+        nombre_cliente: null,
+        cliente_nombre: null,
+        total_pagado: 0,
+        saldo_pendiente: 0,
+        items: [],
+      }),
+    } as any);
+    const notaAjena = {
+      titulo: 'Nota de Venta #999 — OBSOLETA',
+      nombre_cliente: null,
+      cliente_nombre: null,
+      total_pagado: 0,
+      saldo_pendiente: 0,
+      items: [],
+    };
+
+    render(<PrenotaDetallePage session={{ user: { rol: 'vendedor' } }} params={{ id: '1' }} initialData={{ id: '999', nota: notaAjena }} />);
+
+    expect(screen.queryByText(/999/)).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Nota de Venta #1 — SERVIDOR');
+    });
+    expect(screen.queryByText(/999/)).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith('/api/notas-venta/1');
+  });
+
   // ─── Test 5: Regresión — detalle sigue pudiendo pagar ──────────────
   test('[REGRESION] detalle puede abrir diálogo de pago y confirmar', async () => {
     global.fetch = jest.fn().mockImplementation(async (url: string, opts?: RequestInit) => {

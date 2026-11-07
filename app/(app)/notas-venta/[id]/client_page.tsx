@@ -338,7 +338,7 @@ function PrenotaItemsTable({
   );
 }
 
-export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: string } }) {
+export function PrenotaDetallePage({ initialData }: { session: SessionProp; params?: { id: string }; initialData?: { id: string; nota: unknown } }) {
   const router = useRouter();
   // El id se lee de la URL real (useParams), no del prop `params` horneado en el
   // HTML: el service worker puede servir el shell cacheado de OTRA nota para esta
@@ -348,6 +348,10 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   const id = useParams().id as string;
 
 
+  // SSR y primer render del cliente arrancan igual (skeleton): la tabla con
+  // controles interactivos no existe antes de hidratar, así el primer click
+  // (Editar) no se pierde. Los datos del server se consumen en el efecto de
+  // abajo solo si el id coincide con la URL.
   const [prenota, setPrenota] = useState<PrenotaDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportandoPdf, setExportandoPdf] = useState(false);
@@ -396,6 +400,12 @@ export function PrenotaDetallePage({}: { session: SessionProp; params?: { id: st
   };
 
   useEffect(() => {
+    const dato = initialData && initialData.id === id ? (initialData.nota as PrenotaDetalle) : null;
+    if (dato) {
+      setPrenota(dato);
+      setLoading(false);
+      return;
+    }
     fetchPrenota();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

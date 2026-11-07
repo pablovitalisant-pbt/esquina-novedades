@@ -38,3 +38,17 @@ Como contraste de solo lectura, las mismas cinco consultas ejecutadas desde el e
 Después del cambio, el harness local con PostgreSQL TEST midió el GET de detalle en 280 ms de mediana, frente a 441 ms de la línea base. Pasaron los smokes de edición de unidades, exportación real de PDF, paginación e inventario. El PDF generado conserva dirección, teléfono, modalidad y totales.
 
 La revisión ampliada de consumidores de la página y API de detalle pasó con 31 suites y 367 pruebas. TypeScript, lint y build pasaron. El build reporta que el detalle de nota baja de 147 kB a 9,41 kB de ruta y de 308 kB a 171 kB de JavaScript de primera carga. Las librerías PDF siguen disponibles al exportar.
+
+## Región y viaje inicial de la nota
+
+Producción devolvía `X-Vercel-Id: gru1::iad1` y una respuesta 401 sin consulta DB tardó 579–768 ms. Se configuró `regions: ["gru1"]` en `vercel.json`, conservando ambos crons. El despliegue confirmó `gru1::gru1`. Cuatro respuestas 401 posteriores tardaron 544, 461, 482 y 340 ms.
+
+La medición visible de notas varió entre tandas y no acreditó una mejora con los tres primeros cortes. Se identificó además la navegación RSC seguida de un GET inicial desde el cliente. El siguiente contrato elimina ese GET mediante lectura en servidor y datos iniciales, reutilizando la misma función para la API.
+
+Se conserva el ID de la URL como fuente de verdad. Si falta el dato inicial, no coincide con la URL o falla la lectura en servidor, el cliente consulta como antes. Los datos de la nota se activan tras hidratar para evitar mostrar botones sin eventos conectados. Las mutaciones conservan su recarga y el estado de edición de BUG-008. Se agrega un estado de carga de ruta accesible.
+
+El cambio se divide en lector reutilizable, integración API, consumo en cliente e integración de página y estado de carga. Cada corte tiene un alcance inferior a 200 líneas. La auditoría está en `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`.
+
+Se corrigió el criterio de la medición visible. El botón PDF existe antes de cargar datos y puede quedar deshabilitado en notas vacías, por lo que su presencia no acredita que la nota esté lista. Antes de publicar los datos iniciales se midió desde Abrir hasta que el encabezado contiene el título real de la nota seleccionada. Con la región São Paulo activa y el doble viaje aún presente se obtuvieron 1483, 1303 y 1439 ms, mediana 1439 ms.
+
+El smoke de la nueva carga verifica cero GET iniciales del navegador al detalle, el primer clic de edición, la persistencia de seis unidades al cambiar modalidad y la exportación real de PDF. Pasó tras corregir que la tabla solo se habilite después de hidratar.

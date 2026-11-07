@@ -114,3 +114,7 @@ Estado completo en el Project de claude.ai: claude/estado-proyecto-2026-10-30.md
 
 Estado de los cambios y secuencia de activación en `docs/BACKLOG-2026-11-06.md`. Rama de trabajo `codex/backlog-2026-11-06`. Última auditoría en `docs/audits/ponytail-audit-2026-11-06-pagos-app.md`. Después de esa revisión se cerraron dos cortes, el CLI con validación de entrada y el ajuste de estructura y acceso de la página privada.
 
+## Rendimiento — 2026-11-07
+
+La auditoría vigente es `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`. Contador de cortes desde la revisión final de rendimiento, 0. La evidencia de medición y las decisiones de debounce, consultas paralelas, PDF diferido, región y datos iniciales están en `docs/slices/N13-medicion.md`. Continúa vigente la restricción de BUG-008 sobre recarga silenciosa y preservación de unidades editadas.
+

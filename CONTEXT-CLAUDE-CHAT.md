@@ -128,5 +128,7 @@ Posterior M08: logos internos de escritorio/móvil abren POS según rutaInicio p
 
 Posterior BUG-013: auditoría vigente `docs/audits/ponytail-audit-2026-11-07-tienda-botones.md`; contador, 2 (V01/V02) desde esa revisión. Acciones de compra separadas: detalle con su precio y solo mayor debajo del mínimo; CTA ajustan texto en móviles estrechos. DT verificó 45 pruebas, 2 smokes TEST, geometría320/390 claro/oscuro y tipos/lint verdes. Contrato `docs/slices/BUG013-botones-compra-movil.md`. Mantener gate, mínimos, server-side pricing y ocultación por stock/precios.
 
+Posterior BUG-014: panel de POS prioriza el detalle conservando ancho380px. A1280x720 muestra3 filas completas y lista56% (antes1 y39%); a1366x768 lista60%. Cabecera/acciones desktop compactas, nombres completos, scroll interno y controles móviles48px. Seis smokes visuales verdes con APIs interceptadas localmente, ninguna venta/cobro ficticio en producción. Contrato `docs/slices/BUG014-pos-detalle-legible.md`. Contador vigente3 desde auditoría de tienda; preservar lógica de cantidades/modalidad, precio server-side, HTTP/ID de crearNota y estado por usuario.
+
 Historial previo al mantenimiento: auditoría `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`, entonces 3 cortes (enlaces, BUG-009 y BUG-010). Medición y decisiones en `docs/slices/N13-medicion.md`. Siguen vigentes BUG-008 (recarga silenciosa y unidades), BUG-009 (saludo inicial estable) y BUG-010 (avisos visibles y foco en checkout móvil).
 

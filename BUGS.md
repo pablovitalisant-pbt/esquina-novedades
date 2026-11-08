@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-014 — El cobro ocupaba el espacio del detalle en POS (2026-11-07)
+
+- Causa medida: panel calculaba máximo de alto sin contemplar inicio real en y=160; cabecera y acciones apiladas consumían la mayor parte. A1280x720 lista229px (39%), una fila completa, Guardar parcialmente recortado; descripción de producto truncada.
+- Fix visual de47 líneas: alto disponible explícito, cabecera compacta con cliente completo, cobro/impresión en fila desktop de48px, filas compactas con código/precio juntos y nombre que envuelve; controles móviles mantienen48px y pueden envolver. Sin cambios de lógica, DB, flags ni AppShell global.
+- DT verificó rojo previo y revisó capturas con8 productos. Seis escenarios verdes:1280x720/1366x768 desktop,320x700/390x844 móvil y ambos temas. Lista final285px (56%) y333px (60%), tres filas completas, sin nombres truncados, controles superpuestos ni overflow horizontal; último producto accesible y acciones visibles.
+- Contrato, alcance y comandos: `docs/slices/BUG014-pos-detalle-legible.md`. Preservar BUG-007/BUG-011 y estado de nota por usuario; no generar ventas/cobros ficticios en producción.
+
 ## BUG-013 — Botones detalle/mayor superpuestos en tarjetas móviles (2026-11-07)
 
 - Causa: dos columnas dentro de tarjetas de 150px y texto sin ajuste; ambas acciones agrupadas bajo el mínimo mayorista.

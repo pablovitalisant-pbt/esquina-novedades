@@ -471,18 +471,18 @@ export function PosPage({ session }: { session: SessionProp }) {
         key={item.id}
         data-testid={`pos-linea-${item.codigo}`}
         onClick={() => setSelected(item.id)}
-        className={`flex flex-col gap-2 lg:gap-1 border-b border-[var(--border)] py-2 last:border-b-0 ${
+        className={`flex flex-col gap-2 lg:gap-0 border-b border-[var(--border)] py-2 lg:py-0.5 last:border-b-0 ${
           selected === item.id ? 'bg-[var(--primary)]/10' : ''
         }`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-sm leading-tight break-words">{item.descripcion ?? item.codigo}</p>
-            <p className="text-xs text-[var(--body-subtle)]">
+            <p className="font-bold text-sm leading-tight break-words lg:text-[13px]">{item.descripcion ?? item.codigo}</p>
+            <p className="text-xs leading-tight text-[var(--body-subtle)]">
               {item.codigo} · {formatCLP(Number(item.precio))} / unidad
             </p>
           </div>
-          <p className="font-extrabold text-[var(--heading)] whitespace-nowrap">{formatCLP(Number(item.subtotal))}</p>
+          <p className="font-extrabold text-[var(--heading)] whitespace-nowrap text-sm leading-tight">{formatCLP(Number(item.subtotal))}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -491,11 +491,11 @@ export function PosPage({ session }: { session: SessionProp }) {
             aria-label={`Quitar una unidad de ${item.descripcion ?? item.codigo}`}
             disabled={busy || Number(item.unidades) <= 1}
             onClick={(e) => { e.stopPropagation(); cambiarCantidad(item, -1); }}
-            className="h-12 w-12 shrink-0 lg:h-10 lg:w-10"
+            className="h-12 w-12 shrink-0 lg:h-6 lg:w-6"
           >
-            <Minus className="w-5 h-5" />
+            <Minus className="w-5 h-5 lg:w-3 lg:h-3" />
           </Button>
-          <span className="min-w-10 text-center text-xl font-extrabold" data-testid={`pos-cantidad-${item.codigo}`}>
+          <span className="min-w-10 text-center text-xl font-extrabold lg:min-w-6 lg:text-sm" data-testid={`pos-cantidad-${item.codigo}`}>
             {Number(item.unidades)}
           </span>
           <Button
@@ -504,15 +504,15 @@ export function PosPage({ session }: { session: SessionProp }) {
             aria-label={`Agregar una unidad de ${item.descripcion ?? item.codigo}`}
             disabled={busy}
             onClick={(e) => { e.stopPropagation(); cambiarCantidad(item, 1); }}
-            className="h-12 w-12 shrink-0 lg:h-10 lg:w-10"
+            className="h-12 w-12 shrink-0 lg:h-6 lg:w-6"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5 lg:w-3 lg:h-3" />
           </Button>
           <button
             type="button"
             disabled={busy || (!mayor && !tienePrecioMayor(item.codigo))}
             onClick={(e) => { e.stopPropagation(); alternarModalidad(item); }}
-            className={`ml-auto h-12 rounded-full border px-3 text-xs font-bold tracking-wide disabled:opacity-40 lg:h-10 ${
+            className={`ml-auto h-12 rounded-full border px-3 text-xs font-bold tracking-wide disabled:opacity-40 lg:h-6 lg:px-2 lg:text-[10px] ${
               mayor
                 ? 'bg-[var(--primary)] text-primary-foreground border-transparent'
                 : 'border-[var(--border)] text-[var(--body)]'
@@ -527,9 +527,9 @@ export function PosPage({ session }: { session: SessionProp }) {
             aria-label={`Quitar ${item.descripcion ?? item.codigo}`}
             disabled={busy}
             onClick={(e) => { e.stopPropagation(); quitar(item); }}
-            className="h-12 w-12 shrink-0 text-[var(--destructive)] lg:h-10 lg:w-10"
+            className="h-12 w-12 shrink-0 text-[var(--destructive)] lg:h-6 lg:w-6"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-5 h-5 lg:w-3 lg:h-3" />
           </Button>
         </div>
       </li>
@@ -537,7 +537,7 @@ export function PosPage({ session }: { session: SessionProp }) {
   };
 
   const panelNota = (
-    <div className="flex flex-col gap-3 lg:gap-2 h-full min-h-0">
+    <div className="flex flex-col gap-3 lg:gap-1 h-full min-h-0">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="w-full min-w-0 flex flex-wrap items-baseline gap-x-2">
           <p className="text-xs uppercase tracking-wide text-[var(--body-subtle)]">Cliente</p>
@@ -571,17 +571,17 @@ export function PosPage({ session }: { session: SessionProp }) {
         </ul>
       )}
 
-      <div className="mt-auto border-t border-[var(--border)] pt-3">
+      <div className="mt-auto border-t border-[var(--border)] pt-1">
         <div className="flex items-end justify-between gap-2">
           <span className="text-sm font-medium text-[var(--body)]">Total</span>
           <span className="text-3xl font-black tracking-tight text-[var(--heading)] lg:text-2xl" data-testid="pos-total">
             {formatCLP(total)}
           </span>
         </div>
-        <div className="mt-2 flex flex-col gap-2 lg:flex-row">
+        <div className="mt-1 flex flex-col gap-2 lg:flex-row">
           <Button
             variant="brand"
-            className="h-16 text-2xl font-black lg:h-12 lg:flex-1 lg:px-3 lg:text-xl"
+            className="font-black hover:scale-100 lg:flex-1"
             disabled={!notaId || items.length === 0 || busy}
             onClick={cobrar}
           >
@@ -589,16 +589,19 @@ export function PosPage({ session }: { session: SessionProp }) {
           </Button>
           <Button
             variant="outline"
-            className="h-14 text-lg font-bold lg:h-12 lg:px-3 lg:text-sm"
+            className="font-bold"
             disabled={!notaId}
             onClick={imprimir}
           >
             <Printer className="w-5 h-5 mr-2" /> Guardar / Imprimir
           </Button>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-center text-[var(--body-subtle)]">
-          Enter agrega · +/− cantidad · F2 MENOR/MAYOR · F4 cliente · Supr quita · F9 cobrar · Esc limpiar
-        </p>
+        <details className="mt-0.5 text-[11px] leading-tight text-[var(--body-subtle)]">
+          <summary className="cursor-pointer text-center">Atajos de teclado</summary>
+          <p className="mt-1 text-center leading-relaxed">
+            Enter agrega · +/− cantidad · F2 MENOR/MAYOR · F4 cliente · Supr quita · F9 cobrar · Esc limpiar
+          </p>
+        </details>
       </div>
     </div>
   );
@@ -693,7 +696,7 @@ export function PosPage({ session }: { session: SessionProp }) {
       </div>
 
       {/* ─── Derecha: nota (desktop/tablet) ─── */}
-      <aside className="hidden lg:flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-card p-4 lg:sticky lg:top-20 lg:h-[calc(100dvh-11rem)] lg:overflow-hidden">
+      <aside className="hidden lg:flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-card p-3 lg:sticky lg:top-20 lg:h-[calc(100dvh-11rem)] lg:overflow-hidden">
         {panelNota}
       </aside>
 
@@ -703,7 +706,7 @@ export function PosPage({ session }: { session: SessionProp }) {
           type="button"
           data-testid="pos-barra-movil"
           onClick={() => setSheetOpen(true)}
-          className="w-full h-16 rounded-full bg-[var(--primary)] text-primary-foreground font-black text-lg px-6 flex items-center justify-between gap-2"
+          className="w-full h-12 rounded-full bg-[var(--primary)] text-primary-foreground font-black text-base px-6 flex items-center justify-between gap-2"
         >
           <span>{formatItems(items.reduce((s, i) => s + Number(i.unidades), 0))}</span>
           <span>{formatCLP(total)}</span>

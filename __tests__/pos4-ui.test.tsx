@@ -1,9 +1,11 @@
 /**
  * @jest-environment jsdom
  *
- * Fase B — pos4: ajustes de UI del QA (1366x800) y móvil (375x812).
- * COBRAR con scroll interno y CONFIRMAR sticky; pantalla "Cobro registrado"
- * sin desborde; barra fija móvil sin tapar el último producto.
+ * Fase B — 2026-11-10: POS compacto.
+ * Las dos acciones del panel (COBRAR y Guardar/Imprimir) usan Button normal
+ * (h-8 = 32 px) en escritorio y en la venta móvil; el resto de controles
+ * conserva su tamaño táctil y la barra inferior se compacta sin perder
+ * cantidad ni total. El diálogo de pago conserva sus acciones y tamaños.
  */
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { PosCobrarDialog } from '@/components/PosCobrarDialog';
@@ -29,6 +31,8 @@ jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mock
 
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body });
 const CUENTAS = [{ id: 1, nombre: 'Caja', activa: true, orden: 1 }];
+// Los tamaños (32 px de acciones, barra compacta) los mide el smoke de
+// Playwright con geometría real; aquí solo se fija el contrato semántico.
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -93,7 +97,7 @@ describe('pos4 — diálogo COBRAR', () => {
   });
 });
 
-describe('pos4 — móvil', () => {
+describe('2026-11-10 — panel POS compacto', () => {
   const productos = Array.from({ length: 4 }, (_, i) => ({
     codigo: `P${i + 1}`,
     detalle: `Producto ${i + 1}`,
@@ -104,39 +108,71 @@ describe('pos4 — móvil', () => {
     saldo: 10,
     categoria: 'Juguete',
   }));
+  const NOTA = {
+    id: 42,
+    items: [
+      { id: 'it-1', codigo: 'P1', descripcion: 'Cubo Rubik 3x3', modalidad: 'detalle', unidades: 2, precio: 1000, subtotal: 2000 },
+      { id: 'it-2', codigo: 'P2', descripcion: 'Muñeca articulada', modalidad: 'mayor', unidades: 1, precio: 3000, subtotal: 3000 },
+    ],
+    saldo_pendiente: 5000,
+  };
 
   beforeEach(() => {
+    localStorage.setItem('pos-nota-id:7', '42');
     global.fetch = jest.fn(async (url: string) => {
       if (url.startsWith('/api/productos?search=')) return json({ data: productos });
-      if (url === '/api/categorias') return json([{ nombre: 'Juguete' }]);
+      if (url === '/api/categorias') return json([]);
+      if (url === '/api/notas-venta/42') return json(NOTA);
       return json({ error: 'no mockeado' }, 500);
     }) as any;
   });
 
-  it('la grilla deja padding inferior para la barra fija', async () => {
-    render(<PosPage session={{ user: { id: '7', rol: 'vendedor' } }} />);
-    await waitFor(() => expect(screen.getByTestId('pos-producto-P1')).toBeTruthy());
-    expect(screen.getByTestId('pos-barra-movil').textContent).toContain('COBRAR');
+  const montar = () => render(<PosPage session={{ user: { id: '7', rol: 'vendedor' } }} />);
 
-    const grilla = screen.getByTestId('pos-producto-P1').parentElement!;
-    expect(grilla.parentElement?.className).toContain('pb-40');
+  it('escritorio: acciones presentes y línea con nombre, código, precio, cantidad, subtotal y modalidad', async () => {
+    montar();
+    await screen.findByTestId('pos-linea-P1');
+    const aside = document.querySelector('aside') as HTMLElement;
+    expect(aside).toBeTruthy();
+
+    expect(within(aside).getByRole('button', { name: /COBRAR/ })).toBeTruthy();
+    expect(within(aside).getByRole('button', { name: /Guardar \/ Imprimir/ })).toBeTruthy();
+
+    const linea = within(aside).getByTestId('pos-linea-P1');
+    expect(within(linea).getByText('Cubo Rubik 3x3')).toBeTruthy();
+    expect(within(linea).getByText(/P1 · \$1\.000 \/ unidad/)).toBeTruthy();
+    expect(within(linea).getByTestId('pos-cantidad-P1').textContent).toBe('2');
+    expect(within(linea).getByText('$2.000')).toBeTruthy();
+    expect(within(linea).getByRole('button', { name: 'Alternar precio por menor o por mayor' })).toBeTruthy();
   });
 
-  it('el Sheet de la nota abre con botones de al menos 48px', async () => {
-    render(<PosPage session={{ user: { id: '7', rol: 'vendedor' } }} />);
-    await waitFor(() => expect(screen.getByTestId('pos-barra-movil')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('pos-barra-movil'));
+  it('móvil: la barra inferior conserva cantidad y total, y la venta mantiene sus controles', async () => {
+    montar();
+    await screen.findByTestId('pos-linea-P1');
+    const barra = screen.getByTestId('pos-barra-movil');
+    expect(barra.textContent).toContain('3 ítems');
+    expect(barra.textContent).toContain('$5.000');
+    expect(barra).toHaveTextContent('COBRAR');
 
-    const sheet = await screen.findByText('Venta en curso');
-    const panel = sheet.closest('[data-slot="sheet-content"]') as HTMLElement;
+    fireEvent.click(barra);
+    const titulo = await screen.findByText('Venta en curso');
+    const panel = titulo.closest('[data-slot="sheet-content"]') as HTMLElement;
     expect(panel).toBeTruthy();
-    const botones = Array.from(panel.querySelectorAll('button'))
-      .filter(b => !b.className.includes('absolute'));
-    expect(botones.length).toBeGreaterThan(0);
-    for (const b of botones) {
-      expect(b.className).toMatch(/\bh-(1[2-9]|[2-9]\d)\b/);
-    }
-    // El botón COBRAR del panel es grande y sigue presente dentro del Sheet.
-    expect(within(panel).getByText('COBRAR')).toBeTruthy();
+
+    expect(within(panel).getByRole('button', { name: /COBRAR/ })).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: /Guardar \/ Imprimir/ })).toBeTruthy();
+    const linea = within(panel).getByTestId('pos-linea-P1');
+    expect(within(linea).getByText('Cubo Rubik 3x3')).toBeTruthy();
+    expect(within(linea).getByTestId('pos-cantidad-P1').textContent).toBe('2');
+    expect(within(linea).getByRole('button', { name: 'Quitar una unidad de Cubo Rubik 3x3' })).toBeTruthy();
+    expect(within(linea).getByRole('button', { name: 'Agregar una unidad de Cubo Rubik 3x3' })).toBeTruthy();
+    expect(within(linea).getByRole('button', { name: 'Quitar Cubo Rubik 3x3' })).toBeTruthy();
+  });
+
+  it('la grilla reserva espacio inferior para la barra fija', async () => {
+    montar();
+    await waitFor(() => expect(screen.getByTestId('pos-producto-P1')).toBeTruthy());
+    const grilla = screen.getByTestId('pos-producto-P1').parentElement!;
+    expect(grilla.parentElement?.className).toMatch(/\bpb-\d/);
   });
 });

@@ -413,15 +413,22 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
+    // Flag apagado: un solo fragmento y sin mencionar archivado_en (seguro pre-migración).
+    const archivar = flags['pedidos-archivar-expirados'] === true;
+    const filtro = archivar
+      ? sql`WHERE ${estado ? sql`p.estado = ${estado}` : sql`TRUE`}
+          AND NOT (p.archivado_en IS NOT NULL AND p.estado = 'expirado' AND COALESCE(p.mp_revision_motivo, '') = '')`
+      : estado ? sql`WHERE p.estado = ${estado}` : sql``;
 
     const pedidos = (await sql`
       SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
              p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
+             p.stock_reservado,
              p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
              c.nombre, c.telefono
       FROM public.pedidos p
       LEFT JOIN public.clientes c ON c.id = p.cliente_id
-      ${estado ? sql`WHERE p.estado = ${estado}` : sql``}
+      ${filtro}
       ORDER BY p.created_at DESC
     `) as PedidoLista[];
 
@@ -478,6 +485,7 @@ export async function GET(request: NextRequest) {
         entrega_costo: p.entrega_costo,
         direccion_entrega: p.direccion_entrega,
         total: p.total,
+        stock_reservado: p.stock_reservado ?? null,
         created_at: p.created_at,
         mp_payment_id: p.mp_payment_id ?? null,
         mp_fecha_pago: p.mp_fecha_pago ?? null,

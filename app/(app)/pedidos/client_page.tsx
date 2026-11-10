@@ -33,6 +33,7 @@ interface Pedido {
   mp_payment_id?: string | null;
   mp_fecha_pago?: string | null;
   mp_revision_motivo?: string | null;
+  stock_reservado?: boolean | null;
   // N04d1: solo presentes para admin con el flag pedido-cobro-manual activo.
   metodo_pago?: string | null;
   caja_movimiento_id?: number | null;
@@ -99,6 +100,8 @@ export function PedidosPage({ session }: { session: SessionProp }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [convirtiendo, setConvirtiendo] = useState<string | null>(null);
+  const [archivando, setArchivando] = useState<string | null>(null);
+  const archivarHabilitado = flags['pedidos-archivar-expirados'] === true;
   const [soloRevision, setSoloRevision] = useState(false);
   const visibles = soloRevision
     ? pedidos.filter((p) => p.estado === 'revision' || p.estado === 'pagado_tardio' || p.mp_revision_motivo)
@@ -146,6 +149,31 @@ export function PedidosPage({ session }: { session: SessionProp }) {
       setPedidos((prev) => prev.map((p) => (p.id === id ? { ...p, estado: 'descartado' } : p)));
     } catch {
       toast.error('Error de red');
+    }
+  }
+
+  async function archivar(id: string) {
+    if (archivando) return; // guard contra doble envío
+    if (!window.confirm('¿Archivar este pedido expirado?')) return;
+    setArchivando(id);
+    try {
+      const res = await fetch(`/api/pedidos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'archivar' }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(body?.error ?? 'No se pudo archivar el pedido');
+        return;
+      }
+      toast.success('Pedido archivado');
+      setPedidos((prev) => prev.filter((p) => p.id !== id));
+      await cargar();
+    } catch {
+      toast.error('Error de red');
+    } finally {
+      setArchivando(null);
     }
   }
 
@@ -291,6 +319,13 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                           cargar();
                         }}
                       />
+                    </div>
+                  )}
+                  {archivarHabilitado && p.estado === 'expirado' && p.stock_reservado !== true && !p.mp_revision_motivo && (
+                    <div className="self-end">
+                      <Button variant="outline" size="sm" disabled={archivando === p.id} onClick={() => archivar(p.id)}>
+                        Archivar
+                      </Button>
                     </div>
                   )}
                   {p.estado === 'pendiente' && (

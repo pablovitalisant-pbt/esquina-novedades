@@ -21,6 +21,11 @@ jest.mock('@/lib/db', () => {
   return { sql: mockSql };
 });
 
+// Fase B — flag de archivado explícitamente activo.
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
+  'pedidos-archivar-expirados': true,
+}));
+
 function patchReq(id: string, body: any): NextRequest {
   return new NextRequest(`http://localhost/api/pedidos/${id}`, {
     method: 'PATCH',
@@ -148,5 +153,54 @@ describe('PATCH /api/pedidos/[id]', () => {
     await PATCH(patchReq('pedido-1', { estado: 'descartado' }), CTX);
     expect(sql.mock.calls).toHaveLength(1);
     expect(query).toMatch(/UPDATE public\.pedidos[\s\S]*WHERE id = [\s\S]*AND estado IN/);
+  });
+});
+
+describe('PATCH /api/pedidos/[id] — archivar expirado (2026-11-10)', () => {
+  const UUID = '11111111-1111-4111-8111-111111111111';
+  const CTX_ARCH = { params: Promise.resolve({ id: UUID }) };
+  const archivar = (id = UUID) => patchReq(id, { accion: 'archivar' });
+  const ARCHIVADO = [{ id: UUID, archivado_en: '2026-11-10T00:00:00Z' }];
+
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  test('permisos y UUID: 401/403/400 sin tocar DB', async () => {
+    getServerSession.mockResolvedValue(null);
+    expect((await PATCH(archivar(), CTX_ARCH)).status).toBe(401);
+    getServerSession.mockResolvedValue({ user: { rol: 'bodeguero' } });
+    expect((await PATCH(archivar(), CTX_ARCH)).status).toBe(403);
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    expect((await PATCH(archivar('pedido-1'), CTX)).status).toBe(400);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  test('admin archiva con un único UPDATE y vendedor también puede', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    sql.mockResolvedValueOnce(ARCHIVADO);
+    const res = await PATCH(archivar(), CTX_ARCH);
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.id).toBe(UUID);
+    expect(sql).toHaveBeenCalledTimes(1);
+
+    getServerSession.mockResolvedValue({ user: { id: '8', rol: 'vendedor' } });
+    sql.mockResolvedValueOnce(ARCHIVADO);
+    expect((await PATCH(archivar(), CTX_ARCH)).status).toBe(200);
+  });
+
+  test('reintento idempotente: 200 y conserva archivado_en', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    sql.mockResolvedValue(ARCHIVADO);
+    expect((await PATCH(archivar(), CTX_ARCH)).status).toBe(200);
+    const r2 = await PATCH(archivar(), CTX_ARCH);
+    expect(r2.status).toBe(200);
+    expect((await r2.json()).data.archivado_en).toBe('2026-11-10T00:00:00Z');
+  });
+
+  test('no elegible (0 filas) → 409 sin cambios', async () => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
+    sql.mockResolvedValueOnce([]);
+    const res = await PATCH(archivar(), CTX_ARCH);
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/archiv|expirado|elegible/i);
   });
 });

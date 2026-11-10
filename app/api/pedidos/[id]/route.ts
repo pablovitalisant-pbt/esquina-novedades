@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { usuarioSesion } from '@/lib/session';
 import { mensajeError } from '@/lib/errores';
+import flags from '@/config/feature-flags.json';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // PATCH /api/pedidos/[id] — única transición de estado: pendiente → descartado.
 // Rechaza bodeguero; 409 si el pedido ya no está pendiente (convertido/descartado).
@@ -12,13 +15,42 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!session) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  if (usuarioSesion(session).rol === 'bodeguero') {
+  const rol = usuarioSesion(session).rol;
+  if (rol === 'bodeguero') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   try {
     const { id } = await params;
     const body = await request.json();
+
+    if (body?.accion === 'archivar') {
+      // Usuarios operativos de Pedidos; el descarte conserva su contrato.
+      if (rol !== 'admin' && rol !== 'vendedor') {
+        return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+      }
+      if (flags['pedidos-archivar-expirados'] !== true) {
+        return NextResponse.json({ error: 'Archivado no disponible' }, { status: 400 });
+      }
+      if (!UUID.test(id)) {
+        return NextResponse.json({ error: 'UUID inválido' }, { status: 400 });
+      }
+      // Guard atómico: solo expirado, stock liberado y sin revisión pendiente.
+      const archivado = await sql`
+        UPDATE public.pedidos
+        SET archivado_en = COALESCE(archivado_en, NOW())
+        WHERE id = ${id}::uuid
+          AND estado = 'expirado'
+          AND stock_reservado = false
+          AND COALESCE(mp_revision_motivo, '') = ''
+        RETURNING id, archivado_en::text
+      `;
+      if (archivado.length === 0) {
+        return NextResponse.json({ error: 'El pedido no es elegible para archivar' }, { status: 409 });
+      }
+      return NextResponse.json({ data: { id: archivado[0].id, archivado_en: archivado[0].archivado_en } }, { status: 200 });
+    }
+
     const estado = body?.estado;
     if (estado !== 'descartado') {
       return NextResponse.json({ error: 'Transición no soportada' }, { status: 400 });

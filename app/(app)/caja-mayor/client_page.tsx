@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Loader2, Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCLP } from "@/lib/utils";
+import { CajaDetalleNotaDialog } from "@/components/CajaDetalleNotaDialog";
+import flags from "@/config/feature-flags.json";
 import { EMPRESA, hexToArgb } from "@/lib/empresa";
 import type { ResumenClienteResponse, MovimientoConCuenta, SaldoCuenta, NotaVentaConSaldo, NotaBusquedaResult, MovimientoOCierre, CierrePeriodo } from "@/docs/specs/caja-mayor.spec";
 
@@ -104,6 +106,8 @@ export function CajaMayorClient({
   // ─── Edit modal state ─────────────────────────────────
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editMov, setEditMov] = useState<MovimientoConCuenta | null>(null);
+  const [notaDetalleId, setNotaDetalleId] = useState<number | null>(null);
+  const notaTriggerRef = useRef<HTMLElement | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   // Edit form fields (reuse same structure as create form)
   const [editTipo, setEditTipo] = useState<"cobro" | "gasto">("cobro");
@@ -1108,8 +1112,13 @@ export function CajaMayorClient({
                         <td className="py-1.5 pr-2 whitespace-nowrap w-[90px]">{item.data.fecha}</td>
                         <td className="py-1.5 pr-2 w-[32px]">{item.data.tipo === "cobro" ? "💰" : item.data.tipo === "reembolso" ? "📥" : "📤"}</td>
                         <td className="py-1.5 pr-2 max-w-[140px] truncate" title={item.data.nombre_cliente || undefined}>{item.data.nombre_cliente || "—"}</td>
-                        <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px] truncate" title={item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : undefined}>
-                          {item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : "—"}
+                        <td className="py-1.5 pr-2 text-xs text-[var(--body)] max-w-[100px]" title={item.data.notas_imputadas?.length ? item.data.notas_imputadas.join(", ") : undefined}>
+                          {item.data.notas_imputadas?.length ? (flags["caja-detalle-nota"] ? item.data.notas_imputadas.map((n) => (
+                            <button key={n} type="button"
+                              onClick={(e) => { notaTriggerRef.current = e.currentTarget; setNotaDetalleId(Number(n)); }}
+                              className="mr-2 underline underline-offset-2 hover:text-[var(--primary)]"
+                              aria-label={`Ver nota ${n}`}>{n}</button>
+                          )) : item.data.notas_imputadas.join(", ")) : "—"}
                         </td>
                         <td className={`py-1.5 pr-2 text-right font-medium whitespace-nowrap w-[110px] ${item.data.tipo === "cobro" ? "text-[var(--success)]" : "text-[var(--destructive)] dark:text-[var(--destructive)]"}`}>
                           {item.data.tipo !== "cobro" ? "-" : ""}{formatCLP(item.data.monto)}
@@ -1377,6 +1386,13 @@ export function CajaMayorClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CajaDetalleNotaDialog
+        notaId={notaDetalleId}
+        open={notaDetalleId !== null}
+        onOpenChange={(o) => { if (!o) setNotaDetalleId(null); }}
+        finalFocus={notaTriggerRef}
+      />
     </div>
   );
 }

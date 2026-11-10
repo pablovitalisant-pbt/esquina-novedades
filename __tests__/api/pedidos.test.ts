@@ -18,7 +18,12 @@ jest.mock('next-auth', () => ({
 
 // Este archivo cubre el camino SIN pago online; el camino con pago online está en
 // pedidos-reserva.test.ts y pedidos-mercadopago.test.ts. No depender del JSON real.
-jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({ 'tienda-pago-online': false, 'tienda-mayor-online': false }));
+jest.mock('@/config/feature-flags.json', () => require('@/__tests__/helpers/mockFlags').mockFlags({
+  'tienda-pago-online': false,
+  'tienda-mayor-online': false,
+  'pedido-cobro-manual': false,
+  'pedidos-archivar-expirados': false,
+}));
 
 jest.mock('@/lib/db', () => {
   const mockSql = (...args: any[]) => sql(...args);
@@ -530,5 +535,44 @@ describe('GET /api/pedidos — N04d1 cobro manual', () => {
     expect(body.data[0]).not.toHaveProperty('metodo_pago');
     expect(body.data[0]).not.toHaveProperty('caja_movimiento_id');
     expect(body.data[0]).not.toHaveProperty('confirmacion');
+  });
+});
+
+describe('GET /api/pedidos — archivado de expirados (2026-11-10)', () => {
+  const flagsMock = jest.requireMock('@/config/feature-flags.json') as Record<string, boolean>;
+  const PEDIDO = {
+    id: 'b3f1-0000', cliente_id: null, origen: 'productos', origen_slug: null,
+    estado: 'pagado_tardio', created_at: '2026-08-17T20:10:00Z', total: 3000,
+    email_contacto: null, entrega_codigo: 'retiro', entrega_costo: 0,
+    direccion_entrega: null, nombre: null, telefono: null,
+    mp_payment_id: '999', mp_fecha_pago: null, mp_revision_motivo: null,
+  };
+  const setupGet = () => sql.mockImplementation((strings: any[]) => Promise.resolve(
+    strings.join('').includes('pedido_items') ? [] : [PEDIDO],
+  ));
+
+  beforeEach(() => { jest.clearAllMocks(); });
+  afterEach(() => { flagsMock['pedidos-archivar-expirados'] = false; });
+
+  test('flag activo: el pago tardío sigue visible y la lectura no muta', async () => {
+    flagsMock['pedidos-archivar-expirados'] = true;
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    setupGet();
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    expect(res.status).toBe(200);
+    expect((await res.json()).data[0].estado).toBe('pagado_tardio');
+    // Solo las consultas completas (FROM), no los fragmentos anidados.
+    const consultas = sql.mock.calls.filter((c: any[]) => /FROM/i.test(c[0].join(' ')));
+    expect(consultas.length).toBeGreaterThan(0);
+    for (const c of consultas) {
+      expect(c[0].join(' ')).toMatch(/^\s*SELECT/i);
+      expect(c[0].join(' ')).not.toMatch(/\b(UPDATE|DELETE|INSERT)\b/i);
+    }
+  });
+  test('flag apagado responde igual (seguro antes de la migración)', async () => {
+    flagsMock['pedidos-archivar-expirados'] = false;
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    setupGet();
+    expect((await GET(new NextRequest('http://localhost/api/pedidos'))).status).toBe(200);
   });
 });

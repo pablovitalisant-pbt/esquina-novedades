@@ -11,6 +11,8 @@
   "tienda-medios-compra": true,
   "tienda-portada-v2": true,
   "pos-v1": true,
+  "caja-detalle-nota": false,
+  "pedidos-archivar-expirados": false,
   "pedido-confirmacion-antes-pago": true,
   "pedido-pago-opcional": true,
   "pedido-cobro-manual": true,

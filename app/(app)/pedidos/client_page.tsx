@@ -3,12 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileDown, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
 import flags from '@/config/feature-flags.json';
 import { ESTADO_LABEL, ENTREGA_LABEL } from '@/lib/pedidos/etiquetas';
+import {
+  construirPdfPedido,
+  nombreArchivoPedido,
+  descargarPdf,
+  compartirPdfWhatsApp,
+} from '@/lib/pdf-pedido';
 import type { SessionProp } from '@/types';
 
 interface PedidoItem {
@@ -18,6 +24,7 @@ interface PedidoItem {
   modalidad: string;
   precio: number;
   subtotal: number | null;
+  imagen_url?: string | null;
 }
 
 interface Pedido {
@@ -84,6 +91,8 @@ export function PedidosPage({ session }: { session: SessionProp }) {
   const [convirtiendo, setConvirtiendo] = useState<string | null>(null);
   const [archivando, setArchivando] = useState<string | null>(null);
   const archivarHabilitado = flags['pedidos-archivar-expirados'] === true;
+  const pdfHabilitado = flags['pedidos-pdf'] === true;
+  const [pdfOcupado, setPdfOcupado] = useState<{ id: string; modo: 'pdf' | 'whatsapp' } | null>(null);
   const [soloRevision, setSoloRevision] = useState(false);
   const visibles = soloRevision
     ? pedidos.filter((p) => p.estado === 'revision' || p.estado === 'pagado_tardio' || p.mp_revision_motivo)
@@ -183,6 +192,23 @@ export function PedidosPage({ session }: { session: SessionProp }) {
       toast.error('Error de red');
     } finally {
       setConvirtiendo(null);
+    }
+  }
+
+  async function generarPdf(p: Pedido, modo: 'pdf' | 'whatsapp') {
+    if (pdfOcupado || p.items.length === 0) return; // guard contra doble envío
+    setPdfOcupado({ id: p.id, modo });
+    try {
+      const doc = await construirPdfPedido(p);
+      if (!doc) return;
+      const filename = nombreArchivoPedido(p);
+      if (modo === 'pdf') {
+        descargarPdf(doc, filename);
+      } else {
+        await compartirPdfWhatsApp(doc, filename, `Pedido ${p.id.slice(0, 8).toUpperCase()}`);
+      }
+    } finally {
+      setPdfOcupado(null);
     }
   }
 
@@ -287,6 +313,32 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                     <span className="text-[var(--body)]">Entrega: {formatCLP(p.entrega_costo)}</span>
                     <span className="font-semibold">Total: {formatCLP(p.total)}</span>
                   </div>
+                  {pdfHabilitado && (
+                    <div className="flex flex-wrap gap-2 self-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pdfOcupado?.id === p.id || p.items.length === 0}
+                        onClick={() => generarPdf(p, 'pdf')}
+                      >
+                        <FileDown className="w-4 h-4 mr-1" />
+                        {pdfOcupado?.id === p.id && pdfOcupado.modo === 'pdf'
+                          ? 'Generando PDF...'
+                          : 'Imprimir PDF'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pdfOcupado?.id === p.id || p.items.length === 0}
+                        onClick={() => generarPdf(p, 'whatsapp')}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-1" />
+                        {pdfOcupado?.id === p.id && pdfOcupado.modo === 'whatsapp'
+                          ? 'Enviando...'
+                          : 'Enviar por WhatsApp'}
+                      </Button>
+                    </div>
+                  )}
                   {cobroManual && puedeConfirmarCobro(p) && (
                     <div className="self-end">
                       <ConfirmarCobroPedido

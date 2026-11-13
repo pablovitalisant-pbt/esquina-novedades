@@ -41,6 +41,7 @@ type ItemLista = {
   precio: number;
   precio_lista: number | null;
   subtotal: number;
+  imagen_url: string | null;
 };
 type CobroManualFila = {
   id: string;
@@ -452,8 +453,9 @@ export async function GET(request: NextRequest) {
 
     const items = (await sql`
       SELECT pi.pedido_id, pi.codigo, pi.detalle, pi.cantidad, pi.modalidad,
-             pi.precio, pi.precio_lista, pi.subtotal
+             pi.precio, pi.precio_lista, pi.subtotal, prod.imagen_url
       FROM public.pedido_items pi
+      LEFT JOIN public.productos prod ON prod.id = pi.producto_id
       WHERE pi.pedido_id = ANY(${pedidoIds})
     `) as ItemLista[];
 
@@ -468,6 +470,7 @@ export async function GET(request: NextRequest) {
         precio: it.precio,
         precio_lista: it.precio_lista,
         subtotal: it.subtotal,
+        imagen_url: it.imagen_url ?? null,
       });
       itemsPorPedido.set(it.pedido_id, lista);
     }

@@ -356,3 +356,12 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Fase B roja verificada: 7 failed / 1 passed en `detalles-prod-api.test.ts` + `detalles-prod-ui.test.tsx` (el unico verde era el no-recalculo manual, comportamiento ya existente). 8 tests nuevos.
 - Verificacion: jest --silent 258/258 suites, 2089/2089 tests; tsc 0 errores; lint 0 warnings/0 errores; build OK (compiled 8.9s, 48/48 paginas, exit 0, First Load JS 103 kB, middleware 64.3 kB). Sin commit, sin datos de produccion, sin next.config; finales de linea preservados.
 - Archivos: app/api/caja/movimientos/route.ts, app/api/caja/export/route.ts, app/(app)/caja-mayor/client_page.tsx, components/tienda/TiendaHeader.tsx, components/PosCobrarDialog.tsx, app/(app)/precios/client_page.tsx, components/TiendaPortada.tsx, components/ProductCard.tsx, components/BodegaCard.tsx, app/(app)/bodega/client_page.tsx, app/page.tsx, app/(app)/pedidos/client_page.tsx, app/(app)/precios/page.tsx, 9 tests actualizados, __tests__/detalles-prod-api.test.ts, __tests__/detalles-prod-ui.test.tsx, PRD.md, AUTO-LOG.md.
+
+## 2026-11-13 - Slice: pedidos-pdf (imprimir y WhatsApp PDF en /pedidos)
+- Programador: deep (deepseek-flash, effort low). Fase A + 2 sub-slices (lib 941465b; api+ui en este commit).
+- Contrato: lib/pdf-pedido.ts replica el PDF de la nota de venta (titulo PEDIDO, N° = 8 chars del UUID, fecha = created_at, Subtotal/Entrega/Total/Estado/Pago, BUG-062 derivado de posiciones). GET /api/pedidos agrega imagen_url (LEFT JOIN productos por PK). Botones "Imprimir PDF" y "Enviar por WhatsApp" en cada pedido, bajo flag pedidos-pdf=false. notas-venta/[id] sin tocar; unificar ambos builders queda en backlog.
+- Tests: 19 (lib) + API pedidos 42 + UI 6. Suite completa: solo las 7 suites rojas preexistentes (11 tests), confirmadas rojas en HEAD e47d195 con worktree limpio. tsc 0, lint 0, build OK.
+- QA (Director, localhost:3100 base test): botones visibles con flag on; PDF generado con jspdf real desde datos reales de GET /api/pedidos, revisado visualmente (delivery + nombre largo, retiro, 30 lineas con salto de pagina): PASA. Panel del navegador oculto: sin captura de UI movil.
+- Desvios del Programador: (1) faltaban Subtotal/Entrega en el PDF; (2) guardia BUG-062 subestimaba 6 mm. Ambos corregidos con tests.
+- Lib de 337 lineas (> 200): aceptado por fidelidad visual, archivo nuevo aislado.
+- Gates: activar flag en produccion = UAT de Pablo.

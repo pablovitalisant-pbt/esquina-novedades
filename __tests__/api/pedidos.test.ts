@@ -410,6 +410,7 @@ describe('GET /api/pedidos — staff', () => {
       .mockResolvedValueOnce([{
         pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
         modalidad: 'detalle', precio: 1500, precio_lista: 1500, subtotal: 3000,
+        imagen_url: 'https://res.cloudinary.com/demo/image/upload/gallinita.png',
       }]);
 
     const res = await GET(new NextRequest('http://localhost/api/pedidos'));
@@ -426,6 +427,7 @@ describe('GET /api/pedidos — staff', () => {
     expect(body.data[0].items).toEqual([{
       codigo: '1055', detalle: 'gallinita', cantidad: 2,
       modalidad: 'detalle', precio: 1500, precio_lista: 1500, subtotal: 3000,
+      imagen_url: 'https://res.cloudinary.com/demo/image/upload/gallinita.png',
     }]);
   });
 
@@ -574,5 +576,72 @@ describe('GET /api/pedidos — archivado de expirados (2026-11-10)', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     setupGet();
     expect((await GET(new NextRequest('http://localhost/api/pedidos'))).status).toBe(200);
+  });
+});
+
+describe('GET /api/pedidos — imagen_url por ítem (pedidos-pdf)', () => {
+  const PEDIDO = {
+    id: 'b3f1-0000', cliente_id: 'a91c-0000', origen: 'productos', origen_slug: null,
+    estado: 'pendiente', created_at: '2026-08-17T20:10:00Z',
+    email_contacto: null, entrega_codigo: 'retiro', entrega_costo: 0,
+    direccion_entrega: null, total: 3000,
+    nombre: 'Juana Pérez', telefono: '+591 700 12345',
+  };
+  const montarGet = (items: Record<string, unknown>[]) => {
+    getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
+    sql
+      .mockResolvedValueOnce([])       // fragmento condicional anidado
+      .mockResolvedValueOnce([PEDIDO]) // pedidos
+      .mockResolvedValueOnce(items);   // pedido_items + productos
+  };
+  const consultaItems = () =>
+    sql.mock.calls.find((c: any[]) => c[0].join('').includes('FROM public.pedido_items'));
+
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  test('1. expone imagen_url de productos en cada ítem', async () => {
+    montarGet([{
+      pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
+      modalidad: 'detalle', precio: 1500, precio_lista: 1500, subtotal: 3000,
+      imagen_url: 'https://res.cloudinary.com/demo/image/upload/g.png',
+    }]);
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data[0].items[0].imagen_url)
+      .toBe('https://res.cloudinary.com/demo/image/upload/g.png');
+  });
+
+  test('2. producto sin imagen → imagen_url null (no ausente)', async () => {
+    montarGet([{
+      pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'gallinita', cantidad: 2,
+      modalidad: 'detalle', precio: 1500, subtotal: 3000,
+    }]);
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+    expect(body.data[0].items[0]).toHaveProperty('imagen_url', null);
+  });
+
+  test('3. dos líneas del mismo producto siguen siendo dos ítems', async () => {
+    montarGet([
+      { pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'g', cantidad: 2,
+        modalidad: 'detalle', precio: 1500, subtotal: 3000, imagen_url: 'https://x/a.png' },
+      { pedido_id: 'b3f1-0000', codigo: '1055', detalle: 'g', cantidad: 3,
+        modalidad: 'mayor', precio: 1200, subtotal: 3600, imagen_url: 'https://x/a.png' },
+    ]);
+    const res = await GET(new NextRequest('http://localhost/api/pedidos'));
+    const body = await res.json();
+    expect(body.data[0].items).toHaveLength(2);
+    expect(body.data[0].items.map((i: any) => i.cantidad)).toEqual([2, 3]);
+  });
+
+  test('4. usa LEFT JOIN por PK y no filtra productos inactivos', async () => {
+    montarGet([]);
+    await GET(new NextRequest('http://localhost/api/pedidos'));
+    const consulta = consultaItems()[0].join(' ');
+    expect(consulta).toMatch(/LEFT JOIN public\.productos/i);
+    expect(consulta).toMatch(/prod\.id\s*=\s*pi\.producto_id/i);
+    expect(consulta).not.toMatch(/INNER JOIN/i);
+    expect(consulta).not.toMatch(/prod\.activo/i);
   });
 });

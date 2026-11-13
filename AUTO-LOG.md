@@ -365,3 +365,4 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Desvios del Programador: (1) faltaban Subtotal/Entrega en el PDF; (2) guardia BUG-062 subestimaba 6 mm. Ambos corregidos con tests.
 - Lib de 337 lineas (> 200): aceptado por fidelidad visual, archivo nuevo aislado.
 - Gates: activar flag en produccion = UAT de Pablo.
+- 2026-11-13: UAT aprobado por Pablo; flag pedidos-pdf = true en produccion.

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
 import flags from '@/config/feature-flags.json';
+import { ESTADO_LABEL, ENTREGA_LABEL } from '@/lib/pedidos/etiquetas';
 import type { SessionProp } from '@/types';
 
 interface PedidoItem {
@@ -40,25 +41,6 @@ interface Pedido {
   confirmacion?: { cuenta_id: number; referencia?: string | null } | null;
   items: PedidoItem[];
 }
-
-const ESTADO_LABEL: Record<string, string> = {
-  pendiente: 'Pendiente',
-  pendiente_pago: 'Pendiente de pago',
-  pagado: 'Pagado',
-  pagado_tardio: 'Pagado tarde',
-  revision: 'En revisión',
-  convertido: 'Convertido',
-  descartado: 'Descartado',
-  expirado: 'Expirado',
-  rechazado: 'Rechazado',
-};
-
-const ENTREGA_LABEL: Record<string, string> = {
-  retiro: 'Retiro en tienda',
-  delivery_iquique: 'Delivery Iquique',
-  delivery_alto_hospicio: 'Delivery Alto Hospicio',
-  envio_arica: 'Envío a Arica',
-};
 
 // 'productos' es el valor legado de la tienda online en la BD (migrations/034).
 const ORIGEN_LABEL: Record<string, string> = {

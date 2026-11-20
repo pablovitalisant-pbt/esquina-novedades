@@ -76,7 +76,16 @@ test('reserva vencida no adquiere ni registra', async () => {
 
   expect(await adquirir(id)).toBe('conflicto');
   expect(await pagosDe(id)).toHaveLength(0);
-  expect((await estadoEnDb(id)).estado).toBe('pendiente_pago');
+
+  // Este pedido ya está vencido, así que otra suite llamando
+  // liberarReservasVencidas() contra la misma BD de TEST puede marcarlo
+  // 'expirado' antes de que leamos. Ambos estados son válidos: lo que este
+  // test garantiza es que adquirir NO adquirió (nunca 'pagado') y que no
+  // tocó stock_reservado: queda como lo dejó la creación (pendiente_pago →
+  // true) o la liberación (expirado → false).
+  const { estado, stock_reservado } = await estadoEnDb(id);
+  expect(['pendiente_pago', 'expirado']).toContain(estado);
+  expect(stock_reservado).toBe(estado === 'pendiente_pago');
 });
 
 test('referencia duplicada en la cuenta retorna conflicto y revierte el pedido', async () => {

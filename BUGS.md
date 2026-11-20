@@ -2,6 +2,25 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-018 — Test "reserva vencida" de adquirir-pago-manual intermitente en paralelo (2026-11-20)
+- Tipo: D (intermitente).
+- Causa raíz: el fixture (pendiente_pago, stock_reservado, expira_en pasado) vive en la BD de TEST compartida; liberarReservasVencidas() — llamada de verdad por otras suites (catálogo, portada) y por servidores locales de QA — lo marca 'expirado' entre la creación y la aserción, que exigía 'pendiente_pago'. El código de la app era correcto.
+- Fix aplicado: el test acepta pendiente_pago o expirado (nunca pagado) y exige stock_reservado coherente con el estado. Reproducido con liberación forzada antes del fix.
+- Zona frágil: fixtures vencidos en la BD de TEST compartida; no levantar servidores de QA contra TEST mientras corre jest.
+- Commit: (este commit)
+
+## BUG-017 — Fecha de pedidos posiblemente ilegible en iPhone y sin zona Chile (2026-11-20)
+- Tipo: A (visual).
+- Causa raíz: formatFecha de /pedidos y el PDF del pedido hacían new Date() sobre el texto de Postgres ("2026-11-20 11:32:33.928739+00", no ISO) y sin timeZone.
+- Fix aplicado: normalizarFechaPostgres (lib/fechas.ts) + timeZone America/Santiago; texto inválido se muestra tal cual. Commit 141d87a.
+- Zona frágil: cualquier new Date(<texto ::text de la API>) nuevo debe pasar por normalizarFechaPostgres.
+
+## BUG-016 — La barra de categorías de la tienda solo filtraba la grilla de abajo (2026-11-20)
+- Tipo: A (visual). Mismo patrón que BUG-015.
+- Causa raíz: TiendaPortada ocultaba la portada solo al buscar; al elegir categoría la grilla filtrada quedaba ~14.000 px abajo.
+- Fix aplicado: `filtrando = buscando || categoria`; título con el nombre de la categoría; scroll arriba al elegir. Commit 0aea287.
+- Zona frágil: no renderizar bloques de portada mientras `filtrando`.
+
 ## BUG-015 — El buscador de la tienda pública "no buscaba nada" (2026-11-19)
 - Tipo: A (visual). Reportado por Paola.
 - Causa raíz: `components/TiendaPortada.tsx` filtraba solo la grilla "Todos los productos"; hero, Novedades, las secciones por categoría y "por mayor" no reaccionaban a la búsqueda. En producción (404 productos, 20 categorías) la grilla quedaba ~14.500 px bajo el borde superior: el cliente escribía y no veía ningún cambio. La búsqueda en sí (`filtrarProductos`, detalle o código, sin tildes ni mayúsculas) era correcta.

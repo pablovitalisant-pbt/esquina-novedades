@@ -389,3 +389,11 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Deploys: push a main tras cada corte; humo de solo lectura en produccion: rutas nuevas responden (405/401), paginas protegidas 307 a login, portada 200.
 - Gates: activar los 3 flags = UAT de Pablo.
 - Backlog: barra de categorias de la tienda filtra solo la grilla inferior; registrar stock inicial de "Nuevo producto" como ingreso; formatFecha de /pedidos usa texto Postgres (Safari); test intermitente adquirir-pago-manual.
+
+## 2026-11-20 (tarde) - Flags activados + backlog
+- Flags pedidos-entrega, producto-historial y notas-venta-por-dia en true (UAT aprobado por Pablo). Con flags encendidos fallaba el test "flag apagado" de notas-venta (leia el JSON real, BUG-004): fijado con mockFlags. Commit cc027f1.
+- BUG-016 barra de categorias (0aea287), BUG-017 fecha de pedidos/PDF (141d87a): verificacion propia jest serial 7 rojas preexistentes, tsc/lint/build 0; QA tienda local + produccion (categoria al frente, Todas vuelve).
+- B2 stock inicial como ingreso (c6b6edc): POST /api/productos con saldo > 0 inserta ingreso 'Stock inicial al crear el producto' en la misma transaccion; saldo entero; sin flag, sin backfill. QA en BD de pruebas: producto con 12 -> ingreso +12 por QA Admin, sin fila inferida; sin stock -> sin ingreso; 2.5 -> 400.
+- BUG-018 test intermitente adquirir-pago-manual: causa raiz (liberacion concurrente en BD TEST compartida) reproducida; fix solo en el test. Verificacion: 5/5 junto a suites que liberan reservas; jest completo EN PARALELO -> solo las 7 rojas preexistentes.
+- Programador: deep (deepseek-flash), horario barato. Desvio: en B1/B3 el Programador cerro sin terminar la Fase D (dejo jest vivo); el Director lo detuvo y verifico por su cuenta. En B4 dejo vacia la seccion de verificacion; verificado por el Director.
+- Nota (verificada en app/api/productos/[id]/cambiar-codigo/route.ts): cambiar codigo actualiza productos, ubicaciones, overrides de catalogo y prenota_items, pero deja fuera a proposito ingresos_mercaderia y conciliaciones_stock (y no toca pedido_items): tras un cambio de codigo, el historial del codigo nuevo no ve esos movimientos y el stock inicial se infiere. Backlog: decidir si el historial debe seguir codigos anteriores.

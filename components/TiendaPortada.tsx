@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EMPRESA } from '@/lib/empresa';
 import { formatCLP } from '@/lib/utils';
 import { CarritoProvider } from '@/contexts/CarritoContext';
@@ -13,6 +13,7 @@ import { BarraCategorias } from '@/components/tienda/BarraCategorias';
 import { FranjaConfianza } from '@/components/tienda/FranjaConfianza';
 import { TiendaFooter } from '@/components/tienda/TiendaFooter';
 import { filtrarProductos } from '@/components/tienda/filtrarProductos';
+import { normalizar } from '@/components/tienda/normalizar';
 import { armarPortada, compararNovedades } from '@/components/tienda/portada-auto';
 import type { CategoriaTienda, OpcionEntregaTienda, ProductoTienda } from '@/lib/tienda-productos';
 import { ShoppingBag } from 'lucide-react';
@@ -61,6 +62,13 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
   const destacados = auto.destacados;
   const tituloBanner = auto.tituloBanner;
 
+  // BUG-015: al buscar, la portada se oculta y la grilla queda al frente.
+  const buscando = normalizar(busqueda) !== '';
+
+  useEffect(() => {
+    if (buscando) window.scrollTo({ top: 0 });
+  }, [buscando]);
+
   const verTodos = (nombre: string) => {
     setCategoria(nombre);
     document.getElementById('grilla-productos')?.scrollIntoView({ behavior: 'smooth' });
@@ -76,7 +84,8 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
       <TiendaHeader busqueda={busqueda} onBusqueda={setBusqueda} />
       <BarraCategorias categorias={categorias} categoria={categoria} onCategoria={setCategoria} />
 
-      {/* Hero único */}
+      {/* Hero único (oculto mientras se busca: BUG-015) */}
+      {!buscando && (
       <section className="bg-gradient-to-br from-[#21002F] via-[#3A0A55] to-[#590078] text-[#FFF8EA]">
         <div
           className="mx-auto px-4 py-8 md:py-14 grid md:grid-cols-2 gap-6 md:gap-10 items-center"
@@ -116,12 +125,13 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
           </div>
         </div>
       </section>
+      )}
 
-      <FranjaConfianza hayRetiro={hayRetiro} />
+      {!buscando && <FranjaConfianza hayRetiro={hayRetiro} />}
 
       <div className="mx-auto px-3 sm:px-4" style={{ maxWidth: '1152px' }}>
         {/* Novedades */}
-        {novedades.length > 0 && (
+        {!buscando && novedades.length > 0 && (
           <section className="py-6" data-testid="portada-novedades">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Novedades</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
@@ -135,7 +145,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         )}
 
         {/* Una sección por categoría con stock */}
-        {auto?.secciones.map((s) => (
+        {!buscando && auto?.secciones.map((s) => (
           <section key={s.nombre} className="py-6" data-testid="seccion-categoria">
             <div className="flex items-center justify-between gap-3 mb-3">
               <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">{s.nombre}</h2>
@@ -158,7 +168,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         ))}
 
         {/* Ahorra comprando por mayor */}
-        {auto && auto.porMayor.length > 0 && (
+        {!buscando && auto && auto.porMayor.length > 0 && (
           <section className="py-6" data-testid="portada-mayor">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Ahorra comprando por mayor</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
@@ -177,7 +187,9 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         {/* Todos los productos */}
         <section id="grilla-productos" className="py-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">Todos los productos</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">
+              {buscando ? `Resultados para "${busqueda.trim()}"` : 'Todos los productos'}
+            </h2>
             <label className="flex items-center gap-2 text-sm text-[var(--body)]">
               <span className="sr-only">Ordenar productos</span>
               <select

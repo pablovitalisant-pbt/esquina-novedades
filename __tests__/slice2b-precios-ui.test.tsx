@@ -31,9 +31,14 @@ const admin: any = { id: '1', rut: '1-1', nombre: 'A', rol: 'admin', empresas: [
 const fetchMock = jest.fn();
 beforeEach(() => {
   fetchMock.mockReset();
-  fetchMock.mockImplementation(async (url: string) => {
+  fetchMock.mockImplementation(async (url: string, opts?: { method?: string }) => {
     if (String(url).includes('/api/categorias')) return { ok: true, json: async () => [] };
-    return { ok: true, json: async () => ({ data: producto }) };
+    // GET /api/productos devuelve una lista ({ data: [...] }, y con
+    // precios-paginados ademas siguienteCursor); POST/PUT responden un producto.
+    if (opts?.method === 'POST' || opts?.method === 'PUT') {
+      return { ok: true, json: async () => ({ data: producto }) };
+    }
+    return { ok: true, json: async () => ({ data: [producto], siguienteCursor: null }) };
   });
   (global as any).fetch = fetchMock;
 });

@@ -38,14 +38,15 @@ describe('crearNota', () => {
     expect((fetchMock.mock.calls[0][1] as { body: string }).body).toBe('{"cliente_id":"u-meson"}');
   });
 
-  it('respuesta no-ok lanza ErrorNota (POS y modal)', async () => {
+  it('respuesta no-ok lanza ErrorNota con el mensaje del servidor (POS y modal)', async () => {
     setFetch(async () => json({ error: 'No autorizado' }, 401));
 
     const err = await crearNota(7).catch(e => e);
     expect(err).toBeInstanceOf(ErrorNota);
+    expect(err.message).toBe('No autorizado');
   });
 
-  it('500 con body no parseable rechaza ErrorNota sin parsear', async () => {
+  it('500 con body no parseable rechaza ErrorNota (nunca propaga el SyntaxError)', async () => {
     const jsonMock = jest.fn(async () => {
       throw new SyntaxError('Unexpected token');
     });
@@ -53,7 +54,7 @@ describe('crearNota', () => {
 
     const err = await crearNota().catch(e => e);
     expect(err).toBeInstanceOf(ErrorNota);
-    expect(jsonMock).not.toHaveBeenCalled();
+    expect(err.message).toBe('');
   });
 
   it('200 sin id valido rechaza ErrorNota (nunca "undefined"/"null"/[object Object])', async () => {

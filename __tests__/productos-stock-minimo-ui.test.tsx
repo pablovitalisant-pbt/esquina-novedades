@@ -148,12 +148,14 @@ describe('T7-B — PreciosClient Dialog "Nuevo producto" envia stock_minimo', ()
   it('completar stock_minimo en Dialog → POST body incluye stock_minimo', async () => {
     let capturedBody: any = null;
     (global.fetch as jest.Mock).mockImplementation((url: string, opts: any) => {
-      if (opts?.body && url.includes('/api/productos') && opts.method === 'POST') {
+      const esPost = url.includes('/api/productos') && opts?.method === 'POST';
+      if (esPost && opts?.body) {
         try { capturedBody = JSON.parse(opts.body); } catch {}
       }
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: { id: 1, codigo: 'BZ-001', stock_minimo: 5 } }),
+        // GET /api/productos devuelve lista; POST responde el producto creado.
+        json: () => Promise.resolve(esPost ? { data: { id: 1, codigo: 'BZ-001', stock_minimo: 5 } } : { data: [], siguienteCursor: null }),
       });
     });
 
@@ -185,12 +187,13 @@ describe('T7-B — PreciosClient Dialog "Nuevo producto" envia stock_minimo', ()
   it('dejar stock_minimo vacio → POST body no incluye stock_minimo', async () => {
     let capturedBody: any = null;
     (global.fetch as jest.Mock).mockImplementation((url: string, opts: any) => {
-      if (opts?.body && url.includes('/api/productos') && opts.method === 'POST') {
+      const esPost = url.includes('/api/productos') && opts?.method === 'POST';
+      if (esPost && opts?.body) {
         try { capturedBody = JSON.parse(opts.body); } catch {}
       }
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: { id: 2, codigo: 'BZ-002', stock_minimo: null } }),
+        json: () => Promise.resolve(esPost ? { data: { id: 2, codigo: 'BZ-002', stock_minimo: null } } : { data: [], siguienteCursor: null }),
       });
     });
 

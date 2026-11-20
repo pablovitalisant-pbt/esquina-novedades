@@ -35,7 +35,9 @@ describe('TopNav — solo MVP (dropdowns abiertos)', () => {
     it('SI contiene Usuarios y Config de Caja', async () => { await waitFor(() => { expect(screen.getByText('Usuarios')).toBeInTheDocument(); expect(screen.getByText('Config de Caja')).toBeInTheDocument(); }); });
   });
   it('NO contiene enlaces directos a Garantias, Deudas, Sueldos, Seguimientos', () => { expect(screen.queryByText('GARANTÍAS')).not.toBeInTheDocument(); expect(screen.queryByText('Deudas')).not.toBeInTheDocument(); expect(screen.queryByText('Sueldos')).not.toBeInTheDocument(); expect(screen.queryByText('Seguimientos')).not.toBeInTheDocument(); });
-  it('wordmark dice La Esquina de las Novedades y apunta a /precios', () => { expect(screen.queryByText('VidaDigital')).not.toBeInTheDocument(); const logo = screen.getByRole('img', { name: 'La Esquina de las Novedades' }); expect(logo.closest('a')?.getAttribute('href')).toBe('/precios'); });
+  // M08: admin/vendedor con pos-v1 (activo en el JSON real) abre POS. El mock
+  // de flags parte del JSON real, por eso el wordmark apunta a /pos.
+  it('wordmark dice La Esquina de las Novedades y apunta a /pos (M08)', () => { expect(screen.queryByText('VidaDigital')).not.toBeInTheDocument(); const logo = screen.getByRole('img', { name: 'La Esquina de las Novedades' }); expect(logo.closest('a')?.getAttribute('href')).toBe('/pos'); });
 });
 
 describe('BottomNav — solo MVP (sheets abiertos)', () => {

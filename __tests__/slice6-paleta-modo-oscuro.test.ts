@@ -169,14 +169,22 @@ describe('Slice 6 — contraste WCAG', () => {
   });
 });
 
+// BUG-012: AgregarANotaVentaModal fija bg-white a proposito en sus inputs
+// para garantizar el contraste de #21002F. Excepcion explicita y acotada:
+// solo la clase bg-white en ese archivo; el resto de las prohibidas sigue
+// vigilado dentro del mismo archivo.
+const BG_WHITE_BUG_012 = path.join('components', 'AgregarANotaVentaModal.tsx');
+
 describe('Slice 6 — sin colores fijos que rompan el modo oscuro', () => {
   test('no quedan bg-white / text-gray- / bg-gray- / text-zinc- / bg-zinc- en app/ ni components/', () => {
     const forbidden = /(?:bg-white|text-gray-|bg-gray-|text-zinc-|bg-zinc-)/;
     const offenders: string[] = [];
     for (const file of [...walk(path.join(ROOT, 'app')), ...walk(path.join(ROOT, 'components'))]) {
+      const rel = path.relative(ROOT, file);
       const lines = fs.readFileSync(file, 'utf-8').split('\n');
       lines.forEach((line, i) => {
-        if (forbidden.test(line)) offenders.push(`${path.relative(ROOT, file)}:${i + 1} → ${line.trim()}`);
+        const linea = rel === BG_WHITE_BUG_012 ? line.replace(/bg-white/g, '') : line;
+        if (forbidden.test(linea)) offenders.push(`${rel}:${i + 1} → ${line.trim()}`);
       });
     }
     expect(offenders).toEqual([]);

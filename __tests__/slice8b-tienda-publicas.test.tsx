@@ -70,7 +70,8 @@ describe('catálogo público con flag ON', () => {
     expect(screen.getByRole('heading', { name: 'Catálogo Escolar' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /acceso equipo/i })).toHaveAttribute('href', '/login');
     expect(screen.getAllByTestId('precio-menor').length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /agregar al pedido/i }).length).toBeGreaterThan(0);
+    // BUG-013: con tienda-medios-compra las tarjetas ofrecen compra explicita.
+    expect(screen.getAllByRole('button', { name: /comprar al detalle/i }).length).toBeGreaterThan(0);
   });
 
   test('buscador y barra de categorías filtran el catálogo', () => {
@@ -100,7 +101,7 @@ describe('catálogo público con flag ON', () => {
   test('mostrar_precio=false: sin precio y sin botón agregar', () => {
     render(<PublicCatalogoClient data={{ ...DATA, mostrar_precio: false }} slug="escolar" />);
     expect(screen.queryByTestId('precio-menor')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /agregar al pedido/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /comprar al detalle/i })).not.toBeInTheDocument();
     expect(screen.getByText('Cuaderno Mágico')).toBeInTheDocument();
   });
 });

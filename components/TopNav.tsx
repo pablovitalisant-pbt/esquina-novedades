@@ -52,7 +52,7 @@ export function TopNav({ puedeVerPagosApp = false }: { puedeVerPagosApp?: boolea
 
   React.useEffect(() => {
     const hora = Number(
-      new Intl.DateTimeFormat('en-US', {
+      new Intl.DateTimeFormat('es-CL', {
         timeZone: 'America/Santiago',
         hour: '2-digit',
         hourCycle: 'h23'

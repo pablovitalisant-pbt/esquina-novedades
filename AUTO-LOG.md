@@ -404,3 +404,9 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - QA (BD de pruebas): QA-005 -> QA-005B -> QA-005: historial identico en ambos codigos (7 movimientos; 10 ingresado, 4 vendido, -1 ajuste, 20 inicial, saldo 25, diferencia 0); el codigo viejo da 404; "Antes" excluye el codigo actual.
 - Limites conocidos: cambios de codigo anteriores a la 055 no tienen registro (sin backfill: no hay fuente confiable); un codigo reutilizado al CREAR un producto nuevo (no por cambio) no tiene ventana inicial.
 - Programador: deep (deepseek-flash).
+
+## 2026-11-20 - T1: suite en verde (las 7 rojas preexistentes)
+- lib/api-notas.ts crearNota descartaba el mensaje de error del servidor (desde A18); ahora lo muestra y el generico queda de respaldo. En la app real el "Stock insuficiente" ya llegaba por agregarItem; el cambio mejora los errores al CREAR la nota (modal y POS). BUG-007/011/012 intactos.
+- Tests alineados a cambios deliberados sin debilitar: TopNav usa 'es-CL' en vez de 'en-US' (guardia CLP sin excepciones; BUG-009 verde); paleta: excepcion solo bg-white en AgregarANotaVentaModal (BUG-012), el resto vigilado; tienda: "Comprar al detalle" (BUG-013); nav: logo a /pos (M08); precios: mocks del listado con la forma real { data: [...] }.
+- Verificacion del Director: jest completo en paralelo 2 veces -> 0 suites rojas (303 suites, 2541 tests); tsc/lint/build 0.
+- Desde ahora la referencia es "0 rojas": cualquier suite roja es regresion.

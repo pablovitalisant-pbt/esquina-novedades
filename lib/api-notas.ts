@@ -11,8 +11,9 @@ export class ErrorNota extends ErrorApi {
 
 /**
  * POST /api/notas-venta. Crea la nota (con cliente o sin el) y devuelve su id
- * como string. Un HTTP no-ok se rechaza antes de parsear el body; una
- * respuesta sin id valido nunca se convierte en "undefined"/"null".
+ * como string. Un HTTP no-ok se rechaza con el mensaje del servidor cuando el
+ * body lo trae (body no parseable = mensaje vacio); una respuesta sin id
+ * valido nunca se convierte en "undefined"/"null".
  */
 export async function crearNota(clienteId?: number | string | null): Promise<string> {
   const res = await fetch('/api/notas-venta', {
@@ -20,7 +21,18 @@ export async function crearNota(clienteId?: number | string | null): Promise<str
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(clienteId ? { cliente_id: clienteId } : {}),
   });
-  if (!res.ok) throw new ErrorNota('');
+  if (!res.ok) {
+    // Igual que agregarItem: mostrar el mensaje real de la API cuando exista;
+    // el llamador usa su generico si el body no trae uno legible.
+    let mensaje = '';
+    try {
+      const err = await res.json();
+      if (typeof err?.error === 'string') mensaje = err.error;
+    } catch {
+      // body no parseable
+    }
+    throw new ErrorNota(mensaje);
+  }
   let data: unknown;
   try {
     data = await res.json();

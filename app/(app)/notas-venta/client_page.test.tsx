@@ -4,6 +4,9 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { PrenotasPage } from './client_page';
 
+jest.mock('@/config/feature-flags.json', () =>
+  require('@/__tests__/helpers/mockFlags').mockFlags({ 'notas-venta-por-dia': false }),
+);
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('@/components/PagarNotaDialog', () => ({ PagarNotaDialog: () => null }));

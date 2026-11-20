@@ -62,12 +62,14 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
   const destacados = auto.destacados;
   const tituloBanner = auto.tituloBanner;
 
-  // BUG-015: al buscar, la portada se oculta y la grilla queda al frente.
+  // BUG-015 + B1: al buscar o elegir categoría, la portada se oculta y la
+  // grilla queda al frente (la grilla "Todos los productos" está muy abajo).
   const buscando = normalizar(busqueda) !== '';
+  const filtrando = buscando || categoria !== null;
 
   useEffect(() => {
-    if (buscando) window.scrollTo({ top: 0 });
-  }, [buscando]);
+    if (filtrando) window.scrollTo({ top: 0 });
+  }, [filtrando, categoria]);
 
   const verTodos = (nombre: string) => {
     setCategoria(nombre);
@@ -85,7 +87,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
       <BarraCategorias categorias={categorias} categoria={categoria} onCategoria={setCategoria} />
 
       {/* Hero único (oculto mientras se busca: BUG-015) */}
-      {!buscando && (
+      {!filtrando && (
       <section className="bg-gradient-to-br from-[#21002F] via-[#3A0A55] to-[#590078] text-[#FFF8EA]">
         <div
           className="mx-auto px-4 py-8 md:py-14 grid md:grid-cols-2 gap-6 md:gap-10 items-center"
@@ -127,11 +129,11 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
       </section>
       )}
 
-      {!buscando && <FranjaConfianza hayRetiro={hayRetiro} />}
+      {!filtrando && <FranjaConfianza hayRetiro={hayRetiro} />}
 
       <div className="mx-auto px-3 sm:px-4" style={{ maxWidth: '1152px' }}>
         {/* Novedades */}
-        {!buscando && novedades.length > 0 && (
+        {!filtrando && novedades.length > 0 && (
           <section className="py-6" data-testid="portada-novedades">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Novedades</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
@@ -145,7 +147,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         )}
 
         {/* Una sección por categoría con stock */}
-        {!buscando && auto?.secciones.map((s) => (
+        {!filtrando && auto?.secciones.map((s) => (
           <section key={s.nombre} className="py-6" data-testid="seccion-categoria">
             <div className="flex items-center justify-between gap-3 mb-3">
               <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">{s.nombre}</h2>
@@ -168,7 +170,7 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         ))}
 
         {/* Ahorra comprando por mayor */}
-        {!buscando && auto && auto.porMayor.length > 0 && (
+        {!filtrando && auto && auto.porMayor.length > 0 && (
           <section className="py-6" data-testid="portada-mayor">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)] mb-3">Ahorra comprando por mayor</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
@@ -188,7 +190,9 @@ function TiendaPortadaInner({ productos, categorias, opcionesEntrega }: Props) {
         <section id="grilla-productos" className="py-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--heading)]">
-              {buscando ? `Resultados para "${busqueda.trim()}"` : 'Todos los productos'}
+              {buscando
+                ? `Resultados para "${busqueda.trim()}"${categoria ? ` en ${categoria}` : ''}`
+                : categoria ?? 'Todos los productos'}
             </h2>
             <label className="flex items-center gap-2 text-sm text-[var(--body)]">
               <span className="sr-only">Ordenar productos</span>

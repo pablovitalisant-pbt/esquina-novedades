@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronUp, FileDown, MessageCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileDown, MessageCircle, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
@@ -42,6 +42,8 @@ interface Pedido {
   mp_fecha_pago?: string | null;
   mp_revision_motivo?: string | null;
   stock_reservado?: boolean | null;
+  entregado_en?: string | null;
+  entregado_por_nombre?: string | null;
   // N04d1: solo presentes para admin con el flag pedido-cobro-manual activo.
   metodo_pago?: string | null;
   caja_movimiento_id?: number | null;
@@ -76,6 +78,36 @@ function formatFecha(value: string): string {
   });
 }
 
+// Postgres puede devolver "2026-11-20 11:32:33.928739+00": no es ISO estricto y
+// Safari/iOS no lo garantiza. Normaliza espacio, fracción a milisegundos y offset
+// con minutos ("+00" -> "+00:00", "+0000" -> "+00:00").
+export function normalizarFechaPostgres(value: string): string {
+  return value
+    .replace(' ', 'T')
+    .replace(/(\.\d{3})\d+/, '$1')
+    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
+    .replace(/([+-]\d{2})$/, '$1:00');
+}
+
+function formatFechaHora(value: string): string {
+  const fecha = new Date(normalizarFechaPostgres(value));
+  if (Number.isNaN(fecha.getTime())) return value;
+  return fecha.toLocaleString('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+// Solo convertido/pagado generan nota de venta; el resto no se entrega.
+function esEntregable(p: Pedido): boolean {
+  return (p.estado === 'convertido' || p.estado === 'pagado') && !p.entregado_en;
+}
+
 function puedeConfirmarCobro(p: Pedido): boolean {
   return (p.metodo_pago === 'efectivo' || p.metodo_pago === 'transferencia')
     && p.caja_movimiento_id == null
@@ -94,9 +126,15 @@ export function PedidosPage({ session }: { session: SessionProp }) {
   const pdfHabilitado = flags['pedidos-pdf'] === true;
   const [pdfOcupado, setPdfOcupado] = useState<{ id: string; modo: 'pdf' | 'whatsapp' } | null>(null);
   const [soloRevision, setSoloRevision] = useState(false);
-  const visibles = soloRevision
-    ? pedidos.filter((p) => p.estado === 'revision' || p.estado === 'pagado_tardio' || p.mp_revision_motivo)
-    : pedidos;
+  const entregaHabilitada = flags['pedidos-entrega'] === true;
+  const rol = session?.user?.rol;
+  const [soloPorEntregar, setSoloPorEntregar] = useState(false);
+  const [entregando, setEntregando] = useState<string | null>(null);
+  const porEntregar = entregaHabilitada ? pedidos.filter(esEntregable).length : 0;
+  const visibles = pedidos
+    .filter((p) => !soloRevision
+      || p.estado === 'revision' || p.estado === 'pagado_tardio' || Boolean(p.mp_revision_motivo))
+    .filter((p) => !soloPorEntregar || esEntregable(p));
 
   const cargar = useCallback(async () => {
     try {
@@ -168,6 +206,40 @@ export function PedidosPage({ session }: { session: SessionProp }) {
     }
   }
 
+  async function cambiarEntrega(p: Pedido, entregado: boolean) {
+    if (entregando) return; // guard contra doble envío
+    const pregunta = entregado
+      ? '¿Confirmas que este pedido ya fue entregado al cliente?'
+      : '¿Quitar la marca de entregado?';
+    if (!window.confirm(pregunta)) return;
+    setEntregando(p.id);
+    try {
+      const res = await fetch(`/api/pedidos/${p.id}/entrega`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entregado }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(body?.error ?? 'No se pudo actualizar la entrega');
+        return;
+      }
+      const data = body?.data;
+      setPedidos((prev) => prev.map((x) => (x.id === p.id
+        ? {
+            ...x,
+            entregado_en: data?.entregado_en ?? null,
+            entregado_por_nombre: data?.entregado_por_nombre ?? null,
+          }
+        : x)));
+      toast.success(entregado ? 'Pedido marcado como entregado' : 'Entrega desmarcada');
+    } catch {
+      toast.error('Error de red');
+    } finally {
+      setEntregando(null);
+    }
+  }
+
   async function convertir(id: string) {
     if (convirtiendo) return; // guard contra doble envío
     setConvirtiendo(id);
@@ -225,6 +297,16 @@ export function PedidosPage({ session }: { session: SessionProp }) {
         >
           Requieren revisión
         </Button>
+        {entregaHabilitada && (
+          <Button
+            variant={soloPorEntregar ? 'default' : 'outline'}
+            size="sm"
+            className="mt-3 ml-2"
+            onClick={() => setSoloPorEntregar((v) => !v)}
+          >
+            Por entregar ({porEntregar})
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -257,6 +339,11 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass(p.estado)}`}>
                     {ESTADO_LABEL[p.estado] ?? p.estado}
                   </span>
+                  {entregaHabilitada && p.entregado_en && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[var(--success-soft)] text-[var(--success)]">
+                      Entregado
+                    </span>
+                  )}
                   {expanded.has(p.id) ? (
                     <ChevronUp className="w-4 h-4 text-[var(--body-subtle)]" />
                   ) : (
@@ -276,6 +363,12 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                       {p.direccion_entrega ? ` · ${p.direccion_entrega}` : ''}
                     </span>
                     <span>Origen: {ORIGEN_LABEL[p.origen] ?? p.origen}</span>
+                    {entregaHabilitada && p.entregado_en && (
+                      <span className="text-[var(--success)]">
+                        Entregado el {formatFechaHora(p.entregado_en)}
+                        {p.entregado_por_nombre ? ` por ${p.entregado_por_nombre}` : ''}
+                      </span>
+                    )}
                     {p.metodo_pago && (
                       <span>Medio de pago: {p.metodo_pago === 'efectivo' ? 'Efectivo' : 'Transferencia'}</span>
                     )}
@@ -313,6 +406,31 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                     <span className="text-[var(--body)]">Entrega: {formatCLP(p.entrega_costo)}</span>
                     <span className="font-semibold">Total: {formatCLP(p.total)}</span>
                   </div>
+                  {entregaHabilitada && esEntregable(p) && (
+                    <div className="self-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={entregando === p.id}
+                        onClick={() => cambiarEntrega(p, true)}
+                      >
+                        <PackageCheck className="w-4 h-4 mr-1" />
+                        {entregando === p.id ? 'Guardando...' : 'Marcar entregado'}
+                      </Button>
+                    </div>
+                  )}
+                  {entregaHabilitada && p.entregado_en && rol === 'admin' && (
+                    <div className="self-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={entregando === p.id}
+                        onClick={() => cambiarEntrega(p, false)}
+                      >
+                        {entregando === p.id ? 'Guardando...' : 'Quitar entregado'}
+                      </Button>
+                    </div>
+                  )}
                   {pdfHabilitado && (
                     <div className="flex flex-wrap gap-2 self-end">
                       <Button

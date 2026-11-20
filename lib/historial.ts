@@ -7,6 +7,9 @@
  * registrado, lo atribuye al stock inicial de "Nuevo producto" (inferido).
  */
 
+/** Observación con que B2 registra el stock con que se crea un producto. */
+export const OBS_STOCK_INICIAL = 'Stock inicial al crear el producto';
+
 export type TipoMovimiento =
   | 'ingreso'
   | 'conciliacion'

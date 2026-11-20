@@ -312,6 +312,35 @@ describe('sin ?codigo — buscador listo', () => {
   });
 });
 
+describe('B2 — ingreso de stock inicial', () => {
+  const conMovimientos = (movs: unknown[]) => ({
+    producto: { ...API_JS1640.producto, saldo: 40 },
+    movimientos: movs,
+    resumen: {
+      ingresado: 40, ajustes: 0, vendido: 0, reservado: 0,
+      stock_inicial_inferido: 0, stock_esperado: 40, saldo_actual: 40,
+      diferencia: 0, truncado: false,
+    },
+  });
+
+  it('la fila real "Stock inicial al crear el producto" se etiqueta "Stock inicial"', async () => {
+    montar(conMovimientos([
+      m({ tipo: 'ingreso', cantidad: 40, efecto: 40, detalle: 'Stock inicial al crear el producto', usuario: 'Paola', estado: null, referencia: { tipo: 'ingreso', id: 9, href: null } }),
+    ]));
+    const filas = await screen.findAllByTestId('movimiento');
+    expect(within(filas[0]).getByText(/^Stock inicial$/)).toBeInTheDocument();
+    expect(within(filas[0]).queryByText(/^Ingreso$/)).toBeNull();
+  });
+
+  it('un ingreso normal sigue mostrando "Ingreso"', async () => {
+    montar(conMovimientos([
+      m({ tipo: 'ingreso', cantidad: 10, efecto: 10, detalle: 'Partida agosto', usuario: 'Paola', estado: null, referencia: { tipo: 'ingreso', id: 10, href: null } }),
+    ]));
+    const filas = await screen.findAllByTestId('movimiento');
+    expect(within(filas[0]).getByText(/^Ingreso$/)).toBeInTheDocument();
+  });
+});
+
 describe('BodegaCard — botón Historial', () => {
   it('solo aparece con historialHref y no abre la tarjeta al pulsarlo', () => {
     const onClick = jest.fn();

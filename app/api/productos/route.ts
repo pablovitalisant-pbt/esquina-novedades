@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { calcularMargen } from "@/lib/calcular-precio";
 import { esPrecioMayorValido, esMinimoMayorValido } from "@/lib/precio-mayor";
 import { mensajeError } from '@/lib/errores';
+import { OBS_STOCK_INICIAL } from '@/lib/historial';
 import flags from '@/config/feature-flags.json';
 
 export async function POST(request: Request) {
@@ -35,7 +36,11 @@ export async function POST(request: Request) {
     if (typeof prcventa !== "number" || !Number.isInteger(prcventa) || prcventa <= 0) {
       return NextResponse.json({ error: "Precio por menor debe ser un entero mayor a 0" }, { status: 400 });
     }
-    if (saldo !== undefined && Number(saldo) < 0) {
+    const saldoNum = saldo === undefined || saldo === null ? 0 : Number(saldo);
+    if (typeof saldo === 'boolean' || !Number.isInteger(saldoNum)) {
+      return NextResponse.json({ error: "Stock inicial debe ser un entero" }, { status: 400 });
+    }
+    if (saldoNum < 0) {
       return NextResponse.json({ error: "Stock inicial no puede ser negativo" }, { status: 400 });
     }
     if (stock_minimo !== undefined && (isNaN(Number(stock_minimo)) || Number(stock_minimo) < 0)) {
@@ -79,12 +84,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Ya existe un producto con el código ${codigo.trim()}` }, { status: 409 });
     }
 
-    // Insertar
-    const result = await sql`
+    // B2: el stock inicial con que nace el producto se registra como ingreso.
+    // usuarios.id es entero; un id de sesión no numérico no puede ir al FK
+    // NOT NULL de ingresos_mercaderia (mismo cuidado que pedidos/[id]/entrega).
+    const idCrudo = user.id;
+    const idNumero = typeof idCrudo === 'number' ? idCrudo
+      : typeof idCrudo === 'string' && /^\d+$/.test(idCrudo) ? Number(idCrudo)
+        : null;
+    const usuarioId = Number.isInteger(idNumero) ? idNumero : null;
+    if (saldoNum > 0 && usuarioId === null) {
+      return NextResponse.json(
+        { error: "No se pudo identificar al usuario para registrar el stock inicial" },
+        { status: 400 },
+      );
+    }
+
+    // Insertar. Con saldo > 0, producto + ingreso inicial en la MISMA
+    // transacción: si falla cualquiera, no queda nada.
+    const insertProducto = sql`
       INSERT INTO productos (empresa_id, codigo, detalle, prcventa, costo, cif, margen_pct, saldo, umed, cantcaja, pesocaja, cubicaja, es_nuevo, prcminimo, categoria, stock_minimo, precio_mayor, minimo_mayor)
-      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventa}, ${Number(costo)}, ${Number(costo)}, ${margenCalculado}, ${saldo !== undefined ? Number(saldo) : 0}, 'U', ${cantcajaNum}, 0, 0, ${esNuevo}, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null}, ${pm}, ${minimoMayor})
+      VALUES (${empresaId}, ${codigo.trim()}, ${detalle.trim()}, ${prcventa}, ${Number(costo)}, ${Number(costo)}, ${margenCalculado}, ${saldoNum}, 'U', ${cantcajaNum}, 0, 0, ${esNuevo}, null, null, ${stock_minimo !== undefined ? Number(stock_minimo) : null}, ${pm}, ${minimoMayor})
       RETURNING *
     `;
+
+    let result;
+    if (saldoNum > 0) {
+      const rows = await sql.transaction([
+        insertProducto,
+        sql`
+          INSERT INTO ingresos_mercaderia (empresa_id, codigo, cantidad, cantcaja_registrado, cantcaja_cambio, observaciones, usuario_id, usuario_nombre)
+          VALUES (${empresaId}, ${codigo.trim()}, ${saldoNum}, ${cantcajaNum}, false, ${OBS_STOCK_INICIAL}, ${usuarioId}, ${user.nombre || 'usuario'})
+        `,
+      ]);
+      result = rows[0];
+    } else {
+      result = await insertProducto;
+    }
 
     return NextResponse.json({ data: result[0] }, { status: 201 });
   } catch (error) {

@@ -10,12 +10,18 @@
 
 const getServerSession = jest.fn();
 const sqlMock = jest.fn().mockResolvedValue([]);
+const transactionMock = jest.fn();
 
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('next-auth', () => ({
   getServerSession: (...args: any[]) => getServerSession(...args),
 }));
-jest.mock('@/lib/db', () => ({ sql: (...args: any[]) => sqlMock(...args) }));
+// B2: crear con saldo > 0 usa sql.transaction (producto + ingreso inicial).
+jest.mock('@/lib/db', () => {
+  const s = (...args: any[]) => sqlMock(...args);
+  s.transaction = (queries: any[]) => transactionMock(queries);
+  return { sql: s };
+});
 
 import { POST } from '../../app/api/productos/route';
 import { GET as GET_LISTA } from '../../app/api/alertas-stock/lista/route';
@@ -27,14 +33,16 @@ function getQuery(): string {
 describe('T5 — E2E smoke: POST producto → alertas/lista', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getServerSession.mockResolvedValue({ user: { rol: 'admin', empresas: [1] } });
+    getServerSession.mockResolvedValue({ user: { id: '1', nombre: 'QA', rol: 'admin', empresas: [1] } });
   });
 
   it('POST producto con stock_minimo=5 y saldo=2 → GET alertas query usa COALESCE(ub.saldo, p.saldo, 0)', async () => {
-    // Paso 1: POST /api/productos — crear producto
-    sqlMock
-      .mockResolvedValueOnce([]) // dup check
-      .mockResolvedValueOnce([{ id: 100, codigo: 'E2E-SM', stock_minimo: 5, saldo: 2 }]); // INSERT RETURNING
+    // Paso 1: POST /api/productos — crear producto (saldo > 0 → transacción)
+    sqlMock.mockResolvedValueOnce([]); // dup check
+    transactionMock.mockResolvedValueOnce([
+      [{ id: 100, codigo: 'E2E-SM', stock_minimo: 5, saldo: 2 }], // INSERT producto
+      [{ id: 7 }],                                                // INSERT ingreso inicial
+    ]);
 
     const postRes = await POST({
       json: () => Promise.resolve({

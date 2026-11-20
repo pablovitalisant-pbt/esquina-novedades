@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { MovimientoHistorial, ProductoHistorial, ResumenHistorial } from '@/lib/historial';
+import { OBS_STOCK_INICIAL, type MovimientoHistorial, type ProductoHistorial, type ResumenHistorial } from '@/lib/historial';
 
 interface RespuestaHistorial {
   producto: ProductoHistorial;
@@ -34,7 +34,7 @@ function formatFechaHora(value: string): string {
 }
 
 function etiqueta(m: MovimientoHistorial): string {
-  if (m.tipo === 'ingreso') return 'Ingreso';
+  if (m.tipo === 'ingreso') return m.detalle === OBS_STOCK_INICIAL ? 'Stock inicial' : 'Ingreso';
   if (m.tipo === 'conciliacion') return 'Ajuste de conteo';
   if (m.tipo === 'stock_inicial') return 'Stock inicial (sin registro)';
   if (m.tipo === 'reserva') return m.estado === 'vigente' ? 'Reservado en pedido' : 'Pedido online liberado';

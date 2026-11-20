@@ -4,16 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import { UbicacionBodegaAgrupada, type SessionProp } from '@/types';
 import { BodegaCard } from '@/components/BodegaCard';
 import { Input } from '@/components/ui/input';
-import { Search, Share2 } from 'lucide-react';
+import { History, Search, Share2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { toast } from 'sonner';
 import { useShareImage } from '@/hooks/useShareImage';
+import flags from '@/config/feature-flags.json';
 
 export function BodegaClient({ session }: { session: SessionProp }) {
   const { shareImage } = useShareImage();
+  const esAdmin = session?.user?.rol === 'admin';
+  const historialOn = (flags as Record<string, boolean>)['producto-historial'] === true;
   const activeEmpresaId = 1; // single-tenant
   const [ubicaciones, setUbicaciones] = useState<UbicacionBodegaAgrupada[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +88,18 @@ export function BodegaClient({ session }: { session: SessionProp }) {
     <div className="flex flex-col gap-6 fade-in zoom-in-95 duration-200">
       
       <div className="sticky top-16 md:top-20 z-40 bg-[var(--background)]/95 backdrop-blur-xl py-3 -mx-4 px-4 sm:mx-0 sm:px-0 border-b md:border-none shadow-sm md:shadow-none">
-        <label className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider mb-2 block">Búsqueda Rápida</label>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <label className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider block">Búsqueda Rápida</label>
+          {esAdmin && historialOn && (
+            <a
+              href="/bodega/historial"
+              className="inline-flex items-center gap-1.5 rounded-pill border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            >
+              <History className="h-4 w-4" />
+              Historial de un producto
+            </a>
+          )}
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 text-[var(--primary)]" />
           <Input 
@@ -131,6 +145,7 @@ export function BodegaClient({ session }: { session: SessionProp }) {
                key={u.codigo}
                ubicacion={u}
                onClick={openDrawer}
+               historialHref={esAdmin && historialOn ? `/bodega/historial?codigo=${encodeURIComponent(u.codigo)}` : undefined}
              />
            ))
          )}

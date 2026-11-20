@@ -6,9 +6,10 @@ import { ImageWithFallback } from './ImageWithFallback';
 interface BodegaCardProps {
   ubicacion: UbicacionBodegaAgrupada;
   onClick: (ubicacion: UbicacionBodegaAgrupada) => void;
+  historialHref?: string;
 }
 
-export function BodegaCard({ ubicacion, onClick }: BodegaCardProps) {
+export function BodegaCard({ ubicacion, onClick, historialHref }: BodegaCardProps) {
   const { saldo, fisico, diferencia, cantcaja, umed } = ubicacion;
 
   const difColor = diferencia === null
@@ -90,7 +91,18 @@ export function BodegaCard({ ubicacion, onClick }: BodegaCardProps) {
 
       {/* Ubicación */}
       <div className="px-3 py-2">
-        <div className="stat-label mb-1.5">Ubicación en bodega</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="stat-label mb-1.5">Ubicación en bodega</div>
+          {historialHref && (
+            <a
+              href={historialHref}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-pill border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            >
+              Historial
+            </a>
+          )}
+        </div>
         {ubicacion.ubicacion ? (
           <span className="inline-block font-mono text-2xl font-bold bg-[var(--primary)] dark:bg-[var(--primary)]/40 text-[var(--primary)] dark:text-[var(--primary)] px-3 py-1.5 rounded-lg">
             {ubicacion.ubicacion}

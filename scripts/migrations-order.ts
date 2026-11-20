@@ -50,4 +50,5 @@ export const MIGRATION_ORDER: string[] = [
   '051_pagos_app.sql',
   '052_pagos_app_comprobantes.sql',
   '053_pedidos_archivado.sql',
+  '054_pedidos_entrega.sql',
 ];

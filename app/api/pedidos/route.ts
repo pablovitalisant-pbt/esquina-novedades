@@ -421,17 +421,30 @@ export async function GET(request: NextRequest) {
           AND NOT (p.archivado_en IS NOT NULL AND p.estado = 'expirado' AND COALESCE(p.mp_revision_motivo, '') = '')`
       : estado ? sql`WHERE p.estado = ${estado}` : sql``;
 
-    const pedidos = (await sql`
-      SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
-             p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
-             p.stock_reservado,
-             p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
-             c.nombre, c.telefono
-      FROM public.pedidos p
-      LEFT JOIN public.clientes c ON c.id = p.cliente_id
-      ${filtro}
-      ORDER BY p.created_at DESC
-    `) as PedidoLista[];
+    const pedidos = (await (flags['pedidos-entrega'] === true
+      ? sql`
+          SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
+                 p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
+                 p.stock_reservado,
+                 p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
+                 p.entregado_en::text, p.entregado_por_nombre,
+                 c.nombre, c.telefono
+          FROM public.pedidos p
+          LEFT JOIN public.clientes c ON c.id = p.cliente_id
+          ${filtro}
+          ORDER BY p.created_at DESC
+        `
+      : sql`
+          SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
+                 p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
+                 p.stock_reservado,
+                 p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
+                 c.nombre, c.telefono
+          FROM public.pedidos p
+          LEFT JOIN public.clientes c ON c.id = p.cliente_id
+          ${filtro}
+          ORDER BY p.created_at DESC
+        `)) as PedidoLista[];
 
     if (pedidos.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });
@@ -493,6 +506,8 @@ export async function GET(request: NextRequest) {
         mp_payment_id: p.mp_payment_id ?? null,
         mp_fecha_pago: p.mp_fecha_pago ?? null,
         mp_revision_motivo: p.mp_revision_motivo ?? null,
+        entregado_en: (p.entregado_en as string | null | undefined) ?? null,
+        entregado_por_nombre: (p.entregado_por_nombre as string | null | undefined) ?? null,
         items: itemsPorPedido.get(p.id) ?? [],
         ...(cobroManual ? {
           metodo_pago: cobro?.metodo_pago ?? null,

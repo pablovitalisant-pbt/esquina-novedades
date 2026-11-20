@@ -19,5 +19,6 @@
   "precios-paginados": true,
   "precios-ingreso-stock": true,
   "pagos-app-privados": true,
-  "pedidos-pdf": true
+  "pedidos-pdf": true,
+  "pedidos-entrega": false
 }

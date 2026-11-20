@@ -14,6 +14,7 @@ import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { AplicarSaldoFavorDialog } from '@/components/AplicarSaldoFavorDialog';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatCLP } from '@/lib/utils';
+import { formatFecha } from '@/lib/fechas';
 import { EMPRESA, hexToRgb, hexToArgb } from '@/lib/empresa';
 import { useBusquedaClientes } from '@/hooks/useBusquedaClientes';
 
@@ -593,9 +594,8 @@ export function PrenotaDetallePage({ initialData }: { session: SessionProp; para
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const fecha = new Date().toLocaleDateString('es-CL', {
-      day: '2-digit', month: 'long', year: 'numeric'
-    });
+    // Zona Chile explícita: el navegador podía estar en otro huso (audit #8).
+    const fecha = formatFecha(new Date(), { month: 'long' });
 
     // ─── Header: banda --accent (#F2B936) + logo/marca a la izquierda y
     //     título "NOTA DE VENTA" a la derecha (mockup minimal-yellow).

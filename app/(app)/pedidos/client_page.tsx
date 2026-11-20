@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, FileDown, MessageCircle, PackageCheck } from 'l
 import { Button } from '@/components/ui/button';
 import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
-import { normalizarFechaPostgres } from '@/lib/fechas';
+import { formatFecha, formatFechaHora, normalizarFechaPostgres } from '@/lib/fechas';
 import flags from '@/config/feature-flags.json';
 import { ESTADO_LABEL, ENTREGA_LABEL } from '@/lib/pedidos/etiquetas';
 import {
@@ -71,37 +71,9 @@ function etiquetaCantidad(it: PedidoItem): string {
   return it.modalidad === 'mayor' ? `${base} (por mayor)` : base;
 }
 
-// B3: Postgres puede devolver texto no ISO ("2026-11-20 11:32:33.928739+00");
-// Safari/iOS no lo garantiza. Normalizar + zona Chile: un pedido de las 23:30
-// debe seguir siendo el mismo día aunque el navegador esté en otra zona.
-// Si la fecha es inválida se devuelve el texto original.
-export function formatFecha(value: string): string {
-  const fecha = new Date(normalizarFechaPostgres(value));
-  if (Number.isNaN(fecha.getTime())) return value;
-  return fecha.toLocaleDateString('es-CL', {
-    timeZone: 'America/Santiago',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-// Re-export para consumidores existentes (tests); la implementación vive en lib/fechas.
-export { normalizarFechaPostgres };
-
-function formatFechaHora(value: string): string {
-  const fecha = new Date(normalizarFechaPostgres(value));
-  if (Number.isNaN(fecha.getTime())) return value;
-  return fecha.toLocaleString('es-CL', {
-    timeZone: 'America/Santiago',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
+// Re-exports para consumidores existentes (tests); la implementación vive en
+// lib/fechas (normaliza el texto crudo de Postgres y fija zona Chile).
+export { formatFecha, normalizarFechaPostgres };
 
 // Solo convertido/pagado generan nota de venta; el resto no se entrega.
 function esEntregable(p: Pedido): boolean {

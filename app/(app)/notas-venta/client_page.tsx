@@ -10,7 +10,7 @@ import { FileText, PlusCircle, Trash2, ExternalLink, DollarSign } from 'lucide-r
 import { toast } from 'sonner';
 import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { formatCLP, formatSaldoPendiente } from '@/lib/utils';
-import { claveSantiago, agruparPorDia } from '@/lib/fechas';
+import { claveSantiago, agruparPorDia, formatFecha } from '@/lib/fechas';
 import type { SessionProp } from '@/types';
 
 const etiquetaTipo = (tipo: string) =>
@@ -108,13 +108,6 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
       toast.error('No se pudo anular');
     }
   };
-
-  const formatFecha = (value: string) =>
-    new Date(value).toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
 
   const porDia = (flags as Record<string, boolean>)['notas-venta-por-dia'] === true;
   const grupos = porDia && hoyClave

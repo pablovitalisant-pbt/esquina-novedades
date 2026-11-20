@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { MessageCircle } from 'lucide-react';
 import { formatCLP } from '@/lib/utils';
+import { formatFecha } from '@/lib/fechas';
 import type { SessionProp } from '@/types';
 
 interface DeudaNota {
@@ -40,13 +41,6 @@ export function DeudoresClient({}: { session: SessionProp }) {
       }
     })();
   }, []);
-
-  const formatFecha = (value: string) =>
-    new Date(value).toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
 
   const abrirWhatsApp = (d: Deudor) => {
     let telefono = (d.telefono || '').replace(/\D/g, '');

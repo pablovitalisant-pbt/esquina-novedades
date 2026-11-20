@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 import { CODIGO_DESPACHO } from '@/lib/pedidos/convertir';
 import { usuarioSesion } from '@/lib/session';
+import { formatFecha } from '@/lib/fechas';
 import type { Session } from 'next-auth';
 
 function getUsuarioId(session: Session | null) {
@@ -83,11 +84,8 @@ export async function POST(request: Request) {
     SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}
   `;
   const n = Number((count as { count: string }[])[0].count) + 1;
-  const fecha = new Date().toLocaleDateString('es-CL', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  // Día chileno: el servidor corre en UTC y anotaba el día siguiente tras las 21:00.
+  const fecha = formatFecha(new Date());
   const titulo = `Nota de Venta #${n} de ${usuarioNombre} — ${fecha}`;
   const rows = await sql`
     INSERT INTO public.prenotas (titulo, titulo_base, usuario_id, cliente_id)

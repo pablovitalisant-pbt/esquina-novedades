@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import { formatFecha } from '@/lib/fechas';
 
 // Código de la línea de despacho en la nota: no es un producto, se inserta con
 // empresa_id NULL para que ningún join de stock la alcance.
@@ -54,7 +55,8 @@ export async function convertirPedido(
   // 2. Crear la prenota (misma numeración que POST /api/notas-venta)
   const count = await sql`SELECT COUNT(*) FROM public.prenotas WHERE usuario_id = ${usuarioId}`;
   const n = Number(count[0].count) + 1;
-  const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+  // Día chileno: el servidor corre en UTC (audit #8, 14 títulos en producción).
+  const fecha = formatFecha(new Date());
   const titulo = `Nota de Venta #${n} de ${usuarioNombre} — ${fecha}`;
 
   // 2a. Pedido con stock ya reservado: una sola sentencia atómica crea la

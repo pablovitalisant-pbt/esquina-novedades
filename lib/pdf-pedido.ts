@@ -5,7 +5,7 @@ import type jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { EMPRESA, hexToRgb } from '@/lib/empresa';
 import { formatCLP } from '@/lib/utils';
-import { normalizarFechaPostgres } from '@/lib/fechas';
+import { formatFecha } from '@/lib/fechas';
 import { ESTADO_LABEL, ENTREGA_LABEL, ETIQUETA_PAGO } from '@/lib/pedidos/etiquetas';
 
 export type PedidoPdfItem = {
@@ -110,14 +110,8 @@ export async function construirPdfPedido(pedido: PedidoPdf): Promise<jsPDF | nul
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  // B3: mismo problema que la lista de pedidos (texto crudo de Postgres, Safari/iOS).
-  const fechaDate = new Date(normalizarFechaPostgres(pedido.created_at));
-  const fecha = Number.isNaN(fechaDate.getTime())
-    ? pedido.created_at
-    : fechaDate.toLocaleDateString('es-CL', {
-      timeZone: 'America/Santiago',
-      day: '2-digit', month: 'long', year: 'numeric',
-    });
+  // B3: texto crudo de Postgres (Safari/iOS) y zona Chile explícita.
+  const fecha = formatFecha(pedido.created_at, { month: 'long' });
 
   // ─── Header: banda oro + logo/marca + razón social; título "PEDIDO" ───
   doc.setFillColor(...ACENTO);

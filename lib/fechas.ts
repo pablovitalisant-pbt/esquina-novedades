@@ -21,6 +21,29 @@ function aFecha(value: string | Date): Date {
   return value instanceof Date ? value : new Date(normalizarFechaPostgres(String(value)));
 }
 
+// Texto visible 'DD mmm AAAA' (es-CL, mes corto). `opciones` permite el mes
+// largo de los PDF. Fecha inválida -> el texto original, no lanza.
+export function formatFecha(
+  value: string | Date,
+  opciones: Intl.DateTimeFormatOptions = {},
+): string {
+  const fecha = aFecha(value);
+  if (Number.isNaN(fecha.getTime())) return typeof value === 'string' ? value : '';
+  return fecha.toLocaleDateString('es-CL', {
+    timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric', ...opciones,
+  });
+}
+
+// 'DD mmm AAAA, HH:MM' en Chile. Fecha inválida -> el texto original.
+export function formatFechaHora(value: string | Date): string {
+  const fecha = aFecha(value);
+  if (Number.isNaN(fecha.getTime())) return typeof value === 'string' ? value : '';
+  return fecha.toLocaleString('es-CL', {
+    timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+}
+
 // Día calendario en Chile como 'YYYY-MM-DD' (en-CA produce ese formato).
 // Fecha inválida -> '' (no lanza).
 export function claveSantiago(value: string | Date): string {

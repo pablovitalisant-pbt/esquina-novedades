@@ -137,7 +137,7 @@ describe('Fase B — caja-detalle-nota', () => {
     { tipo_fila: 'movimiento', data: { ...mov, id: 'm3', nombre_cliente: 'Sin Nota', notas_imputadas: [] } },
   ], pagination: { page: 1, limit: 50, total: 2, totalPages: 1 } };
   const nota = (id: number, nombre: string, producto: string) => ({
-    id, fecha: '2026-11-09', nombre_cliente: nombre, cliente_nombre: nombre, cliente_telefono: '+56 9 1111 1111',
+    id, created_at: '2026-11-09 14:00:00+00', nombre_cliente: nombre, cliente_nombre: nombre, cliente_telefono: '+56 9 1111 1111',
     items: [
       { codigo: 'P1', descripcion: producto, modalidad: 'detalle', unidades: 2, precio: 1000, subtotal: 2000 },
       { codigo: 'P2', descripcion: 'Muñeca articulada', modalidad: 'mayor', unidades: 3, precio: 1000, subtotal: 3000 },
@@ -172,7 +172,8 @@ describe('Fase B — caja-detalle-nota', () => {
     const { dialog } = await abrir(123);
     await within(dialog).findByText('Ana Pérez'); // espera fin de carga
     const texto = dialog.textContent || '';
-    for (const s of ['Nota de venta #123', 'Ana Pérez', '+56 9 1111 1111', '2026-11-09', 'Cubo Rubik', 'P1', '$1.000', '$2.000', '$5.000', 'Pendiente']) expect(texto).toContain(s);
+    for (const s of ['Nota de venta #123', 'Ana Pérez', '+56 9 1111 1111', '09 nov 2026, 11:00', 'Cubo Rubik', 'P1', '$1.000', '$2.000', '$5.000', 'Pendiente']) expect(texto).toContain(s);
+    expect(texto).not.toContain('2026-11-09 14:00:00');
     expect(texto).toMatch(/por menor/i);
     expect(texto).toMatch(/por mayor/i);
     await cerrar();

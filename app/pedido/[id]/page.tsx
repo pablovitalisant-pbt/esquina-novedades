@@ -4,6 +4,7 @@ import { ArrowLeft, CircleCheck, CircleX, Clock, Search, ShoppingBag, type Lucid
 import { sql } from '@/lib/db';
 import { liberarReservasVencidas } from '@/lib/pedidos/liberar-reservas';
 import { formatCLP } from '@/lib/utils';
+import { formatFecha } from '@/lib/fechas';
 import { CatalogFooter } from '@/components/CatalogFooter';
 import { MarcaLogo } from '@/components/MarcaLogo';
 import { ConfettiCompra } from '@/components/ConfettiCompra';
@@ -48,11 +49,8 @@ const ESTADOS: Record<string, { label: string; titulo: string; mensaje: string; 
 };
 
 function fechaCorta(valor: string | null): string {
-  if (!valor) return '';
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime())
-    ? ''
-    : fecha.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+  // Día chileno explícito: el servidor (UTC) mostraba el día siguiente de noche.
+  return valor ? formatFecha(valor, { month: 'long' }) : '';
 }
 
 function cantidadTexto(cantidad: number, modalidad: string): string {

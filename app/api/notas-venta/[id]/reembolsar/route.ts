@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { EMPRESA } from "@/lib/empresa";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { usuarioSesion } from '@/lib/session';
+import { usuarioSesion, usuarioIdSesion } from '@/lib/session';
 import type { Session } from 'next-auth';
 import { mensajeError, codigoError } from '@/lib/errores';
 
@@ -18,7 +18,10 @@ function validarSesion(session: Session | null) {
   if (rol === 'bodeguero') {
     return { error: NextResponse.json({ error: "No autorizado" }, { status: 403 }) };
   }
-  return { session, usuarioId: Number(usuarioSesion(session).id) };
+  // El id va a caja_movimientos.usuario_id: un id no numérico nunca debe llegar
+  // como NaN a SQL. Con null la columna queda sin usuario, igual que antes con
+  // una sesión sin id; los códigos HTTP no cambian.
+  return { session, usuarioId: usuarioIdSesion(session) };
 }
 
 export async function POST(

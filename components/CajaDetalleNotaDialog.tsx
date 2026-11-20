@@ -4,10 +4,11 @@ import { useEffect, useState, type RefObject } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatCLP } from "@/lib/utils";
+import { formatFechaHora } from "@/lib/fechas";
 
 type Item = { codigo?: string; descripcion?: string; modalidad?: string; unidades?: number; precio?: number; subtotal?: number };
 type Detalle = {
-  fecha?: string; created_at?: string; cliente_nombre?: string; nombre_cliente?: string;
+  created_at?: string; cliente_nombre?: string; nombre_cliente?: string;
   cliente_telefono?: string; cliente_direccion?: string;
   items: Item[]; total: number; total_pagado: number; saldo_favor_aplicado: number; saldo_pendiente: number;
 };
@@ -50,7 +51,8 @@ export function CajaDetalleNotaDialog({ notaId, open, onOpenChange, finalFocus }
             <div>
               <p className="font-bold">{cliente || "Sin cliente"}</p>
               <p className="text-xs text-[var(--body-subtle)]">
-                {detalle.cliente_telefono || "Sin teléfono"} · {detalle.fecha || detalle.created_at}
+                {detalle.cliente_telefono || "Sin teléfono"}
+                {detalle.created_at ? ` · ${formatFechaHora(detalle.created_at)}` : ''}
               </p>
               {detalle.cliente_direccion && (
                 <p className="text-xs text-[var(--body-subtle)]">{detalle.cliente_direccion}</p>

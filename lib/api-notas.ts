@@ -9,6 +9,12 @@ export class ErrorNota extends ErrorApi {
   }
 }
 
+/** Mensaje de `{ error }` del body de una respuesta no-ok ('' si no viene). */
+async function mensajeErrorRespuesta(res: { json(): Promise<unknown> }): Promise<string> {
+  const err = (await res.json()) as { error?: unknown } | null;
+  return typeof err?.error === 'string' ? err.error : '';
+}
+
 /**
  * POST /api/notas-venta. Crea la nota (con cliente o sin el) y devuelve su id
  * como string. Un HTTP no-ok se rechaza con el mensaje del servidor cuando el
@@ -26,8 +32,7 @@ export async function crearNota(clienteId?: number | string | null): Promise<str
     // el llamador usa su generico si el body no trae uno legible.
     let mensaje = '';
     try {
-      const err = await res.json();
-      if (typeof err?.error === 'string') mensaje = err.error;
+      mensaje = await mensajeErrorRespuesta(res);
     } catch {
       // body no parseable
     }
@@ -63,8 +68,8 @@ export async function agregarItem<T = { id: string }>(
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new ErrorNota(typeof err.error === 'string' ? err.error : '');
+    // Un body no parseable propaga el error de parseo (igual que antes).
+    throw new ErrorNota(await mensajeErrorRespuesta(res));
   }
   return (await res.json()) as T;
 }

@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { OBS_STOCK_INICIAL, type MovimientoHistorial, type ProductoHistorial, type ResumenHistorial } from '@/lib/historial';
+import { formatFechaHora } from '@/lib/fechas';
 
 interface RespuestaHistorial {
   producto: ProductoHistorial;
@@ -17,20 +18,6 @@ interface ResultadoBusqueda {
   codigo: string;
   detalle: string | null;
   saldo: number;
-}
-
-function formatFechaHora(value: string): string {
-  const fecha = new Date(value);
-  if (Number.isNaN(fecha.getTime())) return value;
-  return fecha.toLocaleString('es-CL', {
-    timeZone: 'America/Santiago',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
 }
 
 function etiqueta(m: MovimientoHistorial): string {

@@ -132,3 +132,42 @@ Posterior BUG-014: panel de POS prioriza el detalle conservando ancho380px. A128
 
 Historial previo al mantenimiento: auditoría `docs/audits/ponytail-audit-2026-11-07-rendimiento.md`, entonces 3 cortes (enlaces, BUG-009 y BUG-010). Medición y decisiones en `docs/slices/N13-medicion.md`. Siguen vigentes BUG-008 (recarga silenciosa y unidades), BUG-009 (saludo inicial estable) y BUG-010 (avisos visibles y foco en checkout móvil).
 
+## Estado al 2026-11-20 (manda esta seccion)
+
+HEAD `93dadfa` en `main` = produccion (rama local `codex/backlog-2026-11-06`, se publica con `git push origin HEAD:main`).
+Suite: **0 suites rojas** (303 suites, 2541 tests, en paralelo). Cualquier roja es regresion.
+
+### Entregado desde el 2026-11-13
+- pedidos-pdf (Imprimir PDF / WhatsApp en /pedidos), flag on.
+- BUG-015 buscador de la tienda y BUG-016 barra de categorias: al filtrar, la portada se oculta y los resultados quedan arriba.
+- Pedidos de Paola (audios 2026-11-19, plan en `..\_dt\plan-paola-2026-11-19.md`), los tres con flag ON:
+  - `pedidos-entrega`: Marcar entregado / Quitar (solo admin) / filtro Por entregar en /pedidos. Migracion 054.
+  - `producto-historial`: /bodega/historial (entrada en cabecera de Bodega; 437/438 productos no tienen ubicacion).
+  - `notas-venta-por-dia`: separador por dia (America/Santiago) con cantidad y total.
+- Stock inicial de "Nuevo producto" se registra como ingreso ('Stock inicial al crear el producto') en la misma transaccion.
+- Historial sigue al producto al cambiar su codigo: migracion 055 `productos_codigo_cambios` + ventanas de tiempo.
+- BUG-017 fechas de /pedidos y PDF (normalizarFechaPostgres + zona Chile, iPhone). BUG-018 test intermitente (BD TEST compartida).
+- crearNota muestra el mensaje del servidor; 6 tests alineados a cambios deliberados.
+- Datos: JS-1640 conciliado 11 -> 0 por Pablo (29 vendidas en notas; 11 sin nota). C8355 en 0.
+
+### Migraciones
+054 y 055 aplicadas en test-integration y production (verificadas en information_schema).
+
+### QA
+Sin `.pbravot/qa-entorno.json` en este repo: QA la hace el Director con el navegador integrado contra la BD de pruebas en
+localhost:3100 (guarda: host .env.test != host .env.local). Cuentas sinteticas y seeds en `..\_dt\qa\` (cuentas-qa.local.json,
+qa-seed-s1.cjs, qa-seed-s2.cjs; las cuentas QA necesitan fila en usuario_empresa). No dejar servidores de QA corriendo mientras corre
+jest (liberarReservasVencidas toca la BD TEST compartida).
+
+### Pendiente
+- **Senal 2/3 vencida:** el ultimo ponytail audit es 2026-11-07 (tienda-botones); desde entonces van 13 cortes (pedidos-pdf, BUG-015,
+  S1a, S1b, S2a, S2b, S3, B1, B3, B2, B4/BUG-018, B5, T1) y los deploys de hoy se hicieron sin audit previo. Correr /ponytail-audit
+  antes del proximo slice y decidir slice de limpieza.
+- Pablo: revisar en produccion (con sesion) las tres funciones encendidas y mostrarlas a Paola (video del ajuste de stock ya grabado).
+- Limites conocidos: cambios de codigo anteriores a la 055 sin registro; codigo reutilizado al CREAR un producto no tiene ventana;
+  notas editadas/borradas no dejan rastro en el historial (solo cantidad final).
+- Backlog previo vigente: `docs/BACKLOG-2026-11-07-MANTENIMIENTO.md`.
+
+## Contador de slices desde el ultimo ponytail audit (vigente)
+
+13 (ultimo audit: `docs/audits/ponytail-audit-2026-11-07-tienda-botones.md`). Senal 2 activa.

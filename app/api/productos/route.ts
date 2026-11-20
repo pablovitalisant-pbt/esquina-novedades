@@ -7,6 +7,7 @@ import { esPrecioMayorValido, esMinimoMayorValido } from "@/lib/precio-mayor";
 import { mensajeError } from '@/lib/errores';
 import { OBS_STOCK_INICIAL } from '@/lib/historial';
 import flags from '@/config/feature-flags.json';
+import { usuarioIdSesion } from '@/lib/session';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -85,13 +86,8 @@ export async function POST(request: Request) {
     }
 
     // B2: el stock inicial con que nace el producto se registra como ingreso.
-    // usuarios.id es entero; un id de sesión no numérico no puede ir al FK
-    // NOT NULL de ingresos_mercaderia (mismo cuidado que pedidos/[id]/entrega).
-    const idCrudo = user.id;
-    const idNumero = typeof idCrudo === 'number' ? idCrudo
-      : typeof idCrudo === 'string' && /^\d+$/.test(idCrudo) ? Number(idCrudo)
-        : null;
-    const usuarioId = Number.isInteger(idNumero) ? idNumero : null;
+    // Un id de sesión no entero no puede ir al FK NOT NULL de ingresos_mercaderia.
+    const usuarioId = usuarioIdSesion(session);
     if (saldoNum > 0 && usuarioId === null) {
       return NextResponse.json(
         { error: "No se pudo identificar al usuario para registrar el stock inicial" },

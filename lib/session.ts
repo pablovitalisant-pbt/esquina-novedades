@@ -7,3 +7,15 @@ export type UsuarioSesion = Partial<Pick<Session['user'], 'id' | 'nombre' | 'rol
 export function usuarioSesion(session: Session | null): UsuarioSesion {
   return session?.user ?? {};
 }
+
+/**
+ * Id de `usuarios` de la sesión, o `null`. `usuarios.id` es entero positivo:
+ * solo pasan un number entero (> 0) o un string de solo dígitos. Un id no
+ * numérico nunca debe llegar al FK (antes alguna ruta enviaba `NaN`).
+ */
+export function usuarioIdSesion(session: Session | null): number | null {
+  const id = session?.user?.id;
+  if (typeof id === 'number') return Number.isInteger(id) && id > 0 ? id : null;
+  if (typeof id === 'string' && /^\d+$/.test(id)) return Number(id);
+  return null;
+}

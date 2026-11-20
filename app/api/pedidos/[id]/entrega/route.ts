@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import { usuarioSesion } from '@/lib/session';
+import { usuarioSesion, usuarioIdSesion } from '@/lib/session';
 import { mensajeError } from '@/lib/errores';
 import flags from '@/config/feature-flags.json';
 
@@ -66,13 +66,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    // usuarios.id es entero; el id de la sesión llega como string. Un valor no
-    // numérico no debe romper el FK: se guarda NULL y el nombre queda igual.
-    const idCrudo = usuario.id;
-    const numero = typeof idCrudo === 'number' ? idCrudo
-      : typeof idCrudo === 'string' && /^\d+$/.test(idCrudo) ? Number(idCrudo)
-        : null;
-    const usuarioId = Number.isInteger(numero) ? numero : null;
+    // usuarios.id es entero: un id de sesión no numérico no debe romper el FK;
+    // se guarda NULL y el nombre queda igual.
+    const usuarioId = usuarioIdSesion(session);
     const nombre = usuario.nombre || 'usuario';
 
     const rows = entregado

@@ -280,7 +280,8 @@ describe('GET /api/pedidos — entrega', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(consultaPrincipal()).not.toMatch(/entregado_en/);
+    // Ninguna sentencia (ni el fragmento condicional) menciona la columna.
+    for (const t of textos()) expect(t).not.toMatch(/entregado_en/);
     expect(body.data[0]).toHaveProperty('entregado_en', null);
     expect(body.data[0]).toHaveProperty('entregado_por_nombre', null);
   });
@@ -292,8 +293,11 @@ describe('GET /api/pedidos — entrega', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(consultaPrincipal()).toMatch(/entregado_en::text/);
-    expect(consultaPrincipal()).toMatch(/entregado_por_nombre/);
+    // Las columnas viajan en el fragmento anidado que se interpola en el SELECT.
+    const fragmento = textos().find((t: string) => t.includes('entregado_en::text')) ?? '';
+    expect(fragmento).toMatch(/entregado_en::text/);
+    expect(fragmento).toMatch(/entregado_por_nombre/);
+    expect(consultaPrincipal()).toMatch(/FROM public\.pedidos p/);
     expect(body.data[0]).toMatchObject({
       entregado_en: FECHA, entregado_por_nombre: 'Paola',
     });

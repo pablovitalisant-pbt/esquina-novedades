@@ -6,12 +6,7 @@ import { formatCLP } from '@/lib/utils';
 import { leerDetalleNota } from '@/lib/notas-venta/detalle';
 
 import type { RouteContext } from '@/types';
-import { usuarioSesion } from '@/lib/session';
-import type { Session } from 'next-auth';
-
-function getUsuarioId(session: Session | null) {
-  return Number(usuarioSesion(session).id);
-}
+import { usuarioSesion, usuarioIdSesion } from '@/lib/session';
 
 async function validarSesion() {
   const session = await getServerSession(authOptions);
@@ -25,7 +20,10 @@ async function validarSesion() {
     return { error: NextResponse.json({ error: 'No autorizado' }, { status: 403 }) };
   }
 
-  return { session, usuarioId: getUsuarioId(session) };
+  // Antes: Number(id) → NaN. Este `usuarioId` no lo consume ningún handler de
+  // este archivo (GET/PATCH/DELETE), así que el NaN nunca llegaba a SQL; con el
+  // helper estricto pasa a null y las respuestas HTTP son idénticas.
+  return { session, usuarioId: usuarioIdSesion(session) };
 }
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {

@@ -421,30 +421,20 @@ export async function GET(request: NextRequest) {
           AND NOT (p.archivado_en IS NOT NULL AND p.estado = 'expirado' AND COALESCE(p.mp_revision_motivo, '') = '')`
       : estado ? sql`WHERE p.estado = ${estado}` : sql``;
 
-    const pedidos = (await (flags['pedidos-entrega'] === true
-      ? sql`
-          SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
-                 p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
-                 p.stock_reservado,
-                 p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
-                 p.entregado_en::text, p.entregado_por_nombre,
-                 c.nombre, c.telefono
-          FROM public.pedidos p
-          LEFT JOIN public.clientes c ON c.id = p.cliente_id
-          ${filtro}
-          ORDER BY p.created_at DESC
-        `
-      : sql`
-          SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
-                 p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
-                 p.stock_reservado,
-                 p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
-                 c.nombre, c.telefono
-          FROM public.pedidos p
-          LEFT JOIN public.clientes c ON c.id = p.cliente_id
-          ${filtro}
-          ORDER BY p.created_at DESC
-        `)) as PedidoLista[];
+    const pedidos = (await sql`
+      SELECT p.id, p.cliente_id, p.origen, p.origen_slug, p.estado, p.created_at::text,
+             p.email_contacto, p.entrega_codigo, p.entrega_costo, p.direccion_entrega, p.total,
+             p.stock_reservado,
+             p.mp_payment_id, p.mp_fecha_pago::text, p.mp_revision_motivo,
+             ${flags['pedidos-entrega'] === true
+               ? sql`p.entregado_en::text, p.entregado_por_nombre,`
+               : sql``}
+             c.nombre, c.telefono
+      FROM public.pedidos p
+      LEFT JOIN public.clientes c ON c.id = p.cliente_id
+      ${filtro}
+      ORDER BY p.created_at DESC
+    `) as PedidoLista[];
 
     if (pedidos.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });

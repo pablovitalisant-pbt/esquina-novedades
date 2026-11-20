@@ -399,7 +399,8 @@ describe('GET /api/pedidos — staff', () => {
   test('con sesión válida → entrega, email y total con ítems modalidad/subtotal', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
-      .mockResolvedValueOnce([]) // fragmento condicional anidado
+      .mockResolvedValueOnce([]) // fragmento del filtro
+      .mockResolvedValueOnce([]) // fragmento de columnas de entrega
       .mockResolvedValueOnce([{
         id: 'b3f1-0000', cliente_id: 'a91c-0000', origen: 'productos', origen_slug: null,
         estado: 'pendiente', created_at: '2026-08-17T20:10:00Z',
@@ -435,6 +436,7 @@ describe('GET /api/pedidos — staff', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: 'b3f1-0000', cliente_id: 'a91c-0000', origen: 'productos', origen_slug: null,
         estado: 'pendiente', created_at: '2026-08-17T20:10:00Z',
@@ -458,6 +460,7 @@ describe('GET /api/pedidos — staff', () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: 'b3f1-0000', cliente_id: null, origen: 'productos', origen_slug: null,
         estado: 'revision', created_at: '2026-08-17T20:10:00Z',
@@ -473,12 +476,13 @@ describe('GET /api/pedidos — staff', () => {
     expect(body.data[0]).toMatchObject({
       mp_payment_id: '999', mp_fecha_pago: '2026-08-17T21:00:00Z', mp_revision_motivo: 'Monto distinto',
     });
-    expect(sql.mock.calls[1][0].join('')).toMatch(/mp_revision_motivo/);
+    const principal = sql.mock.calls.find((c: any[]) => c[0].join('').includes('FROM public.pedidos p'));
+    expect(principal[0].join('')).toMatch(/mp_revision_motivo/);
   });
 
   test('con ?estado=pendiente filtra la query', async () => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'vendedor' } });
-    sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const res = await GET(new NextRequest('http://localhost/api/pedidos?estado=pendiente'));
     const body = await res.json();
@@ -590,7 +594,8 @@ describe('GET /api/pedidos — imagen_url por ítem (pedidos-pdf)', () => {
   const montarGet = (items: Record<string, unknown>[]) => {
     getServerSession.mockResolvedValue({ user: { id: '7', rol: 'admin' } });
     sql
-      .mockResolvedValueOnce([])       // fragmento condicional anidado
+      .mockResolvedValueOnce([])       // fragmento del filtro
+      .mockResolvedValueOnce([])       // fragmento de columnas de entrega
       .mockResolvedValueOnce([PEDIDO]) // pedidos
       .mockResolvedValueOnce(items);   // pedido_items + productos
   };

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { mensajeError } from '@/lib/errores';
+import { usuarioIdSesion } from '@/lib/session';
 
 // Endpoint dedicado: el codigo NO entra al WHITELIST del PUT /api/productos/[id]
 // porque cambiarlo propaga a 4 tablas y exige unicidad por empresa.
@@ -56,13 +57,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       );
     }
 
-    // usuarios.id es entero y el id de sesión llega como string: un valor no
-    // numérico se guarda NULL (mismo criterio que pedidos/[id]/entrega).
-    const idCrudo = user.id;
-    const numero = typeof idCrudo === 'number' ? idCrudo
-      : typeof idCrudo === 'string' && /^\d+$/.test(idCrudo) ? Number(idCrudo)
-        : null;
-    const usuarioId = Number.isInteger(numero) ? numero : null;
+    // usuarios.id es entero: un id de sesión no numérico se guarda NULL.
+    const usuarioId = usuarioIdSesion(session);
     const usuarioNombre = user.nombre ?? null;
 
     // Paso 4: propagacion atomica a las tablas que usan `codigo` como clave viva.

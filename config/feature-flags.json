@@ -21,5 +21,6 @@
   "pagos-app-privados": true,
   "pedidos-pdf": true,
   "pedidos-entrega": false,
-  "producto-historial": false
+  "producto-historial": false,
+  "notas-venta-por-dia": false
 }

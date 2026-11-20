@@ -10,6 +10,7 @@ import { FileText, PlusCircle, Trash2, ExternalLink, DollarSign } from 'lucide-r
 import { toast } from 'sonner';
 import { PagarNotaDialog } from '@/components/PagarNotaDialog';
 import { formatCLP, formatSaldoPendiente } from '@/lib/utils';
+import { claveSantiago, agruparPorDia } from '@/lib/fechas';
 import type { SessionProp } from '@/types';
 
 const etiquetaTipo = (tipo: string) =>
@@ -36,6 +37,8 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [pagarNotaId, setPagarNotaId] = useState<number | null>(null);
+  // Reloj solo tras hidratar (BUG-009): nunca en el render de servidor.
+  const [hoyClave, setHoyClave] = useState<string | null>(null);
 
   const fetchPrenotas = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -59,6 +62,10 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
 
   useEffect(() => {
     fetchPrenotas();
+  }, []);
+
+  useEffect(() => {
+    setHoyClave(claveSantiago(new Date()));
   }, []);
 
   const handleCrear = async () => {
@@ -109,6 +116,11 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
       year: 'numeric',
     });
 
+  const porDia = (flags as Record<string, boolean>)['notas-venta-por-dia'] === true;
+  const grupos = porDia && hoyClave
+    ? agruparPorDia(prenotas, hoyClave)
+    : [{ clave: 'todas', etiqueta: '', activas: prenotas.length, total: 0, notas: prenotas }];
+
   return (
     <div className="flex flex-col gap-6 fade-in zoom-in-95 duration-200">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -133,73 +145,85 @@ export function PrenotasPage({ session }: { session: SessionProp }) {
           No hay notas de venta
         </div>
       ) : (
-        <div className="flex flex-col gap-3 pb-12">
-          {prenotas.map(prenota => (
-            <div
-              key={prenota.id}
-              data-testid={`nota-row-${prenota.id}`}
-              className="bg-[var(--card)] border rounded-card p-4 shadow-sm flex items-start justify-between gap-4"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[var(--primary)] flex-shrink-0" />
-                  <p className="font-bold text-base truncate">{prenota.titulo}</p>
-                  {prenota.tipo_documento && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {prenota.tipo_documento}
-                    </Badge>
-                  )}
-                  {(flags as Record<string, boolean>)['notas-venta-modalidad'] === true && prenota.tipo && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {etiquetaTipo(prenota.tipo)}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-[var(--body-subtle)] mt-1">{formatFecha(prenota.created_at)}</p>
-                {prenota.nombre_cliente && (
-                  <p className="text-sm text-[var(--body)] mt-2">{prenota.nombre_cliente}</p>
-                )}
-                {prenota.total !== undefined && (
-                  <>
-                    <p className="text-sm font-semibold text-[var(--heading)] mt-1">
-                      Total: {formatCLP(prenota.total)}
-                    </p>
-                    {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente) && (
-                      <p className="text-sm font-semibold text-[var(--destructive)] mt-0.5">
-                        Pendiente: {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente)}
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                {prenota.saldo_pendiente != null && prenota.saldo_pendiente > 0.005 && prenota.estado !== 'anulada' && (
-                  <Button
-                    size="sm"
-                    variant="success"
-                    className="text-xs"
-                    onClick={() => setPagarNotaId(prenota.id)}
-                  >
-                    <DollarSign className="w-3 h-3 mr-1" /> Pagar
-                  </Button>
-                )}
-                <Link
-                  href={`/notas-venta/${prenota.id}`}
-                  className={buttonVariants({ size: 'sm', variant: 'outline', className: 'text-xs' })}
+        <div className={porDia ? 'flex flex-col gap-6 pb-12' : 'flex flex-col gap-3 pb-12'}>
+          {grupos.map(grupo => (
+            <section key={grupo.clave} className="flex flex-col gap-3">
+              {porDia && grupo.etiqueta && (
+                <h2
+                  data-testid={`dia-${grupo.clave}`}
+                  className="text-sm font-semibold text-[var(--body)] border-b border-[var(--border)] pb-2 break-words"
                 >
-                  <ExternalLink className="w-3 h-3 mr-1" /> Abrir
-                </Link>
-                {rol === 'admin' && (
-                  <Button
-                    variant="destructive" size="sm"
-                    onClick={() => handleEliminar(prenota.id)}
-                  >
-                    <Trash2 className="w-3 h-3 mr-1" /> Anular
-                  </Button>
-                )}
-              </div>
-            </div>
+                  {grupo.etiqueta} · {grupo.activas} {grupo.activas === 1 ? 'nota' : 'notas'} · {formatCLP(grupo.total)}
+                </h2>
+              )}
+              {grupo.notas.map(prenota => (
+                <div
+                  key={prenota.id}
+                  data-testid={`nota-row-${prenota.id}`}
+                  className="bg-[var(--card)] border rounded-card p-4 shadow-sm flex items-start justify-between gap-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[var(--primary)] flex-shrink-0" />
+                      <p className="font-bold text-base truncate">{prenota.titulo}</p>
+                      {prenota.tipo_documento && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {prenota.tipo_documento}
+                        </Badge>
+                      )}
+                      {(flags as Record<string, boolean>)['notas-venta-modalidad'] === true && prenota.tipo && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {etiquetaTipo(prenota.tipo)}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-[var(--body-subtle)] mt-1">{formatFecha(prenota.created_at)}</p>
+                    {prenota.nombre_cliente && (
+                      <p className="text-sm text-[var(--body)] mt-2">{prenota.nombre_cliente}</p>
+                    )}
+                    {prenota.total !== undefined && (
+                      <>
+                        <p className="text-sm font-semibold text-[var(--heading)] mt-1">
+                          Total: {formatCLP(prenota.total)}
+                        </p>
+                        {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente) && (
+                          <p className="text-sm font-semibold text-[var(--destructive)] mt-0.5">
+                            Pendiente: {formatSaldoPendiente(prenota.total_pagado, prenota.saldo_pendiente)}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {prenota.saldo_pendiente != null && prenota.saldo_pendiente > 0.005 && prenota.estado !== 'anulada' && (
+                      <Button
+                        size="sm"
+                        variant="success"
+                        className="text-xs"
+                        onClick={() => setPagarNotaId(prenota.id)}
+                      >
+                        <DollarSign className="w-3 h-3 mr-1" /> Pagar
+                      </Button>
+                    )}
+                    <Link
+                      href={`/notas-venta/${prenota.id}`}
+                      className={buttonVariants({ size: 'sm', variant: 'outline', className: 'text-xs' })}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" /> Abrir
+                    </Link>
+                    {rol === 'admin' && (
+                      <Button
+                        variant="destructive" size="sm"
+                        onClick={() => handleEliminar(prenota.id)}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Anular
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </section>
           ))}
         </div>
       )}

@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, FileDown, MessageCircle, PackageCheck } from 'l
 import { Button } from '@/components/ui/button';
 import { ConfirmarCobroPedido } from '@/components/ConfirmarCobroPedido';
 import { formatCLP } from '@/lib/utils';
+import { normalizarFechaPostgres } from '@/lib/fechas';
 import flags from '@/config/feature-flags.json';
 import { ESTADO_LABEL, ENTREGA_LABEL } from '@/lib/pedidos/etiquetas';
 import {
@@ -78,16 +79,8 @@ function formatFecha(value: string): string {
   });
 }
 
-// Postgres puede devolver "2026-11-20 11:32:33.928739+00": no es ISO estricto y
-// Safari/iOS no lo garantiza. Normaliza espacio, fracción a milisegundos y offset
-// con minutos ("+00" -> "+00:00", "+0000" -> "+00:00").
-export function normalizarFechaPostgres(value: string): string {
-  return value
-    .replace(' ', 'T')
-    .replace(/(\.\d{3})\d+/, '$1')
-    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
-    .replace(/([+-]\d{2})$/, '$1:00');
-}
+// Re-export para consumidores existentes (tests); la implementación vive en lib/fechas.
+export { normalizarFechaPostgres };
 
 function formatFechaHora(value: string): string {
   const fecha = new Date(normalizarFechaPostgres(value));

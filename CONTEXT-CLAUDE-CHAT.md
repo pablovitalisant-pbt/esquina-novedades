@@ -160,7 +160,7 @@ qa-seed-s1.cjs, qa-seed-s2.cjs; las cuentas QA necesitan fila en usuario_empresa
 jest (liberarReservasVencidas toca la BD TEST compartida).
 
 ### Pendiente
-- **Senal 2/3 vencida:** el ultimo ponytail audit es 2026-11-07 (tienda-botones); desde entonces van 13 cortes (pedidos-pdf, BUG-015,
+- **Senal 2/3 (resuelta 2026-11-20 con el audit):** el ultimo ponytail audit es 2026-11-07 (tienda-botones); desde entonces van 13 cortes (pedidos-pdf, BUG-015,
   S1a, S1b, S2a, S2b, S3, B1, B3, B2, B4/BUG-018, B5, T1) y los deploys de hoy se hicieron sin audit previo. Correr /ponytail-audit
   antes del proximo slice y decidir slice de limpieza.
 - Pablo: revisar en produccion (con sesion) las tres funciones encendidas y mostrarlas a Paola (video del ajuste de stock ya grabado).
@@ -170,4 +170,4 @@ jest (liberarReservasVencidas toca la BD TEST compartida).
 
 ## Contador de slices desde el ultimo ponytail audit (vigente)
 
-13 (ultimo audit: `docs/audits/ponytail-audit-2026-11-07-tienda-botones.md`). Senal 2 activa.
+0 (ultimo audit: `docs/audits/ponytail-audit-2026-11-20.md`, sobre los 13 cortes desde el 2026-11-07). Pendiente: slices de limpieza A (usuarioIdSesion + SELECT de pedidos) y B (fechas en lib/fechas.ts, titulos de nota en hora Chile, CajaDetalleNotaDialog).

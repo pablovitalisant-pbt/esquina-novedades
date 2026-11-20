@@ -56,9 +56,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       );
     }
 
+    // usuarios.id es entero y el id de sesión llega como string: un valor no
+    // numérico se guarda NULL (mismo criterio que pedidos/[id]/entrega).
+    const idCrudo = user.id;
+    const numero = typeof idCrudo === 'number' ? idCrudo
+      : typeof idCrudo === 'string' && /^\d+$/.test(idCrudo) ? Number(idCrudo)
+        : null;
+    const usuarioId = Number.isInteger(numero) ? numero : null;
+    const usuarioNombre = user.nombre ?? null;
+
     // Paso 4: propagacion atomica a las tablas que usan `codigo` como clave viva.
     // ingresos_mercaderia y conciliaciones_stock quedan fuera a proposito: son
     // bitacora historica y deben conservar el codigo tal como era en su momento.
+    // El INSERT del cambio va en la MISMA transaccion: si falla, se revierte
+    // tambien el UPDATE de productos y no queda un cambio sin registro.
     const [productResult] = await sql.transaction([
       sql.query(
         `UPDATE public.productos SET codigo = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
@@ -83,6 +94,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                )
            )`,
         [codigoNuevo, codigoActual]
+      ),
+      sql.query(
+        `INSERT INTO public.productos_codigo_cambios
+           (empresa_id, producto_id, codigo_anterior, codigo_nuevo, usuario_id, usuario_nombre)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [empresaId, pid, codigoActual, codigoNuevo, usuarioId, usuarioNombre]
       ),
     ]);
 

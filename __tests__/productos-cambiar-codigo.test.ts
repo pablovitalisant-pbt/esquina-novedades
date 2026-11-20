@@ -55,7 +55,7 @@ describe('POST /api/productos/[id]/cambiar-codigo', () => {
   const ctx = { params: Promise.resolve({ id: '1' }) };
 
   const authAdmin = () => {
-    getServerSession.mockResolvedValue({ user: { rol: 'admin', empresas: [2] } });
+    getServerSession.mockResolvedValue({ user: { id: '7', nombre: 'Paola', rol: 'admin', empresas: [2] } });
   };
 
   /** Concatena todo el SQL emitido (tagged template + sql.query) para inspeccion. */
@@ -214,6 +214,7 @@ describe('POST /api/productos/[id]/cambiar-codigo', () => {
         [],                              // UPDATE ubicaciones_bodega
         [],                              // UPDATE catalogo_precio_override
         [],                              // UPDATE prenota_items
+        [{ id: 9 }],                     // INSERT productos_codigo_cambios
       ]);
     };
 
@@ -232,17 +233,60 @@ describe('POST /api/productos/[id]/cambiar-codigo', () => {
       expect(sqlTransaction).toHaveBeenCalledTimes(1);
     });
 
-    test('propaga a las 4 tablas: productos, ubicaciones_bodega, catalogo_precio_override, prenota_items', async () => {
+    test('propaga a las 4 tablas y registra el cambio en la 5ª, todo en la misma transacción', async () => {
       happy();
       await POST(makeReq({ codigo_nuevo: 'PROD-99' }), ctx);
 
       const queries = sqlTransaction.mock.calls[0][0] as any[];
       expect(Array.isArray(queries)).toBe(true);
-      expect(queries.length).toBe(4);
+      expect(queries.length).toBe(5);
 
       const todo = sqlEmitido().join(' || ');
-      for (const tabla of ['productos', 'ubicaciones_bodega', 'catalogo_precio_override', 'prenota_items']) {
+      for (const tabla of ['productos', 'ubicaciones_bodega', 'catalogo_precio_override', 'prenota_items', 'productos_codigo_cambios']) {
         expect(todo).toContain(tabla);
+      }
+    });
+
+    test('el cambio registra empresa, producto, código anterior, código nuevo y usuario', async () => {
+      happy();
+      await POST(makeReq({ codigo_nuevo: 'PROD-99' }), ctx);
+
+      const insert = sqlQuery.mock.calls.find((c: any[]) =>
+        String(c[0]).includes('productos_codigo_cambios'),
+      );
+      expect(insert).toBeDefined();
+      const [sqlTexto, params] = insert as [string, unknown[]];
+      for (const columna of ['empresa_id', 'producto_id', 'codigo_anterior', 'codigo_nuevo', 'usuario_id', 'usuario_nombre']) {
+        expect(sqlTexto).toContain(columna);
+      }
+      expect(params).toEqual([2, 1, 'PROD-01', 'PROD-99', 7, 'Paola']);
+    });
+
+    test('usuario_id acepta solo enteros válidos; un id raro se guarda NULL', async () => {
+      const casos: Array<[unknown, number | null]> = [
+        ['42', 42],
+        ['0', 0],
+        ['abc', null],
+        ['1.5', null],
+        ['', null],
+        [undefined, null],
+      ];
+      for (const [idCrudo, esperado] of casos) {
+        getServerSession.mockResolvedValue({
+          user: { id: idCrudo, nombre: 'Paola', rol: 'admin', empresas: [2] },
+        });
+        sql
+          .mockResolvedValueOnce([{ empresa_id: 2, codigo: 'PROD-01' }])
+          .mockResolvedValueOnce([]);
+        sqlTransaction.mockResolvedValueOnce([[{ id: 1, codigo: 'PROD-99' }], [], [], [], [{ id: 9 }]]);
+
+        const res = await POST(makeReq({ codigo_nuevo: 'PROD-99' }), ctx);
+        expect(res.status).toBe(200);
+        const insert = sqlQuery.mock.calls.find((c: any[]) =>
+          String(c[0]).includes('productos_codigo_cambios'),
+        );
+        expect((insert as any[])[1][4]).toBe(esperado);
+        sqlQuery.mockClear();
       }
     });
 

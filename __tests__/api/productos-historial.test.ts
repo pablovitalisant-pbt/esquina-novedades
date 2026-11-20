@@ -36,6 +36,8 @@ const PRODUCTO = {
   fecha_ingreso: '2026-10-30T14:22:05.000Z',
 };
 
+const CAMBIOS = [{ codigo_anterior: 'JS-VIEJO' }];
+
 function mov(over: Record<string, unknown> = {}) {
   return {
     fecha: '2026-11-02T16:10:00.000Z',
@@ -85,7 +87,10 @@ describe('GET /api/productos/[id]/historial', () => {
       user: { id: '1', nombre: 'Paola', rol: 'admin', empresas: [1] },
     });
     sql.mockReset();
-    sql.mockResolvedValueOnce([PRODUCTO]).mockResolvedValueOnce(MOVS_JS1640);
+    sql
+      .mockResolvedValueOnce([PRODUCTO])
+      .mockResolvedValueOnce(CAMBIOS)
+      .mockResolvedValueOnce(MOVS_JS1640);
   });
 
   afterEach(() => {
@@ -141,7 +146,7 @@ describe('GET /api/productos/[id]/historial', () => {
 
   it('R1: ventas y reservas leen SUM(unidades), nunca unidades*cantcaja', async () => {
     await pedir();
-    const q = queries()[1];
+    const q = queries()[2];
     expect(q).toMatch(/SUM\s*\(\s*pi\.unidades\s*\)/i);
     expect(q).not.toMatch(/unidades\s*\*\s*cantcaja/i);
   });
@@ -150,18 +155,19 @@ describe('GET /api/productos/[id]/historial', () => {
     sql.mockReset();
     sql
       .mockResolvedValueOnce([PRODUCTO])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([mov({ cantidad: -9, detalle: 'Nota con 2 líneas (4+5)' })]);
     const res = await pedir();
     const body = await res.json();
     const ventas = body.movimientos.filter((m: any) => m.tipo === 'venta');
     expect(ventas).toHaveLength(1);
     expect(ventas[0].cantidad).toBe(-9);
-    expect(queries()[1]).toMatch(/GROUP BY\s+n\.id/i);
+    expect(queries()[2]).toMatch(/GROUP BY\s+n\.id/i);
   });
 
   it('R11: la reserva convertida no se cuenta dos veces (no se consulta "convertido")', async () => {
     await pedir();
-    const q = queries()[1];
+    const q = queries()[2];
     expect(q).not.toMatch(/'convertido'/i);
     expect(q).toMatch(/estado IN \('expirado', 'descartado', 'rechazado'\)/i);
   });
@@ -201,6 +207,7 @@ describe('GET /api/productos/[id]/historial', () => {
     sql.mockReset();
     sql
       .mockResolvedValueOnce([{ ...PRODUCTO, saldo: 2 }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         mov({ tipo: 'conciliacion', cantidad: 10, detalle: 'Conteo físico', ref_tipo: 'conciliacion', ref_id: 7, estado: null }),
       ]);
@@ -218,7 +225,7 @@ describe('GET /api/productos/[id]/historial', () => {
       expect(m.fecha).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     }
     expect(queries()[0]).toMatch(/AT TIME ZONE 'UTC'/i);
-    expect(queries()[1]).toMatch(/AT TIME ZONE 'UTC'/i);
+    expect(queries()[2]).toMatch(/AT TIME ZONE 'UTC'/i);
   });
 
   it('R7: código con espacios, ñ y # viaja como parámetro SQL', async () => {
@@ -235,13 +242,16 @@ describe('GET /api/productos/[id]/historial', () => {
       mov({ ref_id: i + 1, fecha: `2026-11-01T00:00:${String(i % 60).padStart(2, '0')}.000Z` }),
     );
     sql.mockReset();
-    sql.mockResolvedValueOnce([PRODUCTO]).mockResolvedValueOnce(muchos);
+    sql
+      .mockResolvedValueOnce([PRODUCTO])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(muchos);
     const res = await pedir();
     const body = await res.json();
     expect(body.movimientos).toHaveLength(500);
     expect(body.resumen.truncado).toBe(true);
     expect(body.resumen.stock_inicial_inferido).toBeNull();
-    expect(sql.mock.calls[1].slice(1)).toContain(501);
+    expect(sql.mock.calls[2].slice(1)).toContain(501);
   });
 
   it('la nota lleva enlace a /notas-venta/:id y el pedido no lleva href', async () => {
@@ -251,5 +261,91 @@ describe('GET /api/productos/[id]/historial', () => {
     const pedido = body.movimientos.find((m: any) => m.referencia?.tipo === 'pedido');
     expect(nota.referencia.href).toBe('/notas-venta/12');
     expect(pedido.referencia.href).toBeNull();
+  });
+});
+
+describe('B5 — historial tras cambiar el código', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (flags as Record<string, boolean>)['producto-historial'] = true;
+    getServerSession.mockResolvedValue({
+      user: { id: '1', nombre: 'Paola', rol: 'admin', empresas: [1] },
+    });
+    sql.mockReset();
+    sql
+      .mockResolvedValueOnce([PRODUCTO])
+      .mockResolvedValueOnce([
+        { codigo_anterior: 'JS-VIEJO' },
+        { codigo_anterior: 'JS-MAS-VIEJO' },
+        { codigo_anterior: 'JS-VIEJO' },
+        { codigo_anterior: 'JS-1640' },
+      ])
+      .mockResolvedValueOnce([
+        mov({ cantidad: 40, tipo: 'ingreso', codigo: 'JS-VIEJO', estado: null, ref_tipo: 'ingreso', ref_id: 3 }),
+      ]);
+  });
+
+  it('consulta la cadena por producto_id dentro de la empresa, en orden temporal', async () => {
+    await pedir();
+    const q = queries()[1];
+    expect(q).toMatch(/productos_codigo_cambios/i);
+    expect(q).toMatch(/JOIN\s+(?:public\.)?productos\s+p\s+ON\s+p\.id\s*=\s*c\.producto_id/i);
+    expect(q).toMatch(/p\.codigo\s*=/i);
+    expect(q).toMatch(/p\.empresa_id\s*=\s*ANY/i);
+    expect(q).toMatch(/p\.activo\s*=\s*true/i);
+    expect(q).toMatch(/ORDER BY\s+c\.created_at\s+ASC,\s*c\.id\s+ASC/i);
+  });
+
+  it('cabecera: deduplica, conserva el orden y excluye el código actual', async () => {
+    const res = await pedir();
+    const body = await res.json();
+    expect(body.producto.codigos_anteriores).toEqual(['JS-VIEJO', 'JS-MAS-VIEJO']);
+  });
+
+  it('las ventanas salen de los cambios: cierre del código anterior y apertura del actual', async () => {
+    await pedir();
+    const q = queries()[2];
+    expect(q).toMatch(/productos_codigo_cambios/i);
+    expect(q).toMatch(/LAG\s*\(\s*c\.codigo_nuevo\s*\)/i);
+    expect(q).toMatch(/LAG\s*\(\s*c\.created_at\s*\)/i);
+    expect(q).toMatch(/codigo_anterior\s+AS\s+codigo/i);
+    expect(q).toMatch(/v\.codigo\s*=\s*(im|cs|pi)\.codigo/i);
+    expect(q).toMatch(/>=\s*v\.desde/i);
+    expect(q).toMatch(/<\s*v\.hasta/i);
+    expect(q).toMatch(/MAX\s*\(\s*c2\.created_at\s*\)/i);
+  });
+
+  it('pedidos se filtran por producto_id, no por ventana de código', async () => {
+    await pedir();
+    const q = queries()[2];
+    expect(q).toMatch(/pi\.producto_id\s+IN\s*\(\s*SELECT\s+id\s+FROM\s+prod\s*\)/i);
+  });
+
+  it('rescata la nota activa impaga que la propagación ya pasó al código actual', async () => {
+    await pedir();
+    const q = queries()[2];
+    expect(q).toMatch(/n\.estado\s*=\s*'activa'/i);
+    expect(q).toMatch(/NOT EXISTS\s*\(\s*SELECT 1 FROM (?:public\.)?caja_movimiento_notas/i);
+    expect(q).toMatch(/pi\.codigo\s*=/i);
+  });
+
+  it('una nota con dos códigos distintos no inventa un código', async () => {
+    await pedir();
+    const q = queries()[2];
+    expect(q).toMatch(/CASE WHEN MIN\(pi\.codigo\) = MAX\(pi\.codigo\)/i);
+  });
+
+  it('cada movimiento devuelve el código con que se registró', async () => {
+    const res = await pedir();
+    const body = await res.json();
+    expect(body.movimientos[0]).toMatchObject({ tipo: 'ingreso', codigo: 'JS-VIEJO' });
+  });
+
+  it('las fuentes con código único lo exponen; notas y pedidos usan el CASE de códigos mezclados', async () => {
+    await pedir();
+    const q = queries()[2];
+    expect(q).toMatch(/im\.codigo\s+AS\s+codigo/i);
+    expect(q).toMatch(/cs\.codigo\s+AS\s+codigo/i);
+    expect((q.match(/CASE WHEN MIN\(pi\.codigo\) = MAX\(pi\.codigo\)/gi) ?? []).length).toBe(2);
   });
 });

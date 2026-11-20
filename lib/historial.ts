@@ -33,6 +33,7 @@ export interface MovimientoHistorial {
   referencia: ReferenciaMovimiento | null;
   estado: string | null;
   inferido: boolean;
+  codigo: string | null;
 }
 
 /** Fila tal como la devuelve la query UNION (columnas ya normalizadas). */
@@ -45,6 +46,7 @@ export interface MovimientoCrudo {
   ref_tipo: string | null;
   ref_id: number | string | null;
   estado: string | null;
+  codigo?: string | null;
 }
 
 export interface ProductoHistorial {
@@ -53,6 +55,7 @@ export interface ProductoHistorial {
   saldo: number;
   cantcaja: number;
   fecha_ingreso: string;
+  codigos_anteriores?: string[];
 }
 
 export interface ResumenHistorial {
@@ -105,6 +108,7 @@ export function normalizarMovimiento(crudo: MovimientoCrudo): MovimientoHistoria
     referencia: referenciaDe(crudo.ref_tipo, crudo.ref_id),
     estado: crudo.estado,
     inferido: false,
+    codigo: crudo.codigo ?? null,
   };
 }
 
@@ -175,6 +179,7 @@ export function armarHistorial(
       referencia: null,
       estado: 'inferido',
       inferido: true,
+      codigo: null,
     });
   }
 

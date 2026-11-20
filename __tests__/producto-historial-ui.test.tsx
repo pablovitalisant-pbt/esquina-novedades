@@ -378,3 +378,34 @@ describe('BodegaCard — botón Historial', () => {
     }
   });
 });
+
+describe('B5 — código anterior en el historial', () => {
+  const API_CON_CAMBIOS = {
+    ...API_JS1640,
+    producto: { ...API_JS1640.producto, codigos_anteriores: ['JS-VIEJO', 'JS-MAS-VIEJO'] },
+    movimientos: [
+      m({ fecha: '2026-10-20T12:00:00.000Z', cantidad: 40, efecto: 40, tipo: 'ingreso', codigo: 'JS-VIEJO', detalle: 'Partida antigua', estado: null }),
+      m({ fecha: '2026-11-02T16:10:00.000Z', codigo: 'JS-1640' }),
+      m({ fecha: '2026-11-03T15:00:00.000Z', codigo: null }),
+    ],
+  };
+
+  it('la cabecera muestra "Antes: X, Y" cuando hubo cambios', async () => {
+    montar(API_CON_CAMBIOS);
+    expect(await screen.findByTestId('codigos-anteriores')).toHaveTextContent('Antes: JS-VIEJO, JS-MAS-VIEJO');
+  });
+
+  it('sin cambios no muestra la línea "Antes"', async () => {
+    montar(API_JS1640);
+    await screen.findAllByTestId('movimiento');
+    expect(screen.queryByTestId('codigos-anteriores')).toBeNull();
+  });
+
+  it('el movimiento con código viejo se etiqueta; el actual y el nulo no', async () => {
+    montar(API_CON_CAMBIOS);
+    const filas = await screen.findAllByTestId('movimiento');
+    expect(within(filas[0]).getByTestId('movimiento-codigo-anterior')).toHaveTextContent('JS-VIEJO');
+    expect(within(filas[1]).queryByTestId('movimiento-codigo-anterior')).toBeNull();
+    expect(within(filas[2]).queryByTestId('movimiento-codigo-anterior')).toBeNull();
+  });
+});

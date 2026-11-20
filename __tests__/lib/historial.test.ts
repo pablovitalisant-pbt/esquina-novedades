@@ -36,6 +36,16 @@ function crudo(over: Partial<MovimientoCrudo>): MovimientoCrudo {
 }
 
 describe('normalizarMovimiento', () => {
+  it('B5: conserva el código con que se registró el movimiento', () => {
+    const m = normalizarMovimiento(crudo({ codigo: 'JS-VIEJO' }));
+    expect(m.codigo).toBe('JS-VIEJO');
+  });
+
+  it('B5: sin código (fila inferida o fila legada) queda null, no undefined', () => {
+    const m = normalizarMovimiento(crudo({}));
+    expect(m.codigo).toBeNull();
+  });
+
   it('R1: usa las unidades tal cual, sin multiplicar por cantcaja', () => {
     // La nota guarda cajas=0 y unidades=10 (app/api/notas-venta/[id]/items/route.ts:128).
     const m = normalizarMovimiento(crudo({ tipo: 'venta', cantidad: '-10', estado: 'activa' }));

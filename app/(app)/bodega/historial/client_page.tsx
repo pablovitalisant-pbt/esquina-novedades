@@ -200,6 +200,11 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
               <span className="font-mono text-sm font-semibold text-[var(--primary)]">{datos.producto.codigo}</span>
               <span className="break-words text-sm font-medium text-[var(--body)]">{datos.producto.detalle || 'Sin descripción'}</span>
             </div>
+            {datos.producto.codigos_anteriores?.length ? (
+              <div data-testid="codigos-anteriores" className="mt-1 text-xs text-[var(--body-subtle)]">
+                Antes: {datos.producto.codigos_anteriores.join(', ')}
+              </div>
+            ) : null}
 
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {([
@@ -238,6 +243,11 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
                     <div className="text-xs text-[var(--body-subtle)]">{formatFechaHora(mov.fecha)}</div>
                     <div className="text-sm font-semibold text-[var(--body)]">{etiqueta(mov)}</div>
                     {mov.detalle && <div className="break-words text-xs text-[var(--body-subtle)]">{mov.detalle}</div>}
+                    {mov.codigo && mov.codigo !== datos.producto.codigo && (
+                      <div data-testid="movimiento-codigo-anterior" className="text-xs text-[var(--body-subtle)]">
+                        Registrado con el código anterior <span className="font-mono">{mov.codigo}</span>
+                      </div>
+                    )}
                     <UsuarioLinea mov={mov} />
                     {mov.efecto === 0 && <div className="mt-0.5 text-xs italic text-[var(--body-subtle)]">{motivoSinEfecto(mov)}</div>}
                     {mov.referencia?.href && (

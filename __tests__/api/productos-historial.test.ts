@@ -183,7 +183,7 @@ describe('GET /api/productos/[id]/historial', () => {
     expect(body.resumen.reservado).toBe(0);
   });
 
-  it('caso JS-1640: resumen cuadra y la fila inicial inferida es 40', async () => {
+  it('caso JS-1640: resumen cuadra y la fila inicial inferida es 40 AL FINAL', async () => {
     const res = await pedir();
     const body = await res.json();
     expect(body.resumen).toMatchObject({
@@ -197,10 +197,31 @@ describe('GET /api/productos/[id]/historial', () => {
       diferencia: 0,
       truncado: false,
     });
-    expect(body.movimientos[0]).toMatchObject({
+    expect(body.movimientos[body.movimientos.length - 1]).toMatchObject({
       tipo: 'stock_inicial', cantidad: 40, efecto: 40, inferido: true,
     });
-    expect(body.movimientos[0].detalle).toContain('sin registro de ingreso');
+    expect(body.movimientos[body.movimientos.length - 1].detalle).toContain('sin registro de ingreso');
+  });
+
+  it('ordena del más reciente al más antiguo en SQL', async () => {
+    await pedir();
+    expect(queries()[2]).toMatch(/ORDER BY\s+fecha\s+DESC,\s*ref_id\s+DESC/i);
+    expect(queries()[2]).toMatch(/LIMIT\s/i);
+  });
+
+  it('cada movimiento trae "queda" (saldo resultante) para la UI', async () => {
+    sql.mockReset();
+    sql
+      .mockResolvedValueOnce([PRODUCTO])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        mov({ tipo: 'conciliacion', cantidad: -8, ref_tipo: 'conciliacion', ref_id: 7, estado: null }),
+        mov({ tipo: 'ingreso', cantidad: 8, ref_tipo: 'ingreso', ref_id: 3, estado: null }),
+      ]);
+    const res = await pedir();
+    const body = await res.json();
+    // saldo 0: la conciliación deja 0; el ingreso anterior deja 8.
+    expect(body.movimientos.map((m: any) => m.queda)).toEqual([0, 8]);
   });
 
   it('R13: residual negativo no genera fila inicial y queda como diferencia', async () => {
@@ -237,9 +258,10 @@ describe('GET /api/productos/[id]/historial', () => {
     expect(sql.mock.calls[0].slice(1)).toContain(raro);
   });
 
-  it('R10: más de 500 movimientos → truncado y sin resumen inventado', async () => {
+  it('R10: más de 500 movimientos → truncado, conserva los 500 más recientes', async () => {
+    // DESC: la primera fila es la más reciente. La 501 (más antigua) se descarta.
     const muchos = Array.from({ length: 501 }, (_, i) =>
-      mov({ ref_id: i + 1, fecha: `2026-11-01T00:00:${String(i % 60).padStart(2, '0')}.000Z` }),
+      mov({ ref_id: 1000 - i, fecha: `2026-11-01T00:00:${String(i % 60).padStart(2, '0')}.000Z` }),
     );
     sql.mockReset();
     sql
@@ -251,6 +273,8 @@ describe('GET /api/productos/[id]/historial', () => {
     expect(body.movimientos).toHaveLength(500);
     expect(body.resumen.truncado).toBe(true);
     expect(body.resumen.stock_inicial_inferido).toBeNull();
+    expect(body.movimientos[0].referencia.id).toBe(1000);
+    expect(body.movimientos[499].referencia.id).toBe(501);
     expect(sql.mock.calls[2].slice(1)).toContain(501);
   });
 

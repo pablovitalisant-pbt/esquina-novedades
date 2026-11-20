@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,15 @@ function motivoSinEfecto(m: MovimientoHistorial): string {
 }
 
 const conSigno = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+function TarjetaResumen({ clave, label, valor }: { clave: string; label: string; valor: number }) {
+  return (
+    <div className="rounded-lg bg-[var(--muted)] px-3 py-2">
+      <div className="stat-label">{label}</div>
+      <div className="text-xl font-bold text-[var(--body)]" data-testid={`resumen-${clave}`}>{valor}</div>
+    </div>
+  );
+}
 
 function UsuarioLinea({ mov }: { mov: MovimientoHistorial }) {
   const texto = mov.usuario || (mov.tipo === 'reserva' ? 'Tienda online' : null);
@@ -115,11 +124,6 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
     router.replace(`/bodega/historial?codigo=${encodeURIComponent(nuevo)}`);
   };
 
-  const acumulados = useMemo(() => {
-    let saldo = 0;
-    return (datos?.movimientos ?? []).map((m) => (saldo += m.efecto));
-  }, [datos]);
-
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-1 pb-12 fade-in zoom-in-95 duration-200">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -193,20 +197,31 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
               </div>
             ) : null}
 
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {([
-                ['entraron', 'Entraron', datos.resumen.ingresado + (datos.resumen.stock_inicial_inferido ?? 0)],
+            {(() => {
+              // Con truncado, los cuatro parciales suman solo los movimientos visibles.
+              const parciales = [
+                ['entraron', 'Entraron', datos.resumen.truncado ? datos.resumen.ingresado : datos.resumen.ingresado + (datos.resumen.stock_inicial_inferido ?? 0)],
                 ['vendido', 'Se vendieron', datos.resumen.vendido],
                 ['ajustes', 'Ajustes de conteo', datos.resumen.ajustes],
                 ['reservado', 'Reservado en pedidos', datos.resumen.reservado],
-                ['stock', 'Stock en el sistema', datos.resumen.saldo_actual],
-              ] as const).map(([clave, label, valor]) => (
-                <div key={clave} className="rounded-lg bg-[var(--muted)] px-3 py-2">
-                  <div className="stat-label">{label}</div>
-                  <div className="text-xl font-bold text-[var(--body)]" data-testid={`resumen-${clave}`}>{valor}</div>
-                </div>
-              ))}
-            </div>
+              ] as const;
+              const stock = ['stock', 'Stock en el sistema', datos.resumen.saldo_actual] as const;
+              const tarjetas = (items: ReadonlyArray<readonly [string, string, number]>) => items.map(([clave, label, valor]) => (
+                <TarjetaResumen key={clave} clave={clave} label={label} valor={valor} />
+              ));
+              if (!datos.resumen.truncado) {
+                return <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">{tarjetas([...parciales, stock])}</div>;
+              }
+              return (
+                <>
+                  <div className="mt-3 text-xs text-[var(--body-subtle)]" data-testid="resumen-subtitulo">
+                    En los 500 movimientos más recientes
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">{tarjetas(parciales)}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">{tarjetas([stock])}</div>
+                </>
+              );
+            })()}
 
             {datos.resumen.diferencia != null && datos.resumen.diferencia !== 0 && (
               <p role="alert" className="mt-3 rounded-lg border border-[var(--border-danger-subtle)] bg-[var(--muted)] px-3 py-2 text-sm font-medium text-[var(--fg-danger-strong)]">
@@ -214,7 +229,7 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
               </p>
             )}
             {datos.resumen.truncado && (
-              <p className="mt-3 text-xs text-[var(--body-subtle)]">Mostrando los primeros 500 movimientos</p>
+              <p className="mt-3 text-xs text-[var(--body-subtle)]">Mostrando los 500 movimientos más recientes</p>
             )}
           </div>
 
@@ -245,7 +260,7 @@ export function HistorialClient({ codigoInicial }: { codigoInicial: string }) {
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="text-sm font-bold text-[var(--body)]">{conSigno(mov.cantidad)}</div>
-                    <div className="text-xs font-medium text-[var(--body-subtle)]">queda {acumulados[i]}</div>
+                    <div className="text-xs font-medium text-[var(--body-subtle)]">queda {mov.queda}</div>
                   </div>
                 </div>
               </li>

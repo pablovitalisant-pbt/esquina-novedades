@@ -135,7 +135,7 @@ Historial previo al mantenimiento: auditoría `docs/audits/ponytail-audit-2026-1
 ## Estado al 2026-11-20 (manda esta seccion)
 
 HEAD `93dadfa` en `main` = produccion (rama local `codex/backlog-2026-11-06`, se publica con `git push origin HEAD:main`).
-Suite: **0 suites rojas** (303 suites, 2541 tests, en paralelo). Cualquier roja es regresion.
+Suite: **0 suites rojas** (307 suites, 2569 tests, en paralelo). Cualquier roja es regresion.
 
 ### Entregado desde el 2026-11-13
 - pedidos-pdf (Imprimir PDF / WhatsApp en /pedidos), flag on.
@@ -170,4 +170,4 @@ jest (liberarReservasVencidas toca la BD TEST compartida).
 
 ## Contador de slices desde el ultimo ponytail audit (vigente)
 
-0 (ultimo audit: `docs/audits/ponytail-audit-2026-11-20.md`, sobre los 13 cortes desde el 2026-11-07). Pendiente: slices de limpieza A (usuarioIdSesion + SELECT de pedidos) y B (fechas en lib/fechas.ts, titulos de nota en hora Chile, CajaDetalleNotaDialog).
+0 (ultimo audit: `docs/audits/ponytail-audit-2026-11-20.md`, sobre los 13 cortes desde el 2026-11-07). Limpieza hecha el mismo dia: A 384db32 (usuarioIdSesion + una consulta de pedidos), B 9ab60dd (lib/fechas.ts unico; titulos de nota, Caja, pagina publica del pedido y PDF en hora Chile), C (historial del mas reciente al mas antiguo, 'queda N' calculado hacia atras desde el saldo, truncado = 500 mas recientes con resumen rotulado). Contador desde el audit: 3 (A, B, C). Pendiente decision de Pablo: corregir los 14 titulos de notas existentes con fecha del dia siguiente (dato real).

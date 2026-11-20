@@ -243,10 +243,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
         to_char(fecha AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS fecha,
         tipo, cantidad, detalle, usuario, ref_tipo, ref_id, estado, codigo
       FROM movimientos
-      ORDER BY fecha ASC, ref_id ASC
+      ORDER BY fecha DESC, ref_id DESC
       LIMIT ${LIMITE_MOVIMIENTOS + 1}
     `;
 
+    // DESC + LIMIT 501: al truncar se conservan los 500 MÁS RECIENTES.
     const truncado = filas.length > LIMITE_MOVIMIENTOS;
     const visibles = (truncado ? filas.slice(0, LIMITE_MOVIMIENTOS) : filas) as MovimientoCrudo[];
 

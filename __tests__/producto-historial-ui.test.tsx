@@ -57,20 +57,23 @@ const m = (over: Record<string, unknown>) => ({
   referencia: null,
   estado: 'activa',
   inferido: false,
+  queda: 0,
   ...over,
 });
 
+// La API devuelve del más reciente al más antiguo. `queda` viene calculado en
+// el servidor anclado en el saldo actual (0).
 const API_JS1640 = {
   producto: { codigo: 'JS-1640', detalle: 'Set de prueba', saldo: 0, cantcaja: 12, fecha_ingreso: '2026-10-30T14:22:05.000Z' },
   movimientos: [
-    m({ fecha: '2026-10-30T14:22:05.000Z', tipo: 'stock_inicial', cantidad: 40, efecto: 40, detalle: 'Stock al crear el producto (sin registro de ingreso): 40', usuario: null, estado: 'inferido', inferido: true }),
-    m({ fecha: '2026-11-02T16:10:00.000Z', cantidad: -8, efecto: -8, referencia: { tipo: 'nota', id: 12, href: '/notas-venta/12' } }),
-    m({ fecha: '2026-11-03T15:00:00.000Z', referencia: { tipo: 'nota', id: 13, href: '/notas-venta/13' } }),
-    m({ fecha: '2026-11-04T16:00:00.000Z', cantidad: -10, efecto: -10, referencia: { tipo: 'nota', id: 14, href: '/notas-venta/14' } }),
-    m({ fecha: '2026-11-05T17:00:00.000Z', cantidad: -10, efecto: -10, referencia: { tipo: 'nota', id: 15, href: '/notas-venta/15' } }),
-    m({ fecha: '2026-11-06T18:00:00.000Z', cantidad: -4, efecto: 0, estado: 'anulada', referencia: { tipo: 'nota', id: 16, href: '/notas-venta/16' } }),
-    m({ fecha: '2026-11-08T09:40:00.000Z', tipo: 'reserva', cantidad: -2, efecto: 0, detalle: 'Pedido online', usuario: null, estado: 'expirado', referencia: { tipo: 'pedido', id: 'uuid-1', href: null } }),
-    m({ fecha: '2026-11-18T18:00:00.000Z', tipo: 'conciliacion', cantidad: -11, efecto: -11, detalle: 'Conteo físico', referencia: { tipo: 'conciliacion', id: 7, href: null }, estado: null }),
+    m({ fecha: '2026-11-18T18:00:00.000Z', tipo: 'conciliacion', cantidad: -11, efecto: -11, detalle: 'Conteo físico', referencia: { tipo: 'conciliacion', id: 7, href: null }, estado: null, queda: 0 }),
+    m({ fecha: '2026-11-08T09:40:00.000Z', tipo: 'reserva', cantidad: -2, efecto: 0, detalle: 'Pedido online', usuario: null, estado: 'expirado', referencia: { tipo: 'pedido', id: 'uuid-1', href: null }, queda: 11 }),
+    m({ fecha: '2026-11-06T18:00:00.000Z', cantidad: -4, efecto: 0, estado: 'anulada', referencia: { tipo: 'nota', id: 16, href: '/notas-venta/16' }, queda: 11 }),
+    m({ fecha: '2026-11-05T17:00:00.000Z', cantidad: -10, efecto: -10, referencia: { tipo: 'nota', id: 15, href: '/notas-venta/15' }, queda: 11 }),
+    m({ fecha: '2026-11-04T16:00:00.000Z', cantidad: -10, efecto: -10, referencia: { tipo: 'nota', id: 14, href: '/notas-venta/14' }, queda: 21 }),
+    m({ fecha: '2026-11-03T15:00:00.000Z', referencia: { tipo: 'nota', id: 13, href: '/notas-venta/13' }, queda: 31 }),
+    m({ fecha: '2026-11-02T16:10:00.000Z', cantidad: -8, efecto: -8, referencia: { tipo: 'nota', id: 12, href: '/notas-venta/12' }, queda: 32 }),
+    m({ fecha: '2026-10-30T14:22:05.000Z', tipo: 'stock_inicial', cantidad: 40, efecto: 40, detalle: 'Stock al crear el producto (sin registro de ingreso): 40', usuario: null, estado: 'inferido', inferido: true, queda: 40 }),
   ],
   resumen: { ingresado: 0, ajustes: -11, vendido: 29, reservado: 0, stock_inicial_inferido: 40, stock_esperado: 0, saldo_actual: 0, diferencia: 0, truncado: false },
 };
@@ -196,34 +199,43 @@ describe('resumen en palabras simples', () => {
   });
 });
 
-describe('lista ascendente con saldo acumulado (R15)', () => {
-  it('caso JS-1640: "queda N" se calcula sumando efecto en orden y cierra en 0', async () => {
+describe('lista descendente con saldo hacia atrás (R15)', () => {
+  it('caso JS-1640: la fila más reciente deja el saldo actual y la lista cierra en 40', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
     expect(filas).toHaveLength(8);
-    expect(within(filas[0]).getByText(/Stock inicial \(sin registro\)/)).toBeInTheDocument();
-    expect(within(filas[filas.length - 1]).getByText(/Ajuste de conteo/)).toBeInTheDocument();
+    expect(within(filas[0]).getByText(/Ajuste de conteo/)).toBeInTheDocument();
+    expect(within(filas[filas.length - 1]).getByText(/Stock inicial \(sin registro\)/)).toBeInTheDocument();
 
+    // "queda" viene del servidor (hacia atrás desde el saldo actual), no se
+    // recalcula en la UI.
     const quedas = filas.map((f) => f.textContent?.match(/queda (-?\d+)/)?.[1]);
-    expect(quedas).toEqual(['40', '32', '31', '21', '11', '11', '11', '0']);
+    expect(quedas).toEqual(['0', '11', '11', '11', '21', '31', '32', '40']);
+  });
+
+  it('con truncado, la primera fila (la más reciente) muestra el saldo actual', async () => {
+    montar({ ...API_JS1640, resumen: { ...API_JS1640.resumen, stock_inicial_inferido: null, stock_esperado: null, diferencia: null, truncado: true } });
+    const filas = await screen.findAllByTestId('movimiento');
+    expect(filas[0]).toHaveTextContent('queda 0');
+    expect(screen.getByTestId('resumen-stock')).toHaveTextContent('0');
   });
 
   it('fila anulada atenuada, con motivo y sin alterar el saldo', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
-    const anulada = filas[5];
+    const anulada = filas[2];
     expect(within(anulada).getByText('Venta anulada')).toBeInTheDocument();
     expect(anulada.className).toMatch(/opacity-\d+/);
     expect(within(anulada).getByText(/no cuenta/i)).toBeInTheDocument();
     expect(anulada).toHaveTextContent('queda 11');
-    expect(filas[4]).toHaveTextContent('queda 11');
+    expect(filas[3]).toHaveTextContent('queda 11');
   });
 
   it('"Ver nota" apunta a /notas-venta/:id; un pedido no tiene enlace', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
-    expect(within(filas[1]).getByRole('link', { name: 'Ver nota' })).toHaveAttribute('href', '/notas-venta/12');
-    expect(within(filas[6]).queryByRole('link')).toBeNull();
+    expect(within(filas[6]).getByRole('link', { name: 'Ver nota' })).toHaveAttribute('href', '/notas-venta/12');
+    expect(within(filas[1]).queryByRole('link')).toBeNull();
   });
 
   it('fecha y hora en America/Santiago', async () => {
@@ -235,10 +247,31 @@ describe('lista ascendente con saldo acumulado (R15)', () => {
     expect(screen.getByText('02 nov 2026, 13:10')).toBeInTheDocument();
   });
 
-  it('truncado: aviso de primeros 500 sin inventar stock inicial', async () => {
+  it('truncado: aviso de los 500 más recientes sin inventar stock inicial', async () => {
     montar({ ...API_JS1640, resumen: { ...API_JS1640.resumen, stock_inicial_inferido: null, stock_esperado: null, diferencia: null, truncado: true } });
-    expect(await screen.findByText('Mostrando los primeros 500 movimientos')).toBeInTheDocument();
+    expect(await screen.findByText('Mostrando los 500 movimientos más recientes')).toBeInTheDocument();
     expect(screen.getByTestId('resumen-entraron')).toHaveTextContent('0');
+    expect(screen.getByTestId('resumen-stock')).toHaveTextContent('0');
+  });
+
+  it('truncado: subtítulo sobre los parciales y Stock en el sistema es el total real', async () => {
+    montar({
+      ...API_JS1640,
+      resumen: {
+        ingresado: 120, ajustes: -3, vendido: 60, reservado: 2,
+        stock_inicial_inferido: null, stock_esperado: null, saldo_actual: 57,
+        diferencia: null, truncado: true,
+      },
+    });
+    expect(await screen.findByTestId('resumen-subtitulo')).toHaveTextContent('En los 500 movimientos más recientes');
+    expect(screen.getByTestId('resumen-entraron')).toHaveTextContent('120');
+    expect(screen.getByTestId('resumen-stock')).toHaveTextContent('57');
+  });
+
+  it('sin truncado no muestra el subtítulo de parciales', async () => {
+    montar();
+    await screen.findAllByTestId('movimiento');
+    expect(screen.queryByTestId('resumen-subtitulo')).toBeNull();
   });
 
   it('error de API: mensaje claro y la pantalla sigue en pie', async () => {
@@ -254,13 +287,13 @@ describe('línea de usuario en cada movimiento', () => {
   it('reserva sin usuario → "Tienda online"', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
-    expect(within(filas[6]).getByText('Tienda online')).toBeInTheDocument();
+    expect(within(filas[1]).getByText('Tienda online')).toBeInTheDocument();
   });
 
   it('stock inicial sin usuario → sin línea de usuario', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
-    expect(filas[0]).not.toHaveTextContent(/Sin registro|Tienda online/);
+    expect(filas[7]).not.toHaveTextContent(/Sin registro|Tienda online/);
   });
 
   it('otros tipos con usuario null → sin línea de usuario', async () => {
@@ -276,7 +309,7 @@ describe('línea de usuario en cada movimiento', () => {
   it('con usuario registrado muestra el nombre y nunca "Sin registro"', async () => {
     montar();
     const filas = await screen.findAllByTestId('movimiento');
-    expect(within(filas[1]).getByText('Paola')).toBeInTheDocument();
+    expect(within(filas[6]).getByText('Paola')).toBeInTheDocument();
     expect(screen.queryByText('Sin registro')).toBeNull();
   });
 });
@@ -384,9 +417,9 @@ describe('B5 — código anterior en el historial', () => {
     ...API_JS1640,
     producto: { ...API_JS1640.producto, codigos_anteriores: ['JS-VIEJO', 'JS-MAS-VIEJO'] },
     movimientos: [
-      m({ fecha: '2026-10-20T12:00:00.000Z', cantidad: 40, efecto: 40, tipo: 'ingreso', codigo: 'JS-VIEJO', detalle: 'Partida antigua', estado: null }),
-      m({ fecha: '2026-11-02T16:10:00.000Z', codigo: 'JS-1640' }),
       m({ fecha: '2026-11-03T15:00:00.000Z', codigo: null }),
+      m({ fecha: '2026-11-02T16:10:00.000Z', codigo: 'JS-1640' }),
+      m({ fecha: '2026-10-20T12:00:00.000Z', cantidad: 40, efecto: 40, tipo: 'ingreso', codigo: 'JS-VIEJO', detalle: 'Partida antigua', estado: null }),
     ],
   };
 
@@ -404,8 +437,8 @@ describe('B5 — código anterior en el historial', () => {
   it('el movimiento con código viejo se etiqueta; el actual y el nulo no', async () => {
     montar(API_CON_CAMBIOS);
     const filas = await screen.findAllByTestId('movimiento');
-    expect(within(filas[0]).getByTestId('movimiento-codigo-anterior')).toHaveTextContent('JS-VIEJO');
+    expect(within(filas[2]).getByTestId('movimiento-codigo-anterior')).toHaveTextContent('JS-VIEJO');
+    expect(within(filas[0]).queryByTestId('movimiento-codigo-anterior')).toBeNull();
     expect(within(filas[1]).queryByTestId('movimiento-codigo-anterior')).toBeNull();
-    expect(within(filas[2]).queryByTestId('movimiento-codigo-anterior')).toBeNull();
   });
 });

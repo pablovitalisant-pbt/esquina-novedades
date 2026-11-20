@@ -136,7 +136,7 @@ describe('calcularResumen', () => {
 });
 
 describe('armarHistorial', () => {
-  it('inserta la fila inicial inferida al principio y la marca', () => {
+  it('agrega la fila inicial inferida AL FINAL (es lo más antiguo) y la marca', () => {
     const ventas = [
       normalizarMovimiento(crudo({ tipo: 'venta', cantidad: -8, estado: 'activa' })),
     ];
@@ -145,15 +145,17 @@ describe('armarHistorial', () => {
       crudo({ tipo: 'venta', cantidad: -8, estado: 'activa' }),
     ]);
     expect(resumen.stock_inicial_inferido).toBe(40);
-    expect(movimientos[0]).toMatchObject({
+    expect(movimientos[0].tipo).toBe('venta');
+    expect(movimientos[movimientos.length - 1]).toMatchObject({
       tipo: 'stock_inicial',
       cantidad: 40,
       efecto: 40,
       estado: 'inferido',
       inferido: true,
       fecha: producto.fecha_ingreso,
+      queda: 40,
     });
-    expect(movimientos[0].detalle).toContain('sin registro de ingreso');
+    expect(movimientos[movimientos.length - 1].detalle).toContain('sin registro de ingreso');
     expect(ventas).toHaveLength(1); // el fixture no se muta por accidente
   });
 
@@ -161,6 +163,60 @@ describe('armarHistorial', () => {
     const { movimientos } = armarHistorial({ ...producto, saldo: 40 }, [
       crudo({ tipo: 'ingreso', cantidad: 40, estado: null }),
     ]);
+    expect(movimientos.some((m) => m.tipo === 'stock_inicial')).toBe(false);
+  });
+});
+
+describe('armarHistorial — DESC y "queda" hacia atrás', () => {
+  // Misma historia que el caso JS-1640, ahora del más reciente al más antiguo.
+  const crudosJS1640: MovimientoCrudo[] = [
+    crudo({ tipo: 'conciliacion', cantidad: -11, estado: null }),
+    crudo({ tipo: 'reserva', cantidad: -2, estado: 'expirado' }),
+    crudo({ tipo: 'venta', cantidad: -4, estado: 'anulada' }),
+    crudo({ tipo: 'venta', cantidad: -10, estado: 'activa' }),
+    crudo({ tipo: 'venta', cantidad: -10, estado: 'activa' }),
+    crudo({ tipo: 'venta', cantidad: -1, estado: 'activa' }),
+    crudo({ tipo: 'venta', cantidad: -8, estado: 'activa' }),
+  ];
+
+  it('caso JS-1640: queda de la fila más reciente es el saldo y cierra en 40 al final', () => {
+    const { movimientos } = armarHistorial({ ...producto, saldo: 0 }, crudosJS1640);
+    expect(movimientos.map((m) => m.queda)).toEqual([0, 11, 11, 11, 21, 31, 32, 40]);
+    expect(movimientos[0].tipo).toBe('conciliacion');
+    expect(movimientos[movimientos.length - 1].tipo).toBe('stock_inicial');
+  });
+
+  it('las filas con efecto 0 no alteran el queda de la anterior', () => {
+    const { movimientos } = armarHistorial({ ...producto, saldo: 0 }, crudosJS1640);
+    // anulada (efecto 0) y reserva expirada (efecto 0) conservan el queda.
+    expect(movimientos[1].efecto).toBe(0);
+    expect(movimientos[2].efecto).toBe(0);
+    expect(movimientos[1].queda).toBe(11);
+    expect(movimientos[2].queda).toBe(11);
+  });
+
+  it('R10: truncado (500 de 501) es exacto: la primera fila deja el saldo actual', () => {
+    // 500 movimientos visibles de -1 cada uno; hay historia más antigua que no
+    // se ve. Anclado en el saldo actual, "queda" no depende de esa historia.
+    const visibles = Array.from({ length: 500 }, () =>
+      crudo({ tipo: 'venta', cantidad: -1, estado: 'activa' }),
+    );
+    const { movimientos, resumen } = armarHistorial({ ...producto, saldo: 100 }, visibles, true);
+    expect(resumen.truncado).toBe(true);
+    expect(movimientos).toHaveLength(500);
+    expect(movimientos[0].queda).toBe(100);
+    expect(movimientos[499].queda).toBe(599);
+    // Cada queda = saldo actual menos los efectos de las filas más recientes.
+    const resto = movimientos.slice(0, -1).reduce((acc, m) => acc + m.efecto, 0);
+    expect(movimientos[movimientos.length - 1].queda).toBe(100 - resto);
+  });
+
+  it('R10: truncado no agrega fila inicial', () => {
+    const { movimientos } = armarHistorial(
+      { ...producto, saldo: 100 },
+      Array.from({ length: 500 }, () => crudo({ tipo: 'venta', cantidad: -1 })),
+      true,
+    );
     expect(movimientos.some((m) => m.tipo === 'stock_inicial')).toBe(false);
   });
 });

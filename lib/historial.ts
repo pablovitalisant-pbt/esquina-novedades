@@ -5,6 +5,10 @@
  * realmente movió el saldo (0 en notas anuladas y reservas liberadas).
  * `calcularResumen` explica el saldo actual y, si sobra stock sin movimiento
  * registrado, lo atribuye al stock inicial de "Nuevo producto" (inferido).
+ *
+ * La lista llega del movimiento MÁS RECIENTE al más antiguo (la API ordena
+ * DESC). `queda` es el saldo que dejó cada movimiento: se calcula hacia atrás
+ * desde el saldo actual, así que es exacto incluso si la lista viene truncada.
  */
 
 /** Observación con que B2 registra el stock con que se crea un producto. */
@@ -34,6 +38,8 @@ export interface MovimientoHistorial {
   estado: string | null;
   inferido: boolean;
   codigo: string | null;
+  /** Saldo resultante tras este movimiento. Lo completa `armarHistorial`. */
+  queda: number;
 }
 
 /** Fila tal como la devuelve la query UNION (columnas ya normalizadas). */
@@ -109,6 +115,7 @@ export function normalizarMovimiento(crudo: MovimientoCrudo): MovimientoHistoria
     estado: crudo.estado,
     inferido: false,
     codigo: crudo.codigo ?? null,
+    queda: 0,
   };
 }
 
@@ -169,7 +176,8 @@ export function armarHistorial(
 
   if (resumen.stock_inicial_inferido && resumen.stock_inicial_inferido > 0) {
     const n = resumen.stock_inicial_inferido;
-    movimientos.unshift({
+    // DESC: el stock inicial es lo más antiguo, va al final de la lista.
+    movimientos.push({
       fecha: producto.fecha_ingreso,
       tipo: 'stock_inicial',
       cantidad: n,
@@ -180,7 +188,16 @@ export function armarHistorial(
       estado: 'inferido',
       inferido: true,
       codigo: null,
+      queda: 0,
     });
+  }
+
+  // Saldo hacia atrás: la fila más reciente deja el saldo actual; la anterior
+  // deja el saldo de la más reciente menos su efecto. Exacto aun truncado.
+  let queda = producto.saldo;
+  for (const movimiento of movimientos) {
+    movimiento.queda = queda;
+    queda -= movimiento.efecto;
   }
 
   return { movimientos, resumen };

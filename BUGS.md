@@ -2,6 +2,13 @@
 
 Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 
+## BUG-015 — El buscador de la tienda pública "no buscaba nada" (2026-11-19)
+- Tipo: A (visual). Reportado por Paola.
+- Causa raíz: `components/TiendaPortada.tsx` filtraba solo la grilla "Todos los productos"; hero, Novedades, las secciones por categoría y "por mayor" no reaccionaban a la búsqueda. En producción (404 productos, 20 categorías) la grilla quedaba ~14.500 px bajo el borde superior: el cliente escribía y no veía ningún cambio. La búsqueda en sí (`filtrarProductos`, detalle o código, sin tildes ni mayúsculas) era correcta.
+- Fix aplicado: con texto en el buscador se ocultan los bloques de portada, el título pasa a `Resultados para "..."` y la página sube una sola vez al empezar a buscar. Sin búsqueda, el DOM queda igual. Tests: `__tests__/bug015-buscador-tienda.test.tsx`.
+- Zona frágil: no volver a renderizar bloques de portada mientras `buscando` es true. La barra de categorías tiene el mismo patrón (filtra solo la grilla de abajo); no se tocó.
+- Commit: 393a208
+
 ## BUG-014 — El cobro ocupaba el espacio del detalle en POS (2026-11-07)
 
 - Causa medida: panel calculaba máximo de alto sin contemplar inicio real en y=160; cabecera y acciones apiladas consumían la mayor parte. A1280x720 lista229px (39%), una fila completa, Guardar parcialmente recortado; descripción de producto truncada.

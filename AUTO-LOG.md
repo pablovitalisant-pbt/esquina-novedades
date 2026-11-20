@@ -366,3 +366,12 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Lib de 337 lineas (> 200): aceptado por fidelidad visual, archivo nuevo aislado.
 - Gates: activar flag en produccion = UAT de Pablo.
 - 2026-11-13: UAT aprobado por Pablo; flag pedidos-pdf = true en produccion.
+
+## 2026-11-19 - Bug: BUG-015 buscador de la tienda pública
+- Programador: deep (deepseek-flash, effort low), fase DEBUG, 431 s, USD 0,89.
+- Contrato: hipótesis del Director (repro en producción: "vaso" filtraba 404→19 pero la grilla estaba a ~14.550 px). Con búsqueda se oculta la portada, título "Resultados para", scrollTo una vez. Solo TiendaPortada.tsx (+19/−7).
+- Tests: 6 nuevos (ROJO 5/6 antes del fix, verde después). Verificación del Director: jest completo 7 suites / 11 tests rojos = exactamente las preexistentes; tsc 0, lint 0, build 0.
+- Commit: 393a208 (sin push: deploy pendiente de Señal 3 / UAT de Pablo).
+- Gates disparados: UAT de Pablo antes del deploy a producción.
+- QA (Fase E, Director, localhost:3100 contra base de pruebas, datos QA-00x): PASA 7/7 — detalle desde mitad de página, código, sin tilde y mayúsculas, sin coincidencias + Limpiar filtros, borrar texto, móvil 375 px, comprar desde un resultado abre el diálogo de identificación de siempre; consola sin errores. Alcance: solo el buscador y la portada que cambia; sin barrido completo.
+- Desvíos del Programador: ninguno.

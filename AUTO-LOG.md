@@ -410,3 +410,6 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 - Tests alineados a cambios deliberados sin debilitar: TopNav usa 'es-CL' en vez de 'en-US' (guardia CLP sin excepciones; BUG-009 verde); paleta: excepcion solo bg-white en AgregarANotaVentaModal (BUG-012), el resto vigilado; tienda: "Comprar al detalle" (BUG-013); nav: logo a /pos (M08); precios: mocks del listado con la forma real { data: [...] }.
 - Verificacion del Director: jest completo en paralelo 2 veces -> 0 suites rojas (303 suites, 2541 tests); tsc/lint/build 0.
 - Desde ahora la referencia es "0 rojas": cualquier suite roja es regresion.
+
+## 2026-11-21 - Pago de Paola registrado (pagos-app)
+- Abono de CLP 50.000 en efectivo recibido de Paola el lunes 2026-11-16, registrado en produccion con scripts/registrar-pago-app.ts (id 36cacd6a-969c-4a8b-8206-6982d576993a, host verificado contra DATABASE_URL). Verificado por consulta de solo lectura: ahora hay 4 asientos de 50.000 (2026-10-21 transferencia, 2026-11-05 efectivo, 2026-11-09 transferencia, 2026-11-16 efectivo). Sin cambios de codigo.

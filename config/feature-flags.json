@@ -16,7 +16,7 @@
   "pedido-confirmacion-antes-pago": true,
   "pedido-pago-opcional": true,
   "pedido-cobro-manual": true,
-  "pedido-marcar-pagado": false,
+  "pedido-marcar-pagado": true,
   "precios-paginados": true,
   "precios-ingreso-stock": true,
   "pagos-app-privados": true,

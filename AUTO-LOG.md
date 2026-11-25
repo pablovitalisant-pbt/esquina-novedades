@@ -413,3 +413,10 @@ Una entrada por slice. Programador: `claude-deep` (DeepSeek v4 flash) vía Power
 
 ## 2026-11-21 - Pago de Paola registrado (pagos-app)
 - Abono de CLP 50.000 en efectivo recibido de Paola el lunes 2026-11-16, registrado en produccion con scripts/registrar-pago-app.ts (id 36cacd6a-969c-4a8b-8206-6982d576993a, host verificado contra DATABASE_URL). Verificado por consulta de solo lectura: ahora hay 4 asientos de 50.000 (2026-10-21 transferencia, 2026-11-05 efectivo, 2026-11-09 transferencia, 2026-11-16 efectivo). Sin cambios de codigo.
+
+## 2026-11-24 - M1: marcar como pagado desde /pedidos (video de Paola)
+- Causa: los pedidos de tienda (retiro en local) quedan pendiente_pago con metodo_pago NULL; el boton Confirmar cobro exigia metodo elegido y adquirirPagoManual tambien. Sin migracion.
+- Reutiliza el flujo existente (ConfirmarCobroPedido -> POST confirmar-pago -> adquirirPagoManual + convertir + cobro en caja). Nuevo: metodo opcional en el POST (solo con flag pedido-marcar-pagado=true; si no, 400), COALESCE(metodo_pago, metodo) en el UPDATE, guard mp_init_point/mp_payment_id NULL, reintento compara metodo, GET admin expone mp_init_point para ocultar el boton. Boton "Marcar como pagado" solo en pendiente_pago + reservado + sin metodo + sin rastro MP.
+- Programador: deep (deepseek-flash). Desvio: la primera entrega omitio el guard MP, dejo el flag sin validar en el servidor y agrego un enlace "Link de pago MP" no pedido; el Director lo detecto en la revision del diff y se corrigio en el ajuste m1-fix.
+- Verificacion del Director: tsc 0, lint 0, build 0; jest completo en paralelo 306/307 suites: solo catalogo-precio-override fallo por contencion de la BD TEST compartida y paso 11/11 aislada.
+- Flag pedido-marcar-pagado=false. Gate: activarlo = UAT de Pablo.

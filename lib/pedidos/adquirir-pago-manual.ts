@@ -8,6 +8,8 @@ type Args = {
   usuarioId: number;
   monto: number;
   referencia?: string | null;
+  // M1: el admin elige el método cuando el pedido no trae uno.
+  metodo?: 'efectivo' | 'transferencia' | null;
 };
 
 const MAX_INT4 = 2_147_483_647;
@@ -30,25 +32,32 @@ export async function adquirirPagoManual({
   usuarioId,
   monto,
   referencia,
+  metodo,
 }: Args): Promise<ResultadoPagoManual> {
   if (!Number.isInteger(monto) || monto <= 0 || monto > MAX_INT4) return 'conflicto';
   const ref = normalizarReferencia(referencia);
   if (ref === false) return 'conflicto';
+  // Nunca undefined en el driver: sin elección del admin queda NULL.
+  const elegido = metodo ?? null;
 
   let adquirido = false;
   try {
     const rows = await sql`
       WITH p AS (
-        UPDATE pedidos SET estado = 'pagado'
+        UPDATE pedidos SET estado = 'pagado',
+          metodo_pago = COALESCE(metodo_pago, ${elegido}::text)
         WHERE id = ${pedidoId}::uuid
           AND estado = 'pendiente_pago'
           AND stock_reservado
           AND expira_en > NOW()
-          AND metodo_pago IN ('efectivo', 'transferencia')
+          -- M1: con rastro de Mercado Pago el cobro manual no aplica.
+          AND mp_init_point IS NULL AND mp_payment_id IS NULL
+          AND (${elegido}::text IS NULL OR metodo_pago IS NULL OR metodo_pago = ${elegido}::text)
+          AND COALESCE(metodo_pago, ${elegido}::text) IN ('efectivo', 'transferencia')
           AND total = ${monto}::int
           AND (
-            (metodo_pago = 'transferencia' AND ${ref}::text IS NOT NULL)
-            OR (metodo_pago = 'efectivo' AND ${ref}::text IS NULL)
+            (COALESCE(metodo_pago, ${elegido}::text) = 'transferencia' AND ${ref}::text IS NOT NULL)
+            OR (COALESCE(metodo_pago, ${elegido}::text) = 'efectivo' AND ${ref}::text IS NULL)
           )
           AND EXISTS (
             SELECT 1 FROM caja_cuentas c
@@ -75,13 +84,16 @@ export async function adquirirPagoManual({
 
   // Sin adquisición: solo es reintento si ya existe el mismo registro.
   const [pago] = await sql`
-    SELECT monto, cuenta_id, referencia FROM pedido_pagos_manuales
-    WHERE pedido_id = ${pedidoId}::uuid
+    SELECT pm.monto, pm.cuenta_id, pm.referencia, pm.metodo, p.metodo_pago
+    FROM pedido_pagos_manuales pm
+    JOIN pedidos p ON p.id = pm.pedido_id
+    WHERE pm.pedido_id = ${pedidoId}::uuid
   `;
   if (!pago) return 'conflicto';
   return Number(pago.monto) === monto &&
     Number(pago.cuenta_id) === cuentaId &&
-    (pago.referencia ?? null) === ref
+    (pago.referencia ?? null) === ref &&
+    pago.metodo === (elegido ?? pago.metodo_pago ?? null)
     ? 'reintento'
     : 'conflicto';
 }

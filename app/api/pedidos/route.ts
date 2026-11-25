@@ -49,6 +49,7 @@ type CobroManualFila = {
   caja_movimiento_id: string | null;
   cuenta_id: number | null;
   referencia: string | null;
+  mp_init_point: string | null;
 };
 type CuerpoPedido = {
   nombre_contacto?: unknown;
@@ -446,7 +447,7 @@ export async function GET(request: NextRequest) {
     const cobrosPorId = new Map<string, CobroManualFila>();
     if (cobroManual) {
       const cobros = (await sql`
-        SELECT p.id, p.metodo_pago, p.caja_movimiento_id, pm.cuenta_id, pm.referencia
+        SELECT p.id, p.metodo_pago, p.caja_movimiento_id, p.mp_init_point, pm.cuenta_id, pm.referencia
         FROM public.pedidos p
         LEFT JOIN public.pedido_pagos_manuales pm ON pm.pedido_id = p.id
         WHERE p.id = ANY(${pedidoIds})
@@ -502,6 +503,7 @@ export async function GET(request: NextRequest) {
         ...(cobroManual ? {
           metodo_pago: cobro?.metodo_pago ?? null,
           caja_movimiento_id: cobro?.caja_movimiento_id ?? null,
+          mp_init_point: cobro?.mp_init_point ?? null,
           confirmacion: cobro && cobro.cuenta_id !== null
             ? { cuenta_id: cobro.cuenta_id, referencia: cobro.referencia ?? null }
             : null,

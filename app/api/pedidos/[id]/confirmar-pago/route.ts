@@ -19,7 +19,8 @@ const enteroPositivo = (v: unknown): number | null =>
 // movimiento de caja es la prueba de cierre: sin caja_movimiento_id persistido
 // no hay 200.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if ((flags as Record<string, boolean>)['pedido-cobro-manual'] !== true) {
+  const banderas = flags as Record<string, boolean>;
+  if (banderas['pedido-cobro-manual'] !== true) {
     return NextResponse.json({ error: 'No disponible' }, { status: 404 });
   }
   const session = await getServerSession(authOptions);
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Pedido inválido' }, { status: 400 });
 
-  let cuerpo: { cuenta_id?: unknown; monto?: unknown; referencia?: unknown } | null;
+  let cuerpo: { cuenta_id?: unknown; monto?: unknown; referencia?: unknown; metodo?: unknown } | null;
   try {
     cuerpo = await request.json();
   } catch {
@@ -54,9 +55,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Referencia inválida' }, { status: 400 });
     }
   }
+  let metodo: 'efectivo' | 'transferencia' | undefined;
+  if (cuerpo?.metodo !== undefined) {
+    // M1: elegir método solo con el modo nuevo activo; el flujo existente
+    // (método ya fijado en el pedido) no manda `metodo`.
+    if (banderas['pedido-marcar-pagado'] !== true) {
+      return NextResponse.json({ error: 'Método de pago inválido' }, { status: 400 });
+    }
+    if (cuerpo.metodo !== 'efectivo' && cuerpo.metodo !== 'transferencia') {
+      return NextResponse.json({ error: 'Método de pago inválido' }, { status: 400 });
+    }
+    metodo = cuerpo.metodo;
+  }
 
   try {
-    const adquisicion = await adquirirPagoManual({ pedidoId: id, cuentaId, usuarioId, monto, referencia });
+    const adquisicion = await adquirirPagoManual({
+      pedidoId: id, cuentaId, usuarioId, monto, referencia, metodo,
+    });
     if (adquisicion === 'conflicto') {
       return NextResponse.json({ error: 'La confirmación no coincide con el pedido' }, { status: 409 });
     }

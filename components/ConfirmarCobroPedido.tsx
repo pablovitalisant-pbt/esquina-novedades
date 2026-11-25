@@ -7,14 +7,17 @@ import { Input } from '@/components/ui/input';
 type CuentaCLP = { id: number; nombre: string; moneda?: string };
 type Confirmacion = { cuenta_id: number; referencia?: string };
 type Props = {
-  pedidoId: string; monto: number; metodo: 'efectivo' | 'transferencia';
+  pedidoId: string; monto: number; metodo: 'efectivo' | 'transferencia' | null;
   confirmacion?: Confirmacion;
+  etiqueta?: string;
   onConfirmado?: (datos: { caja_movimiento_id: string }) => void;
 };
 const ERROR = 'No se pudo completar el cobro. Intenta nuevamente.';
 
-export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, onConfirmado }: Props) {
+export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, etiqueta, onConfirmado }: Props) {
   const [abierto, setAbierto] = useState(false);
+  // M1: el método lo elige el admin cuando el pedido no trae uno.
+  const [metodoManual, setMetodoManual] = useState<'' | 'efectivo' | 'transferencia'>('');
   const [cuentas, setCuentas] = useState<CuentaCLP[]>([]);
   const [cuentaId, setCuentaId] = useState(confirmacion?.cuenta_id ?? 0);
   const [referencia, setReferencia] = useState(confirmacion?.referencia ?? '');
@@ -43,8 +46,10 @@ export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, on
     if (guard.current) return;
     const cuenta = confirmacion?.cuenta_id ?? cuentaId;
     const ref = (confirmacion?.referencia ?? referencia).trim();
+    const metodoEfectivo = metodo ?? (metodoManual || null);
     if (!cuenta) { setError('Selecciona una cuenta de caja.'); return; }
-    if (metodo === 'transferencia' && !ref) { setError('Ingresa la referencia de la transferencia.'); return; }
+    if (!metodoEfectivo) { setError('Selecciona el método de pago.'); return; }
+    if (metodoEfectivo === 'transferencia' && !ref) { setError('Ingresa la referencia de la transferencia.'); return; }
     guard.current = true;
     setCargando(true);
     setError('');
@@ -52,7 +57,12 @@ export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, on
       const res = await fetch(`/api/pedidos/${pedidoId}/confirmar-pago`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cuenta_id: cuenta, monto, ...(ref ? { referencia: ref } : {}) }),
+        body: JSON.stringify({
+          cuenta_id: cuenta,
+          monto,
+          ...(metodoEfectivo === 'transferencia' && ref ? { referencia: ref } : {}),
+          ...(metodo === null ? { metodo: metodoEfectivo } : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.caja_movimiento_id) {
@@ -64,7 +74,7 @@ export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, on
     finally { guard.current = false; setCargando(false); }
   };
 
-  if (!abierto) return <Button variant="brand" onClick={() => setAbierto(true)}>Confirmar cobro</Button>;
+  if (!abierto) return <Button variant="brand" onClick={() => setAbierto(true)}>{etiqueta ?? 'Confirmar cobro'}</Button>;
 
   return (
     <section className="flex flex-col gap-4 rounded-card border border-[var(--border)] bg-[var(--card)] p-4">
@@ -82,7 +92,19 @@ export function ConfirmarCobroPedido({ pedidoId, monto, metodo, confirmacion, on
           </select>
         </div>
       )}
-      {!confirmacion && metodo === 'transferencia' && (
+      {metodo === null && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={`${uid}-metodo`} className="text-sm font-medium text-[var(--heading)]">Método de pago</label>
+          <select id={`${uid}-metodo`} value={metodoManual} disabled={cargando}
+            onChange={e => setMetodoManual(e.target.value as '' | 'efectivo' | 'transferencia')}
+            className="w-full rounded-pill border border-[var(--border)] bg-[var(--neutral-primary-soft)] px-4 py-2 text-sm text-[var(--heading)]">
+            <option value="">Selecciona…</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+      )}
+      {!confirmacion && (metodo ?? metodoManual) === 'transferencia' && (
         <div className="flex flex-col gap-2">
           <label htmlFor={`${uid}-referencia`} className="text-sm font-medium text-[var(--heading)]">
             Referencia de transferencia

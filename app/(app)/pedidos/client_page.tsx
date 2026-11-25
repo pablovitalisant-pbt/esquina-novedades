@@ -49,6 +49,7 @@ interface Pedido {
   metodo_pago?: string | null;
   caja_movimiento_id?: number | null;
   confirmacion?: { cuenta_id: number; referencia?: string | null } | null;
+  mp_init_point?: string | null;
   items: PedidoItem[];
 }
 
@@ -80,15 +81,27 @@ function esEntregable(p: Pedido): boolean {
   return (p.estado === 'convertido' || p.estado === 'pagado') && !p.entregado_en;
 }
 
-function puedeConfirmarCobro(p: Pedido): boolean {
-  return (p.metodo_pago === 'efectivo' || p.metodo_pago === 'transferencia')
-    && p.caja_movimiento_id == null
-    && (p.estado === 'pendiente_pago' || p.estado === 'pagado' || p.estado === 'convertido');
+// M1: con el modo nuevo, un pedido pendiente y reservado sin método elegido
+// también se puede cobrar. Sin rastro de Mercado Pago (el dinero pudo entrar
+// por MP y el cobro manual duplicaría el ingreso).
+function puedeConfirmarCobro(p: Pedido, permitirSinMetodo = false): boolean {
+  if (p.metodo_pago === 'efectivo' || p.metodo_pago === 'transferencia') {
+    return p.caja_movimiento_id == null
+      && (p.estado === 'pendiente_pago' || p.estado === 'pagado' || p.estado === 'convertido');
+  }
+  return permitirSinMetodo
+    && p.metodo_pago == null
+    && p.estado === 'pendiente_pago'
+    && p.stock_reservado === true
+    && !p.mp_init_point
+    && !p.mp_payment_id
+    && p.caja_movimiento_id == null;
 }
 
 export function PedidosPage({ session }: { session: SessionProp }) {
   const router = useRouter();
   const cobroManual = flags['pedido-cobro-manual'] === true && session?.user?.rol === 'admin';
+  const marcarPagado = flags['pedido-marcar-pagado'] === true && cobroManual;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -429,12 +442,15 @@ export function PedidosPage({ session }: { session: SessionProp }) {
                       </Button>
                     </div>
                   )}
-                  {cobroManual && puedeConfirmarCobro(p) && (
+                  {cobroManual && puedeConfirmarCobro(p, marcarPagado) && (
                     <div className="self-end">
                       <ConfirmarCobroPedido
                         pedidoId={p.id}
                         monto={p.total}
-                        metodo={p.metodo_pago as 'efectivo' | 'transferencia'}
+                        metodo={p.metodo_pago === 'efectivo' || p.metodo_pago === 'transferencia'
+                          ? p.metodo_pago
+                          : null}
+                        etiqueta={marcarPagado && p.metodo_pago == null ? 'Marcar como pagado' : undefined}
                         confirmacion={p.confirmacion
                           ? { ...p.confirmacion, referencia: p.confirmacion.referencia ?? undefined }
                           : undefined}

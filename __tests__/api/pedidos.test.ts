@@ -502,6 +502,7 @@ describe('GET /api/pedidos — N04d1 cobro manual', () => {
     telefono: null, direccion_entrega: null, metodo_pago: 'transferencia',
     metodo: 'transferencia', caja_movimiento_id: '1a2b3c4d-0000-4000-8000-000000000042',
     cuenta_id: 3, referencia: 'TRX-123',
+    mp_init_point: 'https://www.mercadopago.com/checkout/pref-1',
   };
   // Mock secundario: responde al SELECT por IDs con LEFT JOIN 050 y a los ítems.
   const setupGet = () => sql.mockImplementation((strings: any[]) => Promise.resolve(
@@ -522,9 +523,11 @@ describe('GET /api/pedidos — N04d1 cobro manual', () => {
     expect(res.status).toBe(200);
     expect(body.data[0]).toMatchObject({ metodo_pago: 'transferencia',
       caja_movimiento_id: '1a2b3c4d-0000-4000-8000-000000000042',
-      confirmacion: { cuenta_id: 3, referencia: 'TRX-123' } });
+      confirmacion: { cuenta_id: 3, referencia: 'TRX-123' },
+      mp_init_point: 'https://www.mercadopago.com/checkout/pref-1' });
     const consulta = sql.mock.calls.find((c: any[]) => c[0].join('').includes('pedido_pagos_manuales'));
     expect(consulta[0].join('')).toMatch(/LEFT JOIN/i);
+    expect(consulta[0].join('')).toMatch(/mp_init_point/);
   });
 
   test.each([
@@ -541,6 +544,7 @@ describe('GET /api/pedidos — N04d1 cobro manual', () => {
     expect(body.data[0]).not.toHaveProperty('metodo_pago');
     expect(body.data[0]).not.toHaveProperty('caja_movimiento_id');
     expect(body.data[0]).not.toHaveProperty('confirmacion');
+    expect(body.data[0]).not.toHaveProperty('mp_init_point');
   });
 });
 

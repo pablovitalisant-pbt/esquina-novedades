@@ -91,3 +91,59 @@ describe('ConfirmarCobroPedido', () => {
     expect(JSON.parse(posts(fn)[0][1].body)).toEqual({ cuenta_id: 1, monto: 12500, referencia: 'REF-1' });
   });
 });
+
+/** M1 — pedido sin método: el admin lo elige y la etiqueta del modo nuevo. */
+describe('ConfirmarCobroPedido — M1 marcar como pagado', () => {
+  const sinMetodo = { pedidoId: ID, monto: 12500, metodo: null as null };
+  const abrirNuevo = (extra: object = {}) => {
+    render(<ConfirmarCobroPedido {...sinMetodo} etiqueta="Marcar como pagado" {...extra} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como pagado' }));
+  };
+  const metodo = () => screen.getByLabelText(/método de pago/i);
+
+  test('la etiqueta nueva se ve en el botón cerrado y el panel conserva Registrar cobro', async () => {
+    mockFetch(() => ok({}));
+    abrirNuevo();
+    await screen.findByText('Caja CLP');
+    expect(screen.getByRole('button', { name: 'Registrar cobro' })).toBeInTheDocument();
+  });
+
+  test('sin método exige elegirlo antes de enviar', async () => {
+    const fn = mockFetch(() => ok({}));
+    abrirNuevo();
+    await screen.findByText('Caja CLP');
+    fireEvent.change(cuenta(), { target: { value: '1' } });
+    fireEvent.click(registrar());
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/método de pago/i));
+    expect(posts(fn)).toHaveLength(0);
+  });
+
+  test('efectivo envía el método y no pide referencia', async () => {
+    const fn = mockFetch(() => ok({ caja_movimiento_id: MOV }));
+    const p = { onConfirmado: jest.fn() };
+    abrirNuevo(p);
+    await screen.findByText('Caja CLP');
+    fireEvent.change(cuenta(), { target: { value: '1' } });
+    expect(screen.queryByLabelText(/referencia de transferencia/i)).not.toBeInTheDocument();
+    fireEvent.change(metodo(), { target: { value: 'efectivo' } });
+    fireEvent.click(registrar());
+    await waitFor(() => expect(p.onConfirmado).toHaveBeenCalled());
+    expect(JSON.parse(posts(fn)[0][1].body)).toEqual({ cuenta_id: 1, monto: 12500, metodo: 'efectivo' });
+  });
+
+  test('transferencia elegida pide y envía la referencia', async () => {
+    const fn = mockFetch(() => ok({ caja_movimiento_id: MOV }));
+    const p = { onConfirmado: jest.fn() };
+    abrirNuevo(p);
+    await screen.findByText('Caja CLP');
+    fireEvent.change(cuenta(), { target: { value: '1' } });
+    fireEvent.change(metodo(), { target: { value: 'transferencia' } });
+    fireEvent.click(registrar());
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/referencia/i));
+    fireEvent.change(referencia(), { target: { value: 'REF-M1' } });
+    fireEvent.click(registrar());
+    await waitFor(() => expect(p.onConfirmado).toHaveBeenCalled());
+    expect(JSON.parse(posts(fn)[0][1].body))
+      .toEqual({ cuenta_id: 1, monto: 12500, referencia: 'REF-M1', metodo: 'transferencia' });
+  });
+});

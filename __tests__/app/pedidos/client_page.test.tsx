@@ -25,7 +25,8 @@ jest.mock('@/config/feature-flags.json', () =>
 );
 // ponytail: virtual — el componente real llega en Fase C.
 jest.mock('@/components/ConfirmarCobroPedido', () => ({
-  ConfirmarCobroPedido: () => <button type="button">Confirmar cobro</button>,
+  ConfirmarCobroPedido: ({ etiqueta }: { etiqueta?: string }) =>
+    <button type="button">{etiqueta ?? 'Confirmar cobro'}</button>,
 }), { virtual: true });
 
 const PEDIDO = {
@@ -123,6 +124,67 @@ describe('PedidosPage — cobro manual (N04d2b)', () => {
     expect(await verAccion({ ...manual, cliente: { id: 'c3', nombre: 'Vend', telefono: null } }, { user: { rol: 'vendedor' } })).toHaveLength(0);
     const caja = { ...manual, caja_movimiento_id: 55, cliente: { id: 'c4', nombre: 'Caj', telefono: null } };
     expect(await verAccion(caja, admin)).toHaveLength(0);
+  });
+});
+
+describe('PedidosPage — M1 marcar como pagado', () => {
+  const flagsMock = jest.requireMock('@/config/feature-flags.json') as Record<string, boolean>;
+  const admin = { user: { rol: 'admin' } };
+  const SIN_METODO = {
+    ...PEDIDO, metodo_pago: null, caja_movimiento_id: null, stock_reservado: true,
+    mp_init_point: null, mp_payment_id: null,
+    cliente: { id: 's1', nombre: 'SinMetodo', telefono: null },
+  };
+  const abrir = async (pedido: any, session: any = admin) => {
+    renderPage([pedido], session);
+    await screen.findByText(pedido.cliente.nombre);
+    fireEvent.click(screen.getByText(pedido.cliente.nombre));
+  };
+
+  beforeEach(() => { jest.clearAllMocks(); flagsMock['pedido-marcar-pagado'] = false; });
+  afterEach(() => { flagsMock['pedido-marcar-pagado'] = false; });
+
+  it('pendiente de pago, reservado y sin método: admin con el flag ve "Marcar como pagado"', async () => {
+    flagsMock['pedido-marcar-pagado'] = true;
+    await abrir(SIN_METODO);
+    expect(screen.getByRole('button', { name: 'Marcar como pagado' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['convertido', { estado: 'convertido' }],
+    ['pagado', { estado: 'pagado' }],
+    ['con mp_init_point', { mp_init_point: 'https://www.mercadopago.com/checkout/pref-1' }],
+    ['con mp_payment_id', { mp_payment_id: '999' }],
+    ['sin reserva de stock', { stock_reservado: false }],
+    ['con caja ya registrada', { caja_movimiento_id: 55 }],
+  ])('sin método pero %s: no ofrece la acción', async (_n, extra) => {
+    flagsMock['pedido-marcar-pagado'] = true;
+    await abrir({ ...SIN_METODO, ...extra });
+    expect(screen.queryByRole('button', { name: 'Marcar como pagado' })).not.toBeInTheDocument();
+  });
+
+  it('con el flag nuevo apagado, el pedido sin método no muestra acción', async () => {
+    await abrir(SIN_METODO);
+    expect(screen.queryByRole('button', { name: 'Marcar como pagado' })).not.toBeInTheDocument();
+  });
+
+  it('sin admin, el pedido sin método no muestra acción', async () => {
+    flagsMock['pedido-marcar-pagado'] = true;
+    await abrir({ ...SIN_METODO, cliente: { id: 's2', nombre: 'SinMetodo2', telefono: null } },
+      { user: { rol: 'vendedor' } });
+    expect(screen.queryByRole('button', { name: 'Marcar como pagado' })).not.toBeInTheDocument();
+  });
+
+  it('con método ya elegido la etiqueta sigue siendo "Confirmar cobro"', async () => {
+    flagsMock['pedido-marcar-pagado'] = true;
+    await abrir({ ...SIN_METODO, metodo_pago: 'transferencia' });
+    expect(screen.getByRole('button', { name: 'Confirmar cobro' })).toBeInTheDocument();
+  });
+
+  it('no expone ningún link de pago MP', async () => {
+    flagsMock['pedido-marcar-pagado'] = true;
+    await abrir({ ...SIN_METODO, mp_init_point: 'https://www.mercadopago.com/checkout/pref-1' });
+    expect(screen.queryByRole('link', { name: /link de pago/i })).not.toBeInTheDocument();
   });
 });
 

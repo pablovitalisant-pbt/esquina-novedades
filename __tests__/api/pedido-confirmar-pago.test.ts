@@ -92,3 +92,65 @@ describe('POST /api/pedidos/[id]/confirmar-pago', () => {
     expect(cobrar).toHaveBeenCalledWith(ID);
   });
 });
+
+/** M1 — el admin puede marcar pagado un pedido sin método eligiéndolo aquí. */
+describe('POST /api/pedidos/[id]/confirmar-pago — M1 marcar como pagado', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    flags['pedido-cobro-manual'] = true;
+    flags['pedido-marcar-pagado'] = false;
+    getServerSession.mockResolvedValue(admin);
+  });
+  afterEach(() => {
+    flags['pedido-marcar-pagado'] = false;
+  });
+
+  test('pedido-cobro-manual apagado → 404 (la compuerta no cambió)', async () => {
+    flags['pedido-cobro-manual'] = false;
+    expect((await POST(req(), ctx)).status).toBe(404);
+    expect(adquirir).not.toHaveBeenCalled();
+  });
+
+  test('solo pedido-marcar-pagado activo no abre la ruta → 404', async () => {
+    flags['pedido-cobro-manual'] = false;
+    flags['pedido-marcar-pagado'] = true;
+    expect((await POST(req(), ctx)).status).toBe(404);
+    expect(adquirir).not.toHaveBeenCalled();
+  });
+
+  test('metodo con pedido-marcar-pagado apagado → 400 sin adquirir', async () => {
+    // Un POST armado a mano no se salta el flag del modo nuevo.
+    const res = await POST(req({ cuenta_id: 3, monto: 5000, metodo: 'efectivo' }), ctx);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Método de pago inválido' });
+    expect(adquirir).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['desconocido', 'tarjeta'],
+    ['vacío', ''],
+    ['no string', 1],
+    ['nulo', null],
+  ])('metodo %s → 400 sin adquirir', async (_n, metodo) => {
+    flags['pedido-marcar-pagado'] = true;
+    const res = await POST(req({ cuenta_id: 3, monto: 5000, metodo }), ctx);
+    expect(res.status).toBe(400);
+    expect(adquirir).not.toHaveBeenCalled();
+  });
+
+  test('metodo válido se reenvía a la adquisición', async () => {
+    flags['pedido-marcar-pagado'] = true;
+    adquirir.mockResolvedValue('conflicto');
+    const res = await POST(req({ cuenta_id: 3, monto: 5000, metodo: 'efectivo' }), ctx);
+    expect(res.status).toBe(409);
+    expect(adquirir).toHaveBeenCalledWith(expect.objectContaining({ metodo: 'efectivo' }));
+  });
+
+  test('sin metodo la adquisición recibe metodo indefinido (el lib decide)', async () => {
+    flags['pedido-marcar-pagado'] = true;
+    adquirir.mockResolvedValue('conflicto');
+    await POST(req(), ctx);
+    const args = adquirir.mock.calls[0][0];
+    expect(args.metodo).toBeUndefined();
+  });
+});
